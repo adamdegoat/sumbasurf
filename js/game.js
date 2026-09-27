@@ -8,7 +8,7 @@ import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=16';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
 import { SPOTS, spotGroup, builtSpots } from './spots.js?v=90';
-import { villa, VILLA } from './villa.js?v=129';
+import { villa, VILLA } from './villa.js?v=134';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
@@ -1793,7 +1793,7 @@ const songOf = (src) => SONGS[(src || '').split('/').pop().replace('.mp3', '')] 
   box.addEventListener('click', tap); box.addEventListener('touchstart', tap, { passive: false });
   for (const [id, f] of [['mPrev', () => audio.musicPrev()], ['mNext', () => audio.musicNext()]]) { const b = document.getElementById(id), go = (e) => { e.preventDefault(); e.stopPropagation(); f(); audio.musicKick(); later(); };
     b.addEventListener('click', go); b.addEventListener('touchstart', go, { passive: false }); } }
-audio.onTrack = (src) => { const [t, a] = songOf(src); if (villaW) villaW.setSong(t, a); document.getElementById('vSongT').textContent = t; document.getElementById('vSongA').textContent = a ? 'by ' + a : ''; };
+audio.onTrack = (src) => { const [t] = songOf(src); if (villaW) villaW.setSong(t, ''); document.getElementById('vSongT').textContent = t; document.getElementById('vSongA').textContent = ''; };   // (song name only: Pixabay's licence doesn't need the artist credited, his call 28 Sep 2026)
 const MUSIC = ['stand-firm-like-a-tree', 'barefoot-in-the-breeze', 'streets-still-singing', 'drop-of-peace', 'generational-stew', 'shelter-in-the-storm', 'yardman-sing-along', 'rise-again', 'moonbeam-rendezvous', 'dawn-still-knows-your-name', 'breathe-and-hold-on', 'after-the-rain-we-feast', 'slow-kisses-warm-nights', 'relaxed-summer-groove', 'moonlit-mermaids', 'sun-kiss-sip', 'break-of-day', 'old-friends', 'sunset-cup'].map((n) => 'music/' + n + '.mp3');
 let radioOn = true;   // (the villa's speakers, all together)
 let earOn = false; try { earOn = localStorage.getItem('sumbasurf.ear') === '1'; } catch (e) {}   // an earpiece while you surf: your call, remembered

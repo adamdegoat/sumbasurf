@@ -659,13 +659,12 @@ export function villa(scene) {
   flies.geometry.setAttribute('position', new THREE.BufferAttribute(flyP, 3)); flies.geometry.setAttribute('color', new THREE.BufferAttribute(flyC, 3)); flies.frustumCulled = false; g.add(flies);
   for (let i = 0; i < flyN; i++) fly.push({ x: G.x0 + 1 + Math.random() * (G.x1 - G.x0 - 2), z: G.z0 + Math.random() * (G.z1 - G.z0), y: GY + 0.4 + Math.random() * 1.6, a: Math.random() * 6.3, ph: Math.random() * 20, sp: 0.25 + Math.random() * 0.3 });
 
-  // ---- the house dog: a lean ginger Sumba village dog who lives in the garden. Trots about, sits, lies down by the
-  // fire, and comes over to see you (tail going) when you're near
-  const dog = (() => {
-    const GING = [0.7, 0.45, 0.24], PALE = [0.9, 0.8, 0.64], DARK = [0.22, 0.15, 0.1];
-    const root2 = new THREE.Group(); g.add(root2); const body = new THREE.Group(); body.position.y = 0.42; root2.add(body);
-    const part = (geo, c, par, x, y, z) => { const m = new THREE.Mesh(tint(geo, c, 0.08), mat); m.position.set(x, y, z); par.add(m); return m; };
-    const cap = (r, len) => new THREE.CapsuleGeometry(r, len, 4, 10);
+  // ---- the house dogs: lean Sumba village dogs who live in the garden (a ginger, a black one with a white chest and a
+  // brindle). Trot about, sit, lie down by the fire, and come over to see you (tails going) when you're near
+  const part = (geo, c, par, x, y, z) => { const m = new THREE.Mesh(tint(geo, c, 0.08), mat); m.position.set(x, y, z); par.add(m); return m; };
+  const cap = (r, len) => new THREE.CapsuleGeometry(r, len, 4, 10);
+  const makeDog = (GING, PALE, DARK, x0, z0, size = 1) => {
+    const root2 = new THREE.Group(); root2.scale.setScalar(size); g.add(root2); const body = new THREE.Group(); body.position.y = 0.42; root2.add(body);
     part(cap(0.1, 0.36).rotateX(Math.PI / 2).scale(1, 1.12, 1), GING, body, 0, 0, 0);                     // lean body, deep chest
     part(cap(0.085, 0.14).rotateX(Math.PI / 2).scale(0.95, 1, 1), PALE, body, 0, -0.035, 0.13);            // (pale chest and belly)
     part(new THREE.SphereGeometry(0.09, 10, 8).scale(1, 0.95, 1.1), GING, body, 0, 0.01, -0.2);             // haunch
@@ -680,8 +679,34 @@ export function villa(scene) {
     // the tail: curled up over the back, the way Sumba's village dogs carry it
     const tail = new THREE.Group(); tail.position.set(0, 0.06, -0.3); body.add(tail);
     part(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0.1, -0.05), new THREE.Vector3(0, 0.18, 0.02), new THREE.Vector3(0.02, 0.17, 0.1)]), 10, 0.022, 6), GING, tail, 0, 0, 0);
-    return { root: root2, body, head, legs, tail, x: -91, z: 51.8, hd: 0, st: 'walk', t: 0, tx: -95, tz: 47, gait: 0, cool: 0 };
-  })();
+    return { root: root2, body, head, legs, tail, x: x0, z: z0, hd: Math.random() * 6.3, st: 'walk', t: Math.random() * 3, tx: x0, tz: z0, gait: 0, cool: Math.random() * 4 };
+  };
+  const dogs = [makeDog([0.7, 0.45, 0.24], [0.9, 0.8, 0.64], [0.22, 0.15, 0.1], -91, 51.8),
+    makeDog([0.13, 0.12, 0.11], [0.88, 0.85, 0.8], [0.05, 0.05, 0.05], -97, 47.5, 0.95),
+    makeDog([0.46, 0.33, 0.2], [0.72, 0.58, 0.42], [0.16, 0.1, 0.07], -99.5, 51, 1.05)];
+  const dog = dogs[0];
+
+  // ---- the cats: a ginger tabby who roams the garden (keeping clear of the dogs), and a black-and-white one who lives
+  // on the balcony, strolling the deck and curling up to sleep on the loungers
+  const makeCat = (C, P, D, x0, z0, home) => {
+    const root2 = new THREE.Group(); g.add(root2); const body = new THREE.Group(); body.position.y = 0.21; root2.add(body);
+    part(cap(0.062, 0.22).rotateX(Math.PI / 2).scale(1, 1.05, 1), C, body, 0, 0, 0);                    // long supple body
+    part(cap(0.048, 0.1).rotateX(Math.PI / 2), P, body, 0, -0.022, 0.06);                                // (pale belly)
+    part(new THREE.SphereGeometry(0.066, 10, 8).scale(1, 0.95, 1.1), C, body, 0, 0.008, -0.12);         // haunch
+    const head = new THREE.Group(); head.position.set(0, 0.075, 0.18); body.add(head);
+    part(new THREE.SphereGeometry(0.058, 12, 10).scale(1.08, 0.94, 1), C, head, 0, 0.03, 0.02);        // round head
+    part(new THREE.SphereGeometry(0.03, 8, 6).scale(1.2, 0.8, 1), P, head, 0, 0.012, 0.065);          // muzzle
+    part(new THREE.SphereGeometry(0.008, 6, 4), [0.75, 0.42, 0.42], head, 0, 0.028, 0.088);           // pink nose
+    for (const sx of [-1, 1]) { const e = part(new THREE.ConeGeometry(0.024, 0.05, 4), C, head, sx * 0.034, 0.085, 0.01); e.rotation.set(-0.1, sx * 0.4, -sx * 0.22); part(new THREE.SphereGeometry(0.009, 6, 4), [0.55, 0.6, 0.2], head, sx * 0.024, 0.045, 0.066); }   // pointed ears, green eyes
+    const legs = []; for (const [x, z] of [[-0.04, 0.11], [0.04, 0.11], [-0.042, -0.12], [0.042, -0.12]]) { const hip = new THREE.Group(); hip.position.set(x, -0.03, z); body.add(hip);
+      part(cap(0.017, 0.13), C, hip, 0, -0.085, 0); part(new THREE.SphereGeometry(0.019, 6, 4).scale(1, 0.6, 1.3), P, hip, 0, -0.17, 0.01); legs.push(hip); }
+    // the tail: long, held up in a question mark as it walks
+    const tail = new THREE.Group(); tail.position.set(0, 0.03, -0.19); body.add(tail);
+    part(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0.09, -0.07), new THREE.Vector3(0, 0.22, -0.09), new THREE.Vector3(0, 0.3, -0.03), new THREE.Vector3(0.01, 0.3, 0.03)]), 14, 0.014, 6), C, tail, 0, 0, 0);
+    return { root: root2, body, head, legs, tail, x: x0, z: z0, y: 0, hd: Math.random() * 6.3, st: 'walk', t: 2 + Math.random() * 4, tx: x0, tz: z0, gait: 0, home, pose: 0 };
+  };
+  const cats = [makeCat([0.85, 0.5, 0.22], [0.96, 0.86, 0.7], [0.3, 0.15, 0.05], -93, 45.5, 'garden'),
+    makeCat([0.09, 0.09, 0.1], [0.9, 0.9, 0.88], [0.05, 0.05, 0.05], -84.3, 31, 'balcony')];
   const dogOK = (x, z) => x > G.x0 + 0.8 && x < G.x1 - 0.6 && z > G.z0 + 0.5 && z < G.z1 - 0.5 && Math.hypot(x - fire.x, z - fire.z) > 2.9 && !(x < -100.6 && z > 46.3 && z < 52.3) && !(x > -89 && z < 47)
     && !(x > WAX.x - 2.4 && x < WAX.x + 1.5 && z > WAX.z - 1.2 && z < WAX.z + 0.8) && !(z < V.z1 + 1.1 && x < -95.2) && Math.hypot(x + 96.5, z - 53.05) > 0.5;   // (and clear of the wax station, Wayan, the board rack and the washing line post)
   const dogPick = () => { if (Math.random() < 0.35) { const an = Math.random() * 6.3; return [fire.x + Math.cos(an) * 3.2, fire.z + Math.sin(an) * 3.2]; }   // (a warm spot by the fire)
@@ -706,15 +731,18 @@ export function villa(scene) {
       if (nx < G.x0 + 0.5 || nx > G.x1 - 0.5 || nz < G.z0 || nz > G.z1) { f.a += Math.PI; nx = f.x; nz = f.z; } f.x = nx; f.z = nz; f.y = Math.min(GY + 2.2, Math.max(GY + 0.3, f.y + Math.sin(fT * 1.3 + f.ph) * 0.25 * dt));
       flyP[j] = f.x; flyP[j + 1] = f.y; flyP[j + 2] = f.z; let b = Math.max(0, Math.sin(fT * 1.6 + f.ph)); b = b * b * b; flyC[j] = 0.75 * b; flyC[j + 1] = b; flyC[j + 2] = 0.3 * b; });
     flies.geometry.attributes.position.needsUpdate = true; flies.geometry.attributes.color.needsUpdate = true;
-    dogTick(dt, wx, wz, wfoot);
+    for (const d of dogs) dogTick(d, dt, wx, wz, wfoot);
+    // (the dogs keep a little room between them, and the cats stay out of their way)
+    for (let a = 0; a < dogs.length; a++) for (let b = a + 1; b < dogs.length; b++) { const A = dogs[a], B = dogs[b], dx = B.x - A.x, dz = B.z - A.z, dd = Math.hypot(dx, dz); if (dd < 0.75 && dd > 1e-3) { const push = (0.75 - dd) * 0.5; A.x -= dx / dd * push; A.z -= dz / dd * push; B.x += dx / dd * push; B.z += dz / dd * push; } }
+    for (const c of cats) catTick(c, dt);
     for (const w of woofers) { w.position.z = w.userData.z0 + beat * 0.02; }   // (the cones pump with the bass)
     const fl = 1 + 0.16 * Math.sin(fT * 13) + 0.09 * Math.sin(fT * 23 + 1) + 0.05 * Math.sin(fT * 41); flame.scale.set(1 + 0.06 * Math.sin(fT * 17), fl, 1); flame2.scale.set(1, 2.05 - fl, 1); flame.rotation.y = fT * 0.7; flame2.rotation.y = -fT * 1.1;
     const ch = root.userData.chime; if (ch) { ch.rotation.z = 0.06 * Math.sin(fT * 1.7) + 0.03 * Math.sin(fT * 4.1); ch.rotation.x = 0.05 * Math.sin(fT * 1.3 + 1); }
   }
 
   // the dog's day: walk somewhere, sit or lie down a while (often by the fire), and trot over to you when you come near
-  function dogTick(dt, wx, wz, wfoot) {
-    const d = dog; d.t -= dt; let px = null, pz = null;
+  function dogTick(d, dt, wx, wz, wfoot) {
+    d.t -= dt; let px = null, pz = null;
     if (wx !== undefined && wfoot < Y + 0.5) { const [lx, lz] = toL(wx, wz); if (Math.hypot(lx - d.x, lz - d.z) < 6 && lx < G.x1 + 3.5 && lz > G.z0 - 3) { px = lx; pz = lz; } }   // (you, on the ground nearby)
     if (px !== null && d.st !== 'come' && d.st !== 'greet' && d.cool <= 0) { d.st = 'come'; }
     d.cool = (d.cool || 0) - dt;
@@ -727,10 +755,11 @@ export function villa(scene) {
       if (dd < 0.3 && d.st === 'walk') { const byFire = Math.hypot(d.x - fire.x, d.z - fire.z) < 3.6; d.st = byFire || Math.random() < 0.3 ? 'lie' : 'sit'; d.t = d.st === 'lie' ? 10 + Math.random() * 14 : 4 + Math.random() * 6; speed = 0; }
       else { const want = Math.atan2(dx, dz), turn = Math.atan2(Math.sin(want - d.hd), Math.cos(want - d.hd)); d.hd += Math.max(-3.5 * dt, Math.min(3.5 * dt, turn)); if (Math.abs(turn) > 1.2) speed *= 0.4;
         // (something in the way, the fire or the hammock: go round it, trying a little to either side, then more)
-        let hd = d.hd; const free = !dogOK(d.x, d.z);   // (and never stuck: from anywhere it shouldn't be, it can always walk out)
+        d.escape = (d.escape || 0) - dt; let hd = d.hd; const free = !dogOK(d.x, d.z) || d.escape > 0;   // (and never stuck: from anywhere it shouldn't be, it can always walk out)
         for (const off of [0, 0.5, -0.5, 1, -1, 1.6, -1.6]) { const h2 = d.hd + off; if (free || dogOK(d.x + Math.sin(h2) * 0.4, d.z + Math.cos(h2) * 0.4)) { hd = h2; break; } }
         const nx = d.x + Math.sin(hd) * speed * dt, nz = d.z + Math.cos(hd) * speed * dt;
-        if (free || dogOK(nx, nz)) { d.x = nx; d.z = nz; d.hd += (hd - d.hd) * Math.min(1, dt * 6); } else if (d.st === 'walk') [d.tx, d.tz] = dogPick(); } }
+        if (free || dogOK(nx, nz)) { d.x = nx; d.z = nz; d.hd += (hd - d.hd) * Math.min(1, dt * 6); d.stuckT = 0; }
+        else { if (d.st === 'walk') [d.tx, d.tz] = dogPick(); d.stuckT = (d.stuckT || 0) + dt; if (d.stuckT > 1) { d.stuckT = 0; d.escape = 0.6; } } } }   // (hemmed in by the wax station's corner for a second: step out)
     // the pose
     const sit = d.st === 'sit' || d.st === 'greet', lie = d.st === 'lie', k = Math.min(1, dt * 5);
     d.gait += speed * dt * 8.5; d.pose = (d.pose || 0) + ((lie ? 2 : sit ? 1 : 0) - (d.pose || 0)) * k;
@@ -744,11 +773,49 @@ export function villa(scene) {
     d.root.position.set(d.x, GY, d.z); d.root.rotation.y = d.hd;
   }
 
+  // the cats' day: stroll somewhere, sit a while or lie down; the garden cat trots off when a dog comes close; the
+  // balcony cat hops up onto a lounger to sleep in the sun
+  const LOUNGE = [[-84.55, 34.4], [-84.55, 39.6]];
+  const balOK = (x, z) => ((x > -85.7 && x < -83.0 && z > 27.1 && z < 42.8) || (x > -99.4 && x < -83.0 && z > 27.0 && z < 29.6))
+    && !LOUNGE.some(([lx, lz]) => Math.abs(x - lx - 0.2) < 0.95 && Math.abs(z - lz) < 0.5) && Math.hypot(x + 85.2, z - 37) > 0.45;   // (round the loungers and the radio table, not through them)
+  const catPick = (c) => {
+    if (c.home !== 'balcony') return dogPick();
+    if (Math.random() < 0.45) return LOUNGE[Math.random() * 2 | 0];
+    for (let k = 0; k < 20; k++) { const x = -99 + Math.random() * 15.8, z = 27.2 + Math.random() * 15.4; if (balOK(x, z)) return [x, z]; } return [-84.3, 31]; };
+  function catTick(c, dt) {
+    c.t -= dt; let speed = 0;
+    if (c.home === 'garden') for (const d of dogs) if (Math.hypot(d.x - c.x, d.z - c.z) < 1.1 && !(c.st === 'walk' && c.fast)) { c.st = 'walk'; c.fast = 1; [c.tx, c.tz] = catPick(c); }
+    if (c.st === 'walk') speed = c.fast ? 1.4 : 0.55;
+    else if (c.t <= 0) { c.st = 'walk'; c.fast = 0; [c.tx, c.tz] = catPick(c); }
+    const toLounge = c.home === 'balcony' && LOUNGE.some(([x, z]) => x === c.tx && z === c.tz), near = Math.hypot(c.tx - c.x, c.tz - c.z) < 0.95;
+    const ok = (x, z) => (c.home === 'balcony' ? balOK(x, z) : dogOK(x, z)) || (toLounge && near);
+    if (speed > 0) { const dx = c.tx - c.x, dz = c.tz - c.z, dd = Math.hypot(dx, dz);
+      if (dd < 0.18) { c.st = toLounge ? 'nap' : Math.random() < 0.5 ? 'sit' : 'lie'; c.t = c.st === 'nap' ? 20 + Math.random() * 25 : c.st === 'lie' ? 8 + Math.random() * 10 : 3 + Math.random() * 5; c.fast = 0; speed = 0; }
+      else { const want = Math.atan2(dx, dz), turn = Math.atan2(Math.sin(want - c.hd), Math.cos(want - c.hd)); c.hd += Math.max(-4 * dt, Math.min(4 * dt, turn)); if (Math.abs(turn) > 1.2) speed *= 0.4;
+        c.escape = (c.escape || 0) - dt; let hd = c.hd; const free = !ok(c.x, c.z) || c.escape > 0;   // (escape: a moment free of the rules to step out of a tight spot)
+        for (const off of [0, 0.5, -0.5, 1, -1, 1.6, -1.6]) { const h2 = c.hd + off; if (free || ok(c.x + Math.sin(h2) * 0.3, c.z + Math.cos(h2) * 0.3)) { hd = h2; break; } }
+        const nx = c.x + Math.sin(hd) * speed * dt, nz = c.z + Math.cos(hd) * speed * dt;
+        if (free || ok(nx, nz)) { c.x = nx; c.z = nz; c.hd += (hd - c.hd) * Math.min(1, dt * 6); c.stuckT = 0; }
+        else { c.stuckT = (c.stuckT || 0) + dt; if (c.stuckT > 1) { c.stuckT = 0; c.escape = 0.6; [c.tx, c.tz] = catPick(c); } } } }   // (hemmed in for a second: somewhere else, and step out)
+    // up onto the lounger's cushion to sleep (a little hop), down on the deck or the grass otherwise
+    const up = c.st === 'nap' || (toLounge && near && c.st === 'walk' && Math.hypot(c.tx - c.x, c.tz - c.z) < 0.5) ? 0.42 : 0; c.y += (up - c.y) * Math.min(1, dt * 7);
+    // the pose: walking tall with the tail up, sitting upright with it wrapped round, lying (or curled asleep)
+    const sit = c.st === 'sit', lie = c.st === 'lie' || c.st === 'nap', k = Math.min(1, dt * 5);
+    c.gait += speed * dt * 11; c.pose += ((lie ? 2 : sit ? 1 : 0) - c.pose) * k;
+    const sitK = Math.max(0, 1 - Math.abs(c.pose - 1)), lieK = Math.max(0, c.pose - 1), swing = speed > 0 ? Math.min(0.6, speed * 0.6) : 0;
+    c.body.position.y = 0.21 - 0.04 * sitK - 0.13 * lieK; c.body.rotation.x = -0.5 * sitK;
+    c.legs.forEach((L, i) => { const front = i < 2, ph = (i === 0 || i === 3) ? 0 : Math.PI; L.rotation.x = Math.sin(c.gait + ph) * swing + (front ? 0.5 * sitK : -1.4 * sitK) + (front ? -1.4 : 1.4) * lieK; });   // (tucked under when lying)
+    const nod = c.st === 'nap' ? 0.55 : sit ? 0.15 * Math.max(0, Math.sin(fT * 0.7 + c.hd * 3)) : 0;   // (asleep: head down on its paws; sitting: now and then a look down, grooming)
+    c.head.rotation.x += (nod - c.head.rotation.x) * k; c.head.rotation.y = Math.sin(fT * 0.4 + c.hd) * 0.3 * (1 - lieK);
+    c.tail.rotation.x = -1.35 * sitK - 1.45 * lieK + (speed > 0 ? 0 : 0.05 * Math.sin(fT * 2)); c.tail.rotation.z = Math.sin(fT * (speed > 0 ? 3 : 1.2) + c.hd) * (lie ? 0.25 : 0.18) + 0.9 * lieK;
+    c.root.position.set(c.x, (c.home === 'balcony' ? Y : GY) + c.y, c.z); c.root.rotation.y = c.hd;
+  }
+
   // join everything that doesn't move into one mesh per material (a phone draws each in one go instead of hundreds of
   // little pieces): the timber, the furniture, the speakers' cabinets, lamps, tub... Not the moving parts (speaker cones,
   // the fire, the boards you pick from the rack) and not anything drawn mirrored, which would turn inside out merged
   { g.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(g.matrixWorld).invert(), rel = new THREE.Matrix4();
-    const keep = new Set([...woofers]); flame.traverse((o) => keep.add(o)); flame2.traverse((o) => keep.add(o)); for (const b of rack) b.traverse((o) => keep.add(o)); for (const L of lanterns) L.hook.traverse((o) => keep.add(o)); dog.root.traverse((o) => keep.add(o)); for (const L of lineItems) L.pv.traverse((o) => keep.add(o));
+    const keep = new Set([...woofers]); flame.traverse((o) => keep.add(o)); flame2.traverse((o) => keep.add(o)); for (const b of rack) b.traverse((o) => keep.add(o)); for (const L of lanterns) L.hook.traverse((o) => keep.add(o)); for (const d of [...dogs, ...cats]) d.root.traverse((o) => keep.add(o)); for (const L of lineItems) L.pv.traverse((o) => keep.add(o));
     const byMat = new Map(); g.traverse((o) => { if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || keep.has(o)) return; rel.multiplyMatrices(inv, o.matrixWorld); if (rel.determinant() < 0) return;
       if (!byMat.has(o.material)) byMat.set(o.material, []); byMat.get(o.material).push(o); });
     for (const [M, parts] of byMat) { if (parts.length < 2) continue;
@@ -823,5 +890,5 @@ export function villa(scene) {
     root.userData.chime = ch; }
   // dim every evening light (0 = off, 1 = as built): the house goes dark for the drone show
   const setLights = (k) => { for (const L of LIGHTS) { if (L.kind === 'color') L.mat.color.copy(L.base).multiplyScalar(k); else if (L.kind === 'opacity') L.mat.opacity = L.base * k; else L.mat.emissiveIntensity = L.base * k; } };
-  return { setLights, group: root, rack, colliders, walk, floorAt, solid, fix, inPool, tick, seats, sounds, setSong, dog, friendSpots, spawn: { x: OX + 91, z: 37.5 + OZ, yaw: Math.PI + 0.2 }, rackAt: { x: OX - (V.x0 + 0.6), z: 37 + OZ } };
+  return { setLights, group: root, rack, colliders, walk, floorAt, solid, fix, inPool, tick, seats, sounds, setSong, dog, dogs, cats, friendSpots, spawn: { x: OX + 91, z: 37.5 + OZ, yaw: Math.PI + 0.2 }, rackAt: { x: OX - (V.x0 + 0.6), z: 37 + OZ } };
 }

@@ -441,13 +441,17 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-0215</small>
+    <small id="build">build 260928-0244</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-28-pets', date: '28 Sep 2026', time: '2:44 am', title: 'New friends at the villa', items: [
+      'Two more dogs join the garden, and two cats: a ginger tabby in the garden and a black and white one who naps on the balcony loungers.',
+      'The radio now shows just the song name.',
+    ] },
     { id: '2026-09-28-levels', date: '28 Sep 2026', time: '2:15 am', title: 'Score levels', items: [
       'Challenges are replaced by three score levels at every spot: Amateur 5.0 to 6.9, Advanced 7.0 to 8.4, Pro Surfer 8.5 and up.',
       'Your best wave sets your level at each spot. The menu shows it, and after each wave you see how far the next level is.',
@@ -586,6 +590,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=796"></script>
+<script type="module" src="js/game.js?v=801"></script>
 </body>
 </html>
