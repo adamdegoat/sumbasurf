@@ -443,6 +443,7 @@ export const ENV = {
   uPool: { value: new THREE.Vector4(-1e6, 1e6, -1e6, 1e6) },   // water only inside this box (x0, x1, z0, z1): the wave pool
   uReef: { value: 1 },
   uGold: { value: 0 },                                // golden hour (the villa's evening): 0 = plain day
+  uNight: { value: 0 },                               // night (the villa's drone show): clouds go dark instead of glowing grey
   uReefK: { value: 0.38 },                            // how clearly the reef shows through the shallows (each spot's own)
   uReefEnd: { value: 190 }, uReefTint: { value: new THREE.Color(1, 1, 1) },   // where the shallows stop (the beach), and each spot's reef colour                                           // 0 = no reef under the water (a concrete pool)
 };
@@ -640,7 +641,7 @@ export function skyDome(scene) {
     side: THREE.BackSide, depthWrite: false,
     uniforms: { ...ENV, uTime: { value: 0 } },
     vertexShader: `varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
-    fragmentShader: `uniform vec3 uSun, uZen, uHor, uSunCol; uniform float uCloud, uSunVis, uTime, uFlash, uGold; varying vec3 vD; ${NOISE}${SUNSET}
+    fragmentShader: `uniform vec3 uSun, uZen, uHor, uSunCol; uniform float uCloud, uSunVis, uTime, uFlash, uGold, uNight; varying vec3 vD; ${NOISE}${SUNSET}
       void main(){
         vec3 d = normalize(vD); float h = clamp(d.y, 0., 1.);
         vec3 c = sunset(d, mix(uHor, uZen, pow(h, .45)));
@@ -655,6 +656,7 @@ export function skyDome(scene) {
         vec3 cloudLit = mix(vec3(.42,.47,.5), warm, clamp(uSunVis * 1.5, 0., 1.));        // no sun, no colour: storm clouds are grey
         vec3 cloudCol = mix(cloudLit, vec3(.12,.14,.16), uCloud * .85) * (.75 + .25 * n);
         cloudCol += uSunCol * pow(s, 6.) * .4 * uSunVis;                       // silver lining near the sun
+        cloudCol = mix(cloudCol, uHor * 1.25 + vec3(.01, .012, .02), uNight);   // (at night just a shade lighter than the sky behind)
         c = mix(c, cloudCol, cl * mix(.55, .97, uCloud) * smoothstep(.0, .2, d.y));
         if (d.y < 0.) c = mix(uHor, uHor * .3, clamp(-d.y*6., 0., 1.));
         gl_FragColor = vec4(c + uFlash, 1.);

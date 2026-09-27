@@ -2,19 +2,20 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=164';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=165';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=154';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=15';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=89';
-import { villa, VILLA } from './villa.js?v=126';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=90';
+import { villa, VILLA } from './villa.js?v=127';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
 import { crew } from './crew.js?v=48';
 import { wildlife } from './wildlife.js?v=52';
+import { droneShow } from './show.js?v=4';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
@@ -582,7 +583,7 @@ for (const b of document.querySelectorAll('[data-board]')) b.addEventListener('c
 let starting = false;
 // back to the level select: stop the game behind the menu (you pick a level again to restart)
 function toMenu() {
-  starting = false; chalHide(); if (drone.on) droneSet(false); audio.quiet(true);
+  starting = false; chalHide(); if (drone.on) droneSet(false); showOff(true); audio.quiet(true);
   // clear the session: the menu gets its slow drifting wave behind it again (and nothing of the old ride keeps running)
   if (surfer) endWipe(); rider = null; rig.visible = false; endT = -1;
   for (const w of waves) w.dispose(scene); waves = [];
@@ -610,7 +611,7 @@ function hello(where) {
 async function start(m) {
   if (starting) return; starting = true; if (window.__g) window.__g.paused = false;
   hello(m === 'ranch' ? 'Surf Ranch' : (SPOTS[m] && SPOTS[m].name) || m);
-  mode = m; setWeather(m); setSpot(m); audio.start(); audio.quiet(false); audio.musicStart(MUSIC); document.body.classList.toggle('reef', m !== 'ranch');
+  showOff(true); mode = m; setWeather(m); setSpot(m); audio.start(); audio.quiet(false); audio.musicStart(MUSIC); document.body.classList.toggle('reef', m !== 'ranch');
   // fullscreen + landscape lock must be asked for inside the tap, before any waiting (Android); iOS ignores both safely
   try { document.documentElement.requestFullscreen?.({ navigationUI: 'hide' })?.then(() => screen.orientation?.lock?.('landscape')).catch(() => {}); } catch (e) {}
   ui.load.textContent = surfer ? '' : 'Loading...'; document.getElementById('goSurf').classList.toggle('wait', !surfer);
@@ -1838,7 +1839,7 @@ function startVilla() {
   for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 3; setLeft = 0; setPos = 0;
   if (surfer) endWipe(); rider = null; rig.visible = false;
   document.getElementById('vZoom').classList.remove('on'); document.querySelector('#vZoom span').textContent = 'ZOOM'; document.getElementById('vWatch').classList.remove('on'); document.querySelector('#vWatch span').textContent = 'WATCH A RIDE'; vSitB.classList.remove('on');
-  if (drone.on) droneSet(false);
+  if (drone.on) droneSet(false); showOff(true); setTimeout(() => { if (!showW && mode === 'villa') showW = droneShow(scene); }, 2500);   // (the show's shapes are worked out while you look around, not the moment you press the button)
   walker = { x: villaW.spawn.x, z: villaW.spawn.z, yaw: villaW.spawn.yaw, pitch: -0.08, y: VILLA.Y + 1.65, mx: 0, mz: 0 };
   ui.start.style.display = 'none'; document.body.classList.add('playing', 'villa'); ui.cond.textContent = 'Your villa';
   document.getElementById('vTip').textContent = DESK ? 'WASD or the arrow keys walk, drag the mouse to look, click to pick. Boards are in the board room.' : 'Left thumb walks, right thumb looks. Boards are in the board room.';
@@ -1852,7 +1853,7 @@ document.getElementById('vGo').addEventListener('click', (e) => { e.stopPropagat
   const wb = document.getElementById('vWatch'), wt = (e) => { e.preventDefault(); e.stopPropagation(); if (!walker) return; walker.watch = !walker.watch; walker.watchI = -1; walker.vant = null; wb.classList.toggle('on', walker.watch); wb.querySelector('span').textContent = walker.watch ? 'STOP WATCHING' : 'WATCH A RIDE'; };
   wb.addEventListener('click', wt); wb.addEventListener('touchstart', wt, { passive: false }); }
 document.getElementById('vGo').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); toMenu(); }, { passive: false });
-// the drone: launch it off the balcony and fly out over the break. Left thumb flies (the way the camera faces), right
+// the drone: launch it from anywhere in the villa (indoors, it takes off from the balcony) and fly out over the break. Left thumb flies (the way the camera faces), right
 // thumb turns and tilts the camera, hold UP / DOWN to climb and sink (on a keyboard: WASD, E or Space up, Q or Shift
 // down). It drifts and banks like a real one, keeps above the water (skims the faces if you let it), stays clear of the
 // house and the banyan, and has a range: out past the reef and back. LAND brings the view home to where you're standing
@@ -1861,11 +1862,14 @@ const droneB = document.getElementById('vDrone'), droneAlt = document.getElement
 function droneSet(on) {
   if (!walker || on === drone.on) return; const W_ = walker;
   if (on) {
-    { const lx = 88 - W_.x, lz = W_.z - 31, inside = lx > VILLA.x0 && lx < VILLA.x1 && lz > VILLA.z0 && lz < VILLA.z1, up = W_.y - 1.65 > VILLA.Y + 1.5;   // (indoors it would lift straight through the roof; up the tree, through the canopy)
-      if (inside || up) { const n = document.getElementById('vNote'); n.textContent = 'Take the drone out to the balcony or the garden to launch it'; n.classList.add('on'); clearTimeout(n.t); n.t = setTimeout(() => n.classList.remove('on'), 3500); return; } }
+    // (press it anywhere: indoors or up the tree it would lift straight through the roof or the canopy, so from there it
+    //  takes off from the east balcony by the radio instead, facing the surf; LAND still brings you back where you stood)
+    const lx = 88 - W_.x, lz = W_.z - 31, inside = lx > VILLA.x0 && lx < VILLA.x1 && lz > VILLA.z0 && lz < VILLA.z1, up = W_.y - 1.65 > VILLA.Y + 1.5;
+    const pad = inside || up;
     document.getElementById('vSong').classList.remove('open');
     if (W_.sit) vStand(); if (W_.watch) document.getElementById('vWatch').click(); vSitB.classList.remove('on'); W_.near = null;
-    Object.assign(drone, { on: true, x: W_.x + Math.cos(W_.yaw) * 0.8, y: W_.y + 0.3, z: W_.z + Math.sin(W_.yaw) * 0.8, vx: 0, vy: 0, vz: 0, up: 0, roll: 0, t: 0, save: [W_.yaw, W_.pitch] });
+    Object.assign(drone, pad ? { x: 88 + 84.5, y: VILLA.Y + 1.95, z: 31 + 37 } : { x: W_.x + Math.cos(W_.yaw) * 0.8, y: W_.y + 0.3, z: W_.z + Math.sin(W_.yaw) * 0.8 }, { on: true, vx: 0, vy: 0, vz: 0, up: 0, roll: 0, t: 0, save: [W_.yaw, W_.pitch] });
+    if (pad) W_.yaw = Math.PI;   // (looking out to sea from the balcony)
     W_.pitch = -0.15; const tip = document.getElementById('vTip'); tip.textContent = DESK ? 'WASD flies, drag the mouse to turn the camera, Space or E climbs, Q or Shift sinks.' : 'Left thumb flies, right thumb turns the camera. Hold UP or DOWN to climb and sink.'; tip.style.opacity = 1; clearTimeout(tip.t); tip.t = setTimeout(() => { tip.style.opacity = 0; }, 6000);
   } else { drone.on = false; if (drone.save) [W_.yaw, W_.pitch] = drone.save; audio.droneBuzz(0); }
   document.body.classList.toggle('drone', drone.on); droneB.classList.toggle('on', drone.on); droneB.querySelector('span').textContent = drone.on ? 'LAND' : 'FLY DRONE';
@@ -1892,6 +1896,38 @@ function droneTick(dt, mx, mz) {
   audio.droneBuzz(0.6 + 0.4 * Math.min(1, Math.hypot(D.vx, D.vz) / SP), Math.min(1, Math.hypot(D.vx, D.vy, D.vz) / 12));
   const out = Math.hypot(D.x - W_.x, wz - (W_.z + dz)); droneAlt.textContent = `ALT ${Math.max(0, D.y - heightAt(waves, D.x, wz)).toFixed(0)} m    ${out.toFixed(0)} m OUT`;
 }
+
+// ---------- the drone light show: press DRONE SHOW anywhere in the villa and you're taken out to the balcony, the sky
+// goes to night, and the drones rise off the water and draw over the bay (see show.js); END SHOW (or when it's over)
+// brings the evening back
+let showW = null, dayEnv = null;
+const showB = document.getElementById('vShow');
+const NIGHT = { zen: new THREE.Color(0x060b1c), hor: new THREE.Color(0x1b2744), sunCol: new THREE.Color(0x5a6a8a), fog: new THREE.Color(0x141d33), deep: new THREE.Color(0x03121c), turq: new THREE.Color(0x07302f) };
+function applyNight(k) {
+  if (!dayEnv) return;
+  for (const c of ['zen', 'hor', 'sunCol', 'fog', 'deep', 'turq']) ENV['u' + c[0].toUpperCase() + c.slice(1)].value.copy(dayEnv[c]).lerp(NIGHT[c], k);
+  ENV.uGold.value = dayEnv.gold * (1 - k); ENV.uSunVis.value = dayEnv.sunVis * (1 - k); ENV.uCloud.value = dayEnv.cloud * (1 - 0.8 * k); ENV.uNight.value = k;   // (a clear night: bright clouds glowing in the dark looked wrong)
+  hemi.intensity = dayEnv.hemi * (1 - 0.8 * k); sunLight.intensity = dayEnv.sun * (1 - 0.85 * k); renderer.toneMappingExposure = dayEnv.exp * (1 - 0.1 * k);
+}
+function showOff(now = false) {
+  if (!showW || !dayEnv) return;
+  showW.stop(); showB.classList.remove('on'); showB.querySelector('span').textContent = 'DRONE SHOW'; document.body.classList.remove('show');
+  if (now) { applyNight(0); dayEnv = null; }
+}
+function showStart() {
+  const W_ = walker; if (!W_ || !villaW) return;
+  if (!showW) showW = droneShow(scene);
+  if (drone.on) droneSet(false); if (W_.sit) vStand(); if (W_.watch) document.getElementById('vWatch').click(); if (W_.zoom) document.getElementById('vZoom').click();
+  if (!dayEnv) dayEnv = { gold: ENV.uGold.value, sunVis: ENV.uSunVis.value, cloud: ENV.uCloud.value, hemi: hemi.intensity, sun: sunLight.intensity, exp: renderer.toneMappingExposure,
+    ...Object.fromEntries(['zen', 'hor', 'sunCol', 'fog', 'deep', 'turq'].map((c) => [c, ENV['u' + c[0].toUpperCase() + c.slice(1)].value.clone()])) };
+  // out on the east balcony by the radio, looking out over the bay where the show will be
+  W_.x = 88 + 83.4; W_.z = 31 + 37; W_.y = VILLA.Y + 1.65; W_.yaw = Math.PI; W_.pitch = 0.12; W_.near = null;   // (at the rail, clear of the lanterns hanging from the eave)
+  const dz = SPOTS.medium.dz, C = new THREE.Vector3(W_.x - 125, VILLA.Y + 30, W_.z + dz);
+  showW.start(C, new THREE.Vector3(0, 0, -1), heightAt(waves, C.x, C.z), 78);   // (looking toward -x, left to right runs toward -z)
+  showB.classList.add('on'); showB.querySelector('span').textContent = 'END SHOW'; document.body.classList.add('show');
+  const tip = document.getElementById('vTip'); tip.textContent = 'Drone show over the bay. Look around as you like.'; tip.style.opacity = 1; clearTimeout(tip.t); tip.t = setTimeout(() => { tip.style.opacity = 0; }, 4000);
+}
+{ const t = (e) => { e.preventDefault(); e.stopPropagation(); if (showW && showW.on) showOff(); else showStart(); }; showB.addEventListener('click', t); showB.addEventListener('touchstart', t, { passive: false }); }
 
 // the board panel: what it is and how it feels, and a button to take it
 function vPick(type) {
@@ -1930,9 +1966,12 @@ addEventListener('mousemove', (e) => lookMove('m', e.clientX, e.clientY));
 addEventListener('mouseup', (e) => lookEnd('m', e.clientX, e.clientY));
 function villaTick(dt) {
   const beat = radioOn ? audio.musicBeat() : 0;   // (once a frame: it keeps a running peak)
-  updateWaves(dt); crewW.detail = !!(walker && (walker.watch || walker.zoom || drone.on)); crewW.update(dt, waves, T); wildW.update(dt, waves); birdsW.update(dt);   // (zoomed in on them: every surfer posed every frame)
+  updateWaves(dt); crewW.detail = !!(walker && (walker.watch || walker.zoom || drone.on)); crewW.update(dt, waves, T); if (!(showW && showW.on)) wildW.update(dt, waves); birdsW.update(dt);   /* (the whales and eagles wait while the drone show is on: their 'tap ZOOM' notes would pop up with ZOOM hidden) */   // (zoomed in on them: every surfer posed every frame)
   if (!friendsW && surfer && (people || peopleFailed)) friendsW = friends(scene, surfer, villaW.friendSpots.map((f) => ({ ...f, z: f.z + SPOTS.medium.dz, board: f.board && [f.board[0], f.board[1], f.board[2] + SPOTS.medium.dz] })), people, life);   // (your friends: as soon as the body model is in)
   if (friendsW) friendsW.update(dt, T, beat, { x: walker.x, y: walker.y, z: walker.z + SPOTS.medium.dz }, camera); if (villaW.tick) villaW.tick(dt, beat, walker.x, walker.z, walker.y - 1.65);
+  if (showW && dayEnv) { showW.update(dt, renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360))); applyNight(showW.night);
+    if (showW.done && showB.classList.contains('on')) showOff();   // (over: the button goes back, the evening comes back)
+    if (showW.done && showW.night < 0.005) { applyNight(0); dayEnv = null; } }
   const W_ = walker, V = villaW;
   // walk: the stick (or WASD / arrows) in the direction you're facing, sliding along anything solid
   const kx = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0), kz = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
@@ -2138,4 +2177,4 @@ renderer.setAnimationLoop(() => {
   if (mir) { flipProj(camera); if (!camera.layers.isEnabled(1)) flipProj(armCam); }   // (both lenses back to normal between frames)
   autoQuality(dt); musicTick();
 });
-window.__g = { get hfov() { return hfovHalf; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, want: () => _want };
+window.__g = { get hfov() { return hfovHalf; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, want: () => _want };
