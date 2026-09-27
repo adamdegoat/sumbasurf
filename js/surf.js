@@ -21,7 +21,7 @@ export const RIDE = {
   skidLoss: 0.16,                      // share of the excess sideways force lost as speed while the tail drifts
   glide: 0.7,                          // share of the fins' braking given back in a carve (0 = raw physics, 1 = no loss)
   stallDrag: 3.0,                      // full brake (back foot + hand drag) slows you by this (m/s^2)
-  pump: 0.5,                           // pumping adds this share of the downhill pull (and costs 1.2x that when climbing)
+  pump: 0.5,                           // how hard a pump stroke drives the board (see the stroke in step: 6.5 x this at its peak, m/s^2)
   popTime: 0.35,                       // seconds from lying to standing
   waterPush: 1.0,                      // how much the wave's moving water carries you
   catchK: 1,                           // how much speed and slope a board needs to catch a wave (bigger boards: less)
@@ -135,6 +135,7 @@ export function waterAt(waves, x, z, out) {
   }
   return out;
 }
+const PUMP_STROKE = 0.35;   // seconds one pump stroke lasts
 const _q = {}, _c = {}, IDLE = { paddle: false, pump: false, steer: 0 };
 export function heightAt(waves, x, z) { return waterAt(waves, x, z, _q).y; }
 
@@ -147,7 +148,7 @@ export class Rider {
     this.turn = 0; this.lean = 0; this.skid = 0; this.relS = 1; this.v = 0; this.hx = 0; this.hz = 0; this.gAlong = 0;
     this.wave = null; this.s = 99; this.zl = 99; this.inBarrel = false; this.onFace = false; this.lowT = 0;
     this.air = null; this.vyS = 0; this.prevY = undefined;
-    this.pumpHold = 0; this.pumping = false; this.foamT = 0; this.wwFloatT = 0; this.tubeOut = 0; this.turnHold = 0; this.recentPaddle = 0; this.slide = 0; this.stalling = 0;
+    this.pumpWas = false; this.pumpGap = 9; this.pumpT = 9; this.pumpQ = 0; this.weave = 0; this.pumping = false; this.foamT = 0; this.wwFloatT = 0; this.tubeOut = 0; this.turnHold = 0; this.recentPaddle = 0; this.slide = 0; this.stalling = 0;
     this.ride = { t: 0, top: 0, barrel: 0, pocket: 0, turns: 0, cutbacks: 0, snaps: 0, speed: 0, end: 0, score: 0, moves: [], tubeT: 0, leanPk: 0 }; this.turnSign = 0; this.cbArmed = false; this.snapArm = 0; this.trick = null;
   }
   set(state) { this.state = state; this.stateT = 0; }
@@ -281,15 +282,20 @@ export class Rider {
       if (rs > 0.5) { const ux = rx / rs, uz_ = rz / rs, gt = gx * ux + gz * uz_; if (gt < 0) { gx -= gt * P.glide * ux; gz -= gt * P.glide * uz_; } }
       ax += gx; az += gz;
       if (this.skid) { const loss = P.skidLoss * (1 - 0.5 * P.glide) * (latA - lim) * Math.sign(along); ax += -loss * dx; az += -loss * dz; }
-      // pumping: weight the board on the way down, stay light going up. Legs only push for so long.
-      this.pumpHold = inp.pump ? Math.min(1.2, this.pumpHold + h) : Math.max(0, this.pumpHold - 0.6 * h);   // legs recover slowly: tapping doesn't reset them
-      const legs = 1 - smooth(0.45, 1.1, this.pumpHold);
-      if (inp.pump) {
-        const pull = g * Math.abs(this.gAlong) / (1 + slope2) * P.pump;
-        const f = this.gAlong < 0 ? pull * legs : -pull * 1.2;
-        ax += f * dx; az += f * dz;
+      // pumping, like a real surfer: a rhythm of presses (compress onto the board, spring up light). Each press drives one
+      // stroke of ~0.35 s; pressed every half second or so they add up to real speed, held down it is one stroke and no
+      // more, and mashing faster than your legs can go gives weak strokes. Strongest weaving up and down the face and
+      // heading down it, weaker on a dead straight line or climbing. Works anywhere, the barrel included (pump out of it).
+      const press = inp.pump && !this.pumpWas; this.pumpWas = !!inp.pump; this.pumpGap += h;
+      if (press) { this.pumpQ = smooth(0.22, 0.42, this.pumpGap); this.pumpT = 0; this.pumpGap = 0; }
+      this.weave += (Math.abs(this.turn) - this.weave) * Math.min(1, h / 0.7);   // how much you've been turning lately (rad/s)
+      this.pumping = this.pumpT < PUMP_STROKE;
+      if (this.pumping) {
+        const env = Math.sin(Math.PI * this.pumpT / PUMP_STROKE), weave = 0.5 + 0.5 * smooth(0.1, 0.6, this.weave);
+        const terr = 1 + Math.max(-0.4, Math.min(0.6, -2 * this.gAlong));   // down the face up to 1.6x, climbing down to 0.6x
+        const f = 6.5 * P.pump * env * this.pumpQ * weave * terr;            // (shortboard: 3.25 m/s^2 at the top of a stroke)
+        ax += f * dx; az += f * dz; this.pumpT += h;
       }
-      this.pumping = inp.pump && this.gAlong < 0 && legs > 0.2;
       // popping up, the surfer throws their weight over the nose and drives the board down the face (the drop)
       if (this.state === 'POP') { const gl = Math.hypot(hx, hz) || 1, push = 3.2 * Math.min(1, gl); ax += -hx / gl * push; az += -hz / gl * push; }
     }

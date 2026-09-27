@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=157';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard } from './surf.js?v=121';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard } from './surf.js?v=123';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=15';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
@@ -13,8 +13,8 @@ import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=15';
-import { wildlife } from './wildlife.js?v=19';
+import { crew } from './crew.js?v=17';
+import { wildlife } from './wildlife.js?v=21';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
@@ -407,7 +407,7 @@ const ui = {
 };
 // the same tips in keyboard words, on a computer
 const DESK_WORDS = [['Slide your thumb left and right to carve, like a steering wheel', 'Carve with the arrow keys (or A and D), like a steering wheel'], ['Let go and the board just glides straight', 'Let go of the keys and the board just glides straight'],
-  ['PUMP and steer', 'Hold Space and steer'], ['hold PUMP', 'hold Space'], ['Hold PUMP', 'Hold Space'], ['STALL', 'Down'], ['Paddle now!', 'Paddle now! (Space)'], ['Paddle hard!', 'Paddle hard! (hold Space)'], ['Keep paddling!', 'Keep paddling! (Space)'],
+  ['PUMP and steer', 'Hold Space and steer'], ['hold PUMP', 'hold Space'], ['Hold PUMP', 'Hold Space'], ['tap PUMP', 'tap Space'], ['Tap PUMP', 'Tap Space'], ['STALL', 'Down'], ['Paddle now!', 'Paddle now! (Space)'], ['Paddle hard!', 'Paddle hard! (hold Space)'], ['Keep paddling!', 'Keep paddling! (Space)'],
   ['Wave coming: turn to face', 'Wave coming: use the arrow keys to face']];
 const deskHint = (h) => { for (const [a, b] of DESK_WORDS) if (h.includes(a)) h = h.replace(a, b); return h; };
 const hold = (el, on, off) => {
@@ -1445,9 +1445,9 @@ function updateHUD(dt) {
     else if (inc.w && inc.t < 7 && inc.t > -0.5) hint = !facingIn ? `Wave coming: turn to face ${isRanch() ? 'the shallow end' : 'the beach'}` : inc.t < 2.5 ? 'Paddle hard!' : 'Wave coming... get ready';
     else if (session.waves < 2 && inc.t >= 7) hint = 'Watch the horizon for the next set';
     else if (rider.z > 12) hint = 'Too far in: paddle back out past the break';
-  } else if (st === 'POP') hint = session.waves < 5 ? `Up! Go ${MIRROR ? 'RIGHT' : 'LEFT'} along the wave, hold PUMP for speed` : 'Up!';
+  } else if (st === 'POP') hint = session.waves < 5 ? `Up! Go ${MIRROR ? 'RIGHT' : 'LEFT'} along the wave, tap PUMP for speed` : 'Up!';
   else if (st === 'RIDE' && rider.inBarrel && (rider.foamT || 0) > 0.4) hint = 'Too deep! PUMP and steer up the face to get out';
-  else if (st === 'RIDE' && rider.stateT < 7.5 && session.waves < 3) hint = rider.stateT < 2.5 ? 'Slide your thumb left and right to carve, like a steering wheel' : rider.stateT < 5 ? 'Hold PUMP for speed, STALL to brake and let the barrel catch you' : 'Let go and the board just glides straight';
+  else if (st === 'RIDE' && rider.stateT < 7.5 && session.waves < 3) hint = rider.stateT < 2.5 ? 'Slide your thumb left and right to carve, like a steering wheel' : rider.stateT < 5 ? 'Tap PUMP in a steady rhythm for speed, STALL to brake and let the barrel catch you' : 'Let go and the board just glides straight';
   else if (st === 'RIDE' && rider.stateT > 8 && rider.stateT < 12 && session.waves < 5 && !rider.ride.cutbacks) hint = `Cutback: keep turning ${MIRROR ? 'left' : 'right'} till you face the breaking wave, then turn back`;
   else if (st === 'RIDE' && rider.stateT > 13 && rider.stateT < 17 && session.waves >= 1 && session.waves < 6 && !rider.ride.moves.some((m) => m.name.startsWith('AIR')) && RIDE.air) hint = 'Air: race down, then turn hard up the face into the lip and it launches you';
   // the curl is right behind you: tell the player how to get covered (a barrel comes to whoever sets up for it)
