@@ -318,3 +318,34 @@ export function lineup(mode = 'medium', board = 'short', move = false, waves = 8
   } finally { Math.random = rnd0; g.input.test = null; g.input.paddleBtn = false; g.useBoard('short'); }
   return `${out.caught}/${out.tries} caught | s/H at catch ${out.at.join(' ')} | ${JSON.stringify(out.why)}`;
 }
+
+// catching with the PADDLE button tapped (how people press it) as well as held, starting at the game's own tips
+export function tapCatch(mode = 'medium', board = 'short', seeds = [7, 11, 13]) {
+  const g = G(), out = {}; g.useBoard(board);
+  for (const press of ['hold', 'tap']) for (const start of ['paddleHard', 'paddleNow']) {
+    let ok = 0, n = 0; const why = {};
+    for (const seed of seeds) {
+      const rnd0 = Math.random; let st = seed >>> 0; Math.random = () => ((st = (st * 1664525 + 1013904223) >>> 0) / 4294967296);
+      try {
+        g.paused = true; g.setMode(mode); document.getElementById('start').style.display = 'none'; g.spawnRider();
+        const r = g.rider; let target = null, go = false, t = 0, t0 = 0, res = 'timeout';
+        for (let i = 0; i < 60 * 40; i++) {
+          const inc = g.incoming(); if (!target && inc.w && inc.t < 9) target = inc.w;
+          let steer, paddle = false;
+          // move along to where it breaks first (following the tip), then turn and paddle
+          const dxT = target ? target.peelX + target.cond.peel * inc.t + 0.3 * target.cond.H - r.x : 0;
+          if (target && inc.t > 3 && Math.abs(dxT) > 2.5) { const d = wrap((dxT > 0 ? 0 : Math.PI) - r.th); steer = Math.max(-1, Math.min(1, d * 2)); paddle = Math.abs(d) < 0.6; }
+          else { const d = wrap((target ? Math.PI / 2 : -Math.PI / 2) - r.th); steer = Math.max(-1, Math.min(1, d * 2));
+            if (!go && target && (start === 'paddleNow' ? (r.onFace && r.y > 0.3) : inc.t < 2.5)) { go = true; t0 = t; }
+            paddle = go && Math.abs(d) < 0.5 && (press === 'hold' || ((t - t0) * 2.5) % 1 < 0.5); }
+          g.input.test = steer; g.input.paddleBtn = paddle && !r.standing; g.step(1 / 60, 1 / 60, false); t += 1 / 60;
+          if (r.state === 'POP') { res = 'CAUGHT'; break; } if (r.state === 'WIPE' || r.state === 'OUT') { res = r.why.split(':')[0]; break; }
+          if (target && inc.w !== target && !r.onFace && go) { res = 'missed'; break; }
+        }
+        n++; if (res === 'CAUGHT') ok++; else why[res] = (why[res] || 0) + 1;
+      } finally { Math.random = rnd0; g.input.test = null; g.input.paddleBtn = false; }
+    }
+    out[`${press} from ${start}`] = `${ok}/${n} ${Object.keys(why).length ? JSON.stringify(why) : ''}`;
+  }
+  g.useBoard('short'); return out;
+}

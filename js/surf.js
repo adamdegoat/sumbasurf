@@ -26,6 +26,7 @@ export const RIDE = {
   waterPush: 1.0,                      // how much the wave's moving water carries you
   catchK: 1,                           // how much speed and slope a board needs to catch a wave (bigger boards: less)
   catchPaddle: 0.9,                    // seconds you must already be paddling when the wave lifts you (bigger boards: less)
+  catchReach: 1.0,                     // how far ahead of the breaking part (in wave heights) you can still catch it (bigger boards: further)
   catchLate: 1.7,                      // seconds after the wave first lifts you that it can still take you (bigger boards: longer)
   turnMin: 1,                          // share of the shortboard's turn rate that counts as a real turn
   air: true,                           // can this board launch an air
@@ -40,9 +41,9 @@ export const RIDE = {
 const BASE = { ...RIDE };
 export const BOARDS = {
   short: {},
-  fish: { paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.3, relFrom: 0.3, leanRate: 10.0, yawLag: 0.06, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85, catchPaddle: 0.6, catchLate: 1.9 },
-  long: { paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.5, catchK: 0.65, catchPaddle: 0.35, catchLate: 2.5, air: false, turnMin: 0.55 },
-  gun: { paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.42, catchK: 0.75, catchPaddle: 0.5, catchLate: 2.0, turnMin: 0.75 },
+  fish: { paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.3, relFrom: 0.3, leanRate: 10.0, yawLag: 0.06, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85, catchPaddle: 0.6, catchLate: 1.9, catchReach: 1.4 },
+  long: { paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.5, catchK: 0.65, catchPaddle: 0.35, catchLate: 2.5, catchReach: 3.0, air: false, turnMin: 0.55 },
+  gun: { paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.42, catchK: 0.75, catchPaddle: 0.5, catchLate: 2.0, catchReach: 1.8, turnMin: 0.75 },
 };
 export function setBoard(name) { Object.assign(RIDE, BASE, BOARDS[name] || {}); }
 
@@ -341,10 +342,12 @@ export class Rider {
       // (on a huge wave you get in earlier, lower on the face, like a big-wave gun: the speed you need is capped)
       // how long the wave has been lifting you: it only carries you for a moment, then passes under you
       this.liftT = this.onFace ? (this.liftT || 0) + h : Math.max(0, (this.liftT || 0) - 3 * h);
+      // you have to be near where it's breaking: out on the shoulder (more than catchReach wave heights ahead of the break) a
+      // shortboard can't get in; a longboard can, further out
       // (tried 27 Sep and taken back out the same day: requiring you to be paddling before the wave lifts you, and a short
       // window after it lifts you, made the game's own "Paddle now!" tip too late; padUp and liftT are still tracked)
       const catchV = Math.min(C.speed * 0.5, 3.2 + 0.1 * C.speed) * P.catchK;   // (a longer, floatier board gets in with less)
-      if (this.onFace && this.recentPaddle > 0 && Math.sin(this.th) > 0.2 && this.vz > catchV && slope > 0.4 * P.catchK) { this.catchT += h; if (this.catchT > 0.1) { this.set('POP'); this.catchT = 0; } }
+      if (this.onFace && this.recentPaddle > 0 && s < P.catchReach * H && Math.sin(this.th) > 0.2 && this.vz > catchV && slope > 0.4 * P.catchK) { this.catchT += h; if (this.catchT > 0.1) { this.set('POP'); this.catchT = 0; } }
       else this.catchT = 0;
       return;
     }

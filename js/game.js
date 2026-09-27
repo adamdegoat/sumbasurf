@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=160';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=141';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=142';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=15';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
@@ -13,8 +13,8 @@ import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=35';
-import { wildlife } from './wildlife.js?v=39';
+import { crew } from './crew.js?v=36';
+import { wildlife } from './wildlife.js?v=40';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
@@ -325,7 +325,10 @@ function updateWaves(dt) {
     if (w.closing) { w.closeT += dt; rate = Math.max(rate, C.peel) * (1 + 5 * Math.min(1, w.closeT / 0.8)); }
     w.px = (w.px === undefined ? C.peel * t : w.px + rate * dt);
     w.peelRate = rate;   // the physics uses the peel speed right now (not the average), so the wave's push matches what you see
-    w.place(w.px, C.speed * t);
+    // where this wave breaks: like a real reef, not every wave on the same spot. Each breaks a few metres up or down the
+    // reef from the usual peak, and the bigger waves of a set a little further out (the pool's machine waves never vary)
+    if (w.pkX === undefined) { const pool = isRanch(); w.pkX = pool ? 0 : (Math.random() * 2 - 1) * 7; w.pkZ = pool ? 0 : Math.max(-3, Math.min(2, -2.5 * ((w.size || 1) - 0.95) / 0.2 + (Math.random() * 2 - 1) * 0.8)); }   // (in and out only a little: more made the bigger waves break right on the lineup)
+    w.place(w.pkX + w.px, w.pkZ + C.speed * t);
     // the natural end of a wave: over the last stretch of reef it runs into deeper water, and near the sand it hits
     // the shallows; either way it backs off and shrinks away (the barrel softening and closing) instead of stopping dead
     const reefK = Math.min(1, Math.max(0, (REEF.xEnd - w.peelX) / 38)), beachK = Math.min(1, Math.max(0, (REEF.zBeach - w.zW) / 45));
@@ -1477,6 +1480,11 @@ function updateHUD(dt) {
     const onWave = rider.y > 0.3 && rider.onFace;
     if (rider.washed) hint = 'Caught inside! Hold on, paddle back out';
     else if (onWave) hint = rider.paddling ? 'Keep paddling!' : 'Paddle now!';
+    else if (inc.w && inc.t < 9 && inc.t > 3 && !isRanch() && Math.abs(rider.x - (inc.w.peelX + inc.w.cond.peel * inc.t + 0.3 * inc.w.cond.H)) > 0.6 * RIDE.catchReach * inc.w.cond.H) {
+      // this wave breaks up or down the reef from you: move along to where it will break (left and right as you see it)
+      const dx = inc.w.peelX + inc.w.cond.peel * inc.t + 0.3 * inc.w.cond.H - rider.x, side = dx * -Math.sin(rider.th) * (MIRROR ? -1 : 1);
+      hint = `Wave coming: paddle ${side > 0 ? 'right' : 'left'} to where it breaks`;
+    }
     else if (inc.w && inc.t < 7 && inc.t > -0.5) hint = !facingIn ? `Wave coming: turn to face ${isRanch() ? 'the shallow end' : 'the beach'}` : inc.t < 2.5 ? 'Paddle hard!' : 'Wave coming... get ready';
     else if (session.waves < 2 && inc.t >= 7) hint = 'Watch the horizon for the next set';
     else if (rider.z > 12) hint = 'Too far in: paddle back out past the break';
