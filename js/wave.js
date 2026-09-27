@@ -639,7 +639,7 @@ export class WeatherFX {
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(this.p, 3));
     this.rain = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xaab6ba, transparent: true, opacity: 0.35, depthWrite: false }));
     this.rain.frustumCulled = false; scene.add(this.rain);
-    this.flashT = 0; this.nextFlash = 9;
+    this.flashT = 0; this.flashRe = -1; this.nextFlash = 9;
     for (let i = 0; i < N; i++) this.reset(i, new THREE.Vector3(), true);
   }
   reset(i, c, anyHeight) {
@@ -661,8 +661,15 @@ export class WeatherFX {
     ENV.uFlash.value = 0;
     if (w.rain > 0) {
       this.nextFlash -= dt;
-      if (this.nextFlash <= 0) { this.flashT = 0.35; this.nextFlash = 7 + Math.random() * 12; this.onFlash?.(); }
-      if (this.flashT > 0) { this.flashT -= dt; ENV.uFlash.value = (Math.sin(this.flashT * 60) > 0 ? 0.45 : 0.1) * (this.flashT / 0.35); }
+      if (this.nextFlash <= 0) { this.flashT = 0.6; this.flashRe = Math.random() < 0.6 ? 0.16 + Math.random() * 0.08 : -1; this.nextFlash = 7 + Math.random() * 12; this.onFlash?.(); }
+      // one natural flash: a quick bright strike that fades, sometimes a dimmer second one just after (like real
+      // lightning). Never a strobe: at most two flashes a second, well under the three a second that can trigger
+      // photosensitive seizures (it used to flicker on and off ~10 times a second)
+      if (this.flashT > 0) {
+        this.flashT -= dt; const t = 0.6 - this.flashT;
+        const strike = (t0, k) => { const u = t - t0; return t0 < 0 || u < 0 ? 0 : u < 0.04 ? k * u / 0.04 : k * Math.exp(-(u - 0.04) / 0.09); };
+        ENV.uFlash.value = Math.max(strike(0, 0.45), strike(this.flashRe, 0.25));
+      }
     }
   }
 }
