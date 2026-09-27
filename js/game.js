@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=164';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=150';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=154';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=15';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
@@ -13,8 +13,8 @@ import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=44';
-import { wildlife } from './wildlife.js?v=48';
+import { crew } from './crew.js?v=48';
+import { wildlife } from './wildlife.js?v=52';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
@@ -435,7 +435,7 @@ addEventListener('keyup', (e) => keys.delete(e.code)); addEventListener('blur', 
 const ui = {
   paddle: document.getElementById('paddle'), stall: document.getElementById('stall'), pad: document.getElementById('pad'), touch: document.getElementById('touch'), knob: document.querySelector('#touch b'),
   speed: document.getElementById('speed'), score: document.getElementById('score'), cond: document.getElementById('cond'),
-  msg: document.getElementById('msg'), msgT: document.getElementById('msg-t'), msgN: document.getElementById('msg-n'), msgS: document.getElementById('msg-s'),
+  msg: document.getElementById('msg'), msgT: document.getElementById('msg-t'), msgN: document.getElementById('msg-n'), msgS: document.getElementById('msg-s'), msgJ: document.getElementById('msg-j'),
   tube: document.getElementById('tube'), hint: document.getElementById('hint'), load: document.getElementById('load'), start: document.getElementById('start'), sess: document.getElementById('sess'),
 };
 // the same tips in keyboard words, on a computer
@@ -497,8 +497,9 @@ function surfSteer(sx, stall) {
 }
 
 // your best ride per level, kept on this phone (quietly does nothing if storage is blocked)
-const bestFor = (m) => { try { return +localStorage.getItem('balisurf.best4.' + m) || 0; } catch (e) { return 0; } };
-const saveBest = (m, v) => { try { localStorage.setItem('balisurf.best4.' + m, String(v)); } catch (e) {} showBests(); };
+// (best5: the stricter judge of 28 Sep 2026 started everyone's bests afresh; the old best4 scores aren't comparable)
+const bestFor = (m) => { try { return +localStorage.getItem('balisurf.best5.' + m) || 0; } catch (e) { return 0; } };
+const saveBest = (m, v) => { try { localStorage.setItem('balisurf.best5.' + m, String(v)); } catch (e) {} showBests(); };
 function showBests() {
   for (const b of document.querySelectorAll('[data-mode]')) {
     let el = b.querySelector('.best'); const v = bestFor(b.dataset.mode);
@@ -512,12 +513,12 @@ showBests();
 // seconds; finishing one shows a banner where the move callouts go; the score screen says how many of the three are done
 const CHAL = {
   easy: [['Ride one wave for 20 seconds', (c) => c.t >= 20], ['Land 3 snaps on one wave', (c) => c.snaps >= 3], ['Ride one all the way to the end', (c) => c.end]],
-  medium: [['Get barrelled for 8 seconds', (c) => c.tube >= 8], ['2 cutbacks on one wave', (c) => c.cutbacks >= 2], ['Score 8.5 or more on a wave', (c) => c.final && c.score >= 8.5]],
+  medium: [['Get barrelled for 8 seconds', (c) => c.tube >= 8], ['2 cutbacks on one wave', (c) => c.cutbacks >= 2], ['Score 7.5 or more on a wave', (c) => c.final && c.score >= 7.5]],
   hard: [['Make the drop and ride 15 seconds', (c) => c.t >= 15], ['Hit 65 km/h', (c) => c.top >= 65], ['Come out of a 5 second barrel', (c) => c.out && c.tube >= 5]],
   extreme: [['Ride the giant for 20 seconds', (c) => c.t >= 20], ['An 8 second barrel inside the giant', (c) => c.tube >= 8], ['Hit 90 km/h', (c) => c.top >= 90]],
-  kanan: [['Get barrelled for 10 seconds', (c) => c.tube >= 10], ['Snap, cutback and barrel on one wave', (c) => c.snaps >= 1 && c.cutbacks >= 1 && c.out], ['A heat score of 16', (c) => c.final && c.heat >= 16]],
+  kanan: [['Get barrelled for 10 seconds', (c) => c.tube >= 10], ['Snap, cutback and barrel on one wave', (c) => c.snaps >= 1 && c.cutbacks >= 1 && c.out], ['A heat score of 13', (c) => c.final && c.heat >= 13]],
   hiu: [['Hit 65 km/h', (c) => c.top >= 65], ['Ride one wave for 20 seconds', (c) => c.t >= 20], ['A 5 second barrel on the longboard', (c) => c.board === 'long' && c.tube >= 5]],
-  ranch: [['8 turns on one wave', (c) => c.turns >= 8], ['Get barrelled for 10 seconds', (c) => c.tube >= 10], ['Ride all three wave settings in one visit', (c) => c.kinds >= 3]],
+  ranch: [['6 turns on one wave', (c) => c.turns >= 6], ['Get barrelled for 10 seconds', (c) => c.tube >= 10], ['Ride all three wave settings in one visit', (c) => c.kinds >= 3]],
 };
 const chalDone = (() => { try { return JSON.parse(localStorage.getItem('sumbasurf.chal') || '{}') || {}; } catch (e) { return {}; } })();
 const chalHas = (m, i) => !!(chalDone[m] && chalDone[m][i]);
@@ -1649,6 +1650,9 @@ function updateHUD(dt) {
     ui.msgN.innerHTML = r.t > 0 ? `${r.score.toFixed(1)}${newBest ? '<small>NEW BEST</small>' : ''}` : '';
     const stat = (v, l) => `<div>${v}<span>${l}</span></div>`;
     ui.msgS.innerHTML = r.t > 0 ? stat(`${r.t.toFixed(1)}s`, 'RIDE') + stat(`${Math.round(r.top)}`, 'TOP KM/H') + stat(r.turns, 'TURNS') + (r.cutbacks ? stat(r.cutbacks, r.cutbacks > 1 ? 'CUTBACKS' : 'CUTBACK') : '') + (r.snaps ? stat(r.snaps, r.snaps > 1 ? 'SNAPS' : 'SNAP') : '') + (r.barrel > 0.2 ? stat(`${r.barrel.toFixed(1)}s`, 'BARREL') : '') : '';
+    // the judges' sheet: the moves that counted and why (so you can see how to beat it)
+    { const J = r.t > 0 ? rider.liveScore(st === 'WIPE', true) : null, NM = { TURN: 'Turn', SNAP: 'Snap', CUTBACK: 'Cutback', FLOATER: 'Floater', AIR: 'Air', 'AIR 360': 'Air 360', BARREL: 'Barrel', VARIETY: 'Variety of moves', 'SPEED + CLEAN FINISH': 'Speed and a clean finish', SPEED: 'Speed' };
+      ui.msgJ.innerHTML = J && J.lines.length ? J.lines.slice(0, 6).map((l) => `<div><span><b>${NM[l.name] || l.name}${l.name === 'BARREL' ? ` ${l.dur.toFixed(1)}s` : ''}</b>${l.notes.length ? `<i>${l.notes.join(', ')}</i>` : ''}</span><em>${l.pts.toFixed(1)}</em></div>`).join('') + (J.fell ? '<div><span><i>fell at the end: moves in the last moment don\'t count</i></span><em></em></div>' : '') : ''; }
     ui.sess.textContent = session.waves ? `Heat ${heat.toFixed(2)} / 20 ${session.waves > 1 ? `(your best two of ${session.waves} waves)` : '(your best two waves count)'}  ·  best wave ever ${Math.max(bestFor(mode), r.score).toFixed(1)}` : '';
     chalCheck(true, heat); if (CHAL[mode]) ui.sess.textContent += `${ui.sess.textContent ? '  ·  ' : ''}Challenges ${chalCount(mode)}/3`;   // (the ones that need the finished ride: its score, your heat)
   }
@@ -1657,7 +1661,7 @@ function updateHUD(dt) {
     endT += dt;
     const showAt = st === 'WIPE' ? 1.4 : 0.2;
     if (endT >= showAt && ui.msg.style.display !== 'flex') { ui.msg.style.opacity = 0; ui.msg.style.display = 'flex'; requestAnimationFrame(() => (ui.msg.style.opacity = 1)); }
-    if (endT > showAt + (st === 'WIPE' ? 3.4 : 2.6)) spawnRider();
+    if (endT > showAt + (st === 'WIPE' ? 4.6 : 4.0)) spawnRider();   // (long enough to read the judges' sheet)
   }
 }
 
