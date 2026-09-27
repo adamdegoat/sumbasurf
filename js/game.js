@@ -1157,9 +1157,9 @@ function paddleArms(dt) {
       _ppo.copy(_pr).multiplyScalar(side * 0.7).addScaledVector(WORLD_UP, 0.7);          // elbow up and out, like pulling over a barrel
     } else { const k = (u - 0.55) / 0.45, e = k * k * (3 - 2 * k);                     // recovery: out by the hip, forward over the water
       _t.copy(sh).addScaledVector(_pf, -0.3 + 0.77 * e).addScaledVector(_pr, side * (0.1 + 0.12 * Math.sin(k * Math.PI)));
-      _t.y = wl + 0.02 + 0.2 * Math.sin(k * Math.PI);
+      _t.y = wl + 0.02 + 0.13 * Math.sin(k * Math.PI);   // (low over the water: swung high, the hand passed over your head and read as scratching it)
       { const half = BOARD_WIDTH(boardType) / 2, lat = _ps2.subVectors(_t, rig.position).dot(_pr), want = side * (half + 0.12 + 0.1 * Math.sin(k * Math.PI)); if (lat * side < want * side) _t.addScaledVector(_pr, want - lat); }
-      _ppo.copy(WORLD_UP).addScaledVector(_pr, side * 0.5).addScaledVector(_pf, -0.3);   // elbow high, leading
+      _ppo.copy(WORLD_UP).multiplyScalar(0.45).addScaledVector(_pr, side * 0.85).addScaledVector(_pf, -0.3);   // elbow leading, out to the side more than up
     }
     reachArm(ua, la, hd, _t, _ppo, 0.95 * paddleW);
   }
@@ -1196,6 +1196,33 @@ function reachArm(ua, la, hd, T, pole, w) {
   }
   // fingers relaxed and open (the clip curls them into a fist)
   hd.traverse((f) => { if (f !== hd && f.isBone) f.quaternion.slerp(_hQ.identity(), 0.75 * w); });
+  relaxHand(hd, w);
+}
+// a relaxed hand: each finger curled a little toward the palm, more at the knuckle than the tip, fanning slightly, the
+// thumb resting in (dead straight fingers pressed together read as a foot at the end of your arm)
+const HANDCURL = { f: [0.22, 0.3, 0.2], thumb: [0.12, 0.15, 0.1], fan: 0.06 };
+const _rp = new THREE.Vector3(), _rd = new THREE.Vector3(), _ra = new THREE.Vector3(), _rq2 = new THREE.Quaternion(), _rh = new THREE.Vector3(), _rq3 = new THREE.Quaternion();
+const handRig = new Map();   // per hand: each finger bone with its curl axis in its own frame (worked out once: the rig never changes)
+function relaxHand(hd, w) {
+  let R = handRig.get(hd);
+  if (!R) {
+    R = []; const sd = hd.name.slice(-2); hd.updateMatrixWorld(true); hd.getWorldQuaternion(_rq2);
+    const palm = _rp.set(sd === '_l' ? 1 : -1, 0, 0).applyQuaternion(_rq2);
+    ['index', 'middle', 'ring', 'pinky', 'thumb'].forEach((nm, k) => {
+      const th = nm === 'thumb', C = th ? HANDCURL.thumb : HANDCURL.f;
+      for (let j = 1; j <= 3; j++) {
+        const bn = hd.getObjectByName(nm + '_0' + j + sd), ch = bn && bn.children.find((c) => c.isBone); if (!ch) continue;
+        bn.getWorldPosition(_rh); ch.getWorldPosition(_rd); _rd.sub(_rh).normalize();
+        _ra.crossVectors(_rd, palm); if (_ra.lengthSq() < 1e-6) continue; _ra.normalize();
+        bn.getWorldQuaternion(_rq3).invert();
+        const q = new THREE.Quaternion().setFromAxisAngle(_ra.clone().applyQuaternion(_rq3), C[j - 1]);   // curl, about the bone's own axis
+        if (j === 1 && !th) q.multiply(new THREE.Quaternion().setFromAxisAngle(palm.clone().applyQuaternion(_rq3), (k - 1.5) * HANDCURL.fan * (sd === '_l' ? 1 : -1)));   // and fan
+        R.push({ bn, q });
+      }
+    });
+    handRig.set(hd, R);
+  }
+  for (const f of R) { _rq2.identity().slerp(f.q, w); f.bn.quaternion.multiply(_rq2); }   // (no matrix updates: nothing reads the fingers before the frame is drawn)
 }
 const _hX = new THREE.Vector3(), _hY = new THREE.Vector3(), _hZ = new THREE.Vector3(), _hF = new THREE.Vector3(), _hT = new THREE.Vector3(), _hM = new THREE.Matrix4(), _hQ = new THREE.Quaternion(), _hP = new THREE.Quaternion();
 function setWorldBasis(bone, X, Y, Z, w) {
@@ -1253,6 +1280,55 @@ function turnBone(bone, axis, ang) {
 const _in = new THREE.Vector3(), _fw = new THREE.Vector3();
 let bodyT = 0, gLoad = 0; const STOOP = 0.25; const ARM = { ff: 0.62, fd: 0.32, bf: 0.5, bd: 0.4 };   // hand targets ahead of / below the eyes (front hand, back hand), vetted in first-person
 const _af = new THREE.Vector3(), _ar = new THREE.Vector3(), _ah = new THREE.Vector3(), _ap = new THREE.Vector3(), _aq = new THREE.Vector3(); const _sideAx = new THREE.Vector3();
+// the deck's height along the stringer, from the board's own mesh (highest point near the centre line in each slice)
+const deckCache = new WeakMap();
+function deckAt(zRig) {
+  let D = deckCache.get(board);
+  if (!D) {
+    const P = board.geometry.attributes.position, N = 64; board.geometry.computeBoundingBox(); const bb = board.geometry.boundingBox, z0 = bb.min.z, z1 = bb.max.z;
+    const top = new Float32Array(N).fill(-1);
+    for (let i = 0; i < P.count; i++) { if (Math.abs(P.getX(i)) > 0.08) continue; const k = Math.min(N - 1, Math.max(0, Math.round((P.getZ(i) - z0) / (z1 - z0) * (N - 1)))); top[k] = Math.max(top[k], P.getY(i)); }
+    for (let k = 0; k < N; k++) if (top[k] < -0.5) top[k] = k ? top[k - 1] : 0.04;
+    D = { top, z0, z1, N }; deckCache.set(board, D);
+  }
+  const u = Math.min(1, Math.max(0, (zRig - board.position.z - D.z0) / (D.z1 - D.z0))) * (D.N - 1), k = Math.floor(u), f = u - k;
+  return board.position.y + D.top[k] + (D.top[Math.min(D.N - 1, k + 1)] - D.top[k]) * f;
+}
+// legs: each foot planted flat on the deck, front foot ahead of the hips toward the nose and the back foot over the tail
+// pad, toes across the board; the knees bend to reach (two-bone reach, knees toward your toes, the back knee angled in
+// toward the front one). The board rolling onto its rail is taken up in the knees, the feet stay on it.
+const _fA = new THREE.Vector3(), _fB = new THREE.Vector3(), _fC = new THREE.Vector3(), _fD = new THREE.Vector3(), _fT = new THREE.Vector3(), _fN = new THREE.Vector3(), _fX = new THREE.Vector3(), _fP = new THREE.Vector3();
+const FEET = { front: 0.3, back: 0.3, ankle: 0.085, toeIn: 0.35, backToe: 0.12 };
+function plantFeet(w) {
+  const tl = bones.thigh_l, tr = bones.thigh_r; if (!tl || !tr || !bones.ball_l) return;
+  const inv = _hM.copy(rig.matrixWorld).invert();
+  const zl = tl.getWorldPosition(_fA).applyMatrix4(inv).z, zr = tr.getWorldPosition(_fA).applyMatrix4(inv).z;
+  const pz = bones.pelvis.getWorldPosition(_fA).applyMatrix4(inv).z;
+  const nose = _fN.set(0, 0, 1).transformDirection(rig.matrixWorld), up = _fX.set(0, 1, 0).transformDirection(rig.matrixWorld);
+  const toes = _fP.set(0, 0, 1).transformDirection(bones.pelvis.matrixWorld); toes.addScaledVector(nose, -toes.dot(nose)).addScaledVector(up, -toes.dot(up)).normalize();   // (the way your chest faces, across the board)
+  const lim = BOARD_LENGTH(boardType) / 2 - 0.12;
+  for (const s of ['l', 'r']) {
+    const front = (s === 'l') === (zl > zr), th = bones['thigh_' + s], ca = bones['calf_' + s], ft = bones['foot_' + s], ba = bones['ball_' + s];
+    const z = Math.max(board.position.z - lim, Math.min(board.position.z + lim, pz + (front ? FEET.front : -FEET.back)));
+    const T = _fT.set(0, deckAt(z) + FEET.ankle, z).applyMatrix4(rig.matrixWorld);
+    // knee: toward your toes, the front one a little toward the nose, the back one in toward the front knee
+    const pole = _fD.copy(toes).addScaledVector(nose, front ? 0.25 : 0.45).addScaledVector(up, 0.1).normalize();
+    th.getWorldPosition(_fA); ca.getWorldPosition(_fB); ft.getWorldPosition(_fC);
+    const a = _fA.distanceTo(_fB), b = _fB.distanceTo(_fC), toT = _fB.subVectors(T, _fA); let d = toT.length();
+    d = Math.min(Math.max(d, Math.abs(a - b) + 0.02), (a + b) * 0.985); toT.normalize();
+    const cA = (a * a + d * d - b * b) / (2 * a * d), sA = Math.sqrt(Math.max(0, 1 - cA * cA));
+    const pp = pole.addScaledVector(toT, -pole.dot(toT)).normalize();
+    const knee = _fC.copy(_fA).addScaledVector(toT, a * cA).addScaledVector(pp, a * sA);
+    aimBone(th, ca, _fB.subVectors(knee, _fA).normalize(), w);
+    ca.getWorldPosition(_fA); aimBone(ca, ft, _fB.subVectors(T, _fA).normalize(), w);
+    // the foot flat on the deck: toes across the board (the front foot turned a little toward the nose), sole on the deck
+    const tdir = _fB.copy(toes).addScaledVector(nose, front ? FEET.toeIn : FEET.backToe).normalize();
+    ft.getWorldPosition(_fA); const bT = _fC.copy(_fA).addScaledVector(tdir, 0.12);
+    const zb = bT.clone().applyMatrix4(inv); bT.addScaledVector(up, deckAt(zb.z) + 0.03 - zb.y);
+    aimBone(ft, ba, _fB.subVectors(bT, _fA).normalize(), w);
+    ba.quaternion.slerp(_hQ.identity(), 0.8 * w); ba.updateMatrixWorld(true);   // toes flat, not curled
+  }
+}
 function surfStance() {
   if (sitting) straddle();
   const st = rider.state, want = st === 'RIDE' ? 1 : st === 'POP' ? Math.min(1, rider.stateT / 0.45) : 0;
@@ -1269,10 +1345,7 @@ function surfStance() {
   gLoad += (Math.min(1.4, Math.abs(rider.turn) * rider.v / 9.8) - gLoad) * (1 - Math.exp(-10 * dtArm));
   const leanN = Math.max(-1, Math.min(1, rider.lean / RIDE.leanMax));
   _in.crossVectors(bodyFwd, bodyUp).normalize().multiplyScalar(Math.sign(leanN) || 1);   // toward the inside of the carve (forward x up = your right; +lean turns right)
-  for (const [s, sgn] of [['l', side], ['r', -side]]) {
-    // legs: feet about shoulder-and-a-half apart, front foot toward the nose
-    swingBone(bones['thigh_' + s], bones['foot_' + s], sgn, (0.2 + 0.05 * deep) * w);   // (feet ~0.65 m apart: a little wider than the shoulders, not a straddle)
-  }
+  plantFeet(w);   // (feet flat on the deck along the stringer, knees bent to reach it: the clips' legs went through the board or floated above it)
   // upper body: shoulders twist into the turn and the chest bends toward the inside; a slow balance sway on top
   const twist = (leanN * 0.45 + Math.sin(bodyT * 1.1) * 0.05) * w;
   turnBone(bones.spine_02, bodyUp, twist * 0.5); turnBone(bones.spine_03, bodyUp, twist * 0.5);
@@ -1311,10 +1384,10 @@ function surfStance() {
     const front = s === frontArm, sway = Math.sin(bodyT * 1.7 + (front ? 0 : 1.3)) * 0.03;
     const P = _ap;
     if (front) {
-      at(P, (chest ? 0.62 : 0.58) + 0.6 * pumpUp, 0.42 - sway + pumpUp, chest ? 0.32 : -0.32);   // out over the rail, beside the board                       // trim
-      if (bt) P.lerp(chest ? at(_aq, 0.6, 0.26, 0.26) : at(_aq, 0.45, 0.7, 0.34), bt);                               // bottom turn
-      if (tt) P.lerp(at(_aq, 0.55, 0.5, -0.32), tt);                                                                  // top turn / cutback: leads round, points down the face
-      if (deep) P.lerp(chest ? at(_aq, 0.48, 0.55, 0.48) : at(_aq, 0.5, 0.56, -0.22), deep);                           // barrel (backside pigdog: low, grabbing the outside rail)
+      at(P, (chest ? 0.64 : 0.6) + 0.6 * pumpUp, 0.58 - sway + pumpUp, chest ? 0.3 : -0.3);   // out over the rail, beside the board                       // trim
+      if (bt) P.lerp(chest ? at(_aq, 0.55, 0.5, 0.3) : at(_aq, 0.45, 0.78, 0.34), bt);                               // bottom turn
+      if (tt) P.lerp(at(_aq, 0.5, 0.68, -0.32), tt);                                                                  // top turn / cutback: leads round, points down the face
+      if (deep) P.lerp(chest ? at(_aq, 0.45, 0.66, 0.45) : at(_aq, 0.48, 0.72, -0.22), deep);                           // barrel (backside pigdog: low, grabbing the outside rail)
     } else {
       at(P, -0.08 - 0.9 * pumpUp, 0.78 - sway + 0.3 * pumpUp, -0.3);   // relaxed and low, just ahead of the back hip toward the rail (the shoulder is ~0.35 below the eyes)                                                                                // trim: by the back hip
       if (bt) P.lerp(chest ? at(_aq, -0.08, 0.92, 0.35) : at(_aq, -0.2, 0.62, -0.25), bt);
