@@ -3,7 +3,7 @@
 //   const E = await import('./test/ending.js'); await E.film('medium')
 import { moment } from './shots.js';
 const G = () => window.__g;
-export async function film(mode = 'medium', seed = 7, name = null) {
+export async function film(mode = 'medium', seed = 7, name = null, pov = false) {
   const g = G(); name = name || 'end_' + mode; window.RANCH_KIND = 'medium';
   const ok = await moment(mode, 'trim', seed); if (!ok.includes(': ok')) return mode + ' no ride';
   const r = g.rider, rd = g.renderer, c = g.camera, ring = [], info = [];
@@ -15,15 +15,18 @@ export async function film(mode = 'medium', seed = 7, name = null) {
     g.input.test = stall ? null : steer; g.input.stick = stall ? { x: steer, y: 1 } : null; g.input.paddleBtn = !stall && sH < -1.2;
     g.step(1 / 60, 1 / 60, false);
     const done = r.state !== 'RIDE';
-    if (i % 6 === 0 || done) {
+    if (i % (pov ? 2 : 6) === 0 || done) {
       const p = c.position.clone(), q = c.quaternion.clone(), rp = g.rig.position, asp = c.aspect;
+      if (pov) { rd.setPixelRatio(1.5); rd.setSize(844, 390, false); const aa = g.armCam; c.aspect = aa.aspect = 844 / 390; c.updateProjectionMatrix(); aa.updateProjectionMatrix(); rd.autoClear = false; rd.clear(); if (g.mirror) g.flipProj(c); rd.render(g.scene, c); if (g.mirror) g.flipProj(c); aa.position.copy(c.position); aa.quaternion.copy(c.quaternion); rd.clearDepth(); if (g.mirror) g.flipProj(aa); rd.render(g.scene, aa); if (g.mirror) g.flipProj(aa); rd.autoClear = true; ring.push(rd.domElement.toDataURL('image/jpeg', 0.8)); if (ring.length > 150) ring.shift(); }
+      else {
       rd.setPixelRatio(1); rd.setSize(640, 400, false); c.aspect = 1.6; c.updateProjectionMatrix();
       c.position.set(rp.x - 6, rp.y + 9, rp.z + 30); c.lookAt(rp.x + 4, rp.y + 2, rp.z - 4);
       c.layers.enable(1); g.HIDELEGS.value = 0; g.CUT.value = 0; g.WATERY.value = -99; g.ARMCUT.value = 0; g.surfer.traverse((o) => { if (o.name === 'head') o.scale.setScalar(1); });
       if (g.mirror) g.flipProj(c); rd.render(g.scene, c); if (g.mirror) g.flipProj(c);
-      ring.push(rd.domElement.toDataURL('image/jpeg', 0.8)); if (ring.length > 30) ring.shift();
+      ring.push(rd.domElement.toDataURL('image/jpeg', 0.8)); if (ring.length > 50) ring.shift();
       c.layers.disable(1); g.CUT.value = 0.21; g.surfer.traverse((o) => { if (o.name === 'head') o.scale.setScalar(0.001); }); c.aspect = asp; c.updateProjectionMatrix(); c.position.copy(p); c.quaternion.copy(q);
-      if (w) { info.push({ t: +(i / 60).toFixed(1), endK: +(w.endK ?? 1).toFixed(2), fade: +(w.fade ?? 1).toFixed(2), by: w.endBy, inBarrel: r.inBarrel ? 1 : 0, sH: +sH.toFixed(2) }); if (info.length > 30) info.shift(); }
+      }
+      if (w) { info.push({ t: +(i / 60).toFixed(1), endK: +(w.endK ?? 1).toFixed(2), fade: +(w.fade ?? 1).toFixed(2), by: w.endBy, closing: w.closing ? 1 : 0, v: +r.v.toFixed(1), inBarrel: r.inBarrel ? 1 : 0, sH: +sH.toFixed(2) }); if (info.length > 50) info.shift(); }
     }
     if (done) break;
   }

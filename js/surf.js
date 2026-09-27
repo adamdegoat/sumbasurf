@@ -269,7 +269,7 @@ export class Rider {
       if (this.stalling) { const sd = P.stallDrag * this.stalling * Math.min(1, Math.abs(along) / 2) * Math.sign(along); ax -= sd * dx; az -= sd * dz; }
       // inside the tube the wave's own flow helps you hold your spot (the tiny foot adjustments a real surfer makes that a
       // thumb can't): a small friendly tube holds you in well, a heavy one hardly at all. Pump or stall still override it.
-      if (this.inBarrel && w && C.tube) {
+      if (this.inBarrel && w && C.tube && !w.closing) {   // (not while it closes out: the collapsing tube carries no one)
         // the speed that keeps you at your spot in the tube: the curl's speed along the reef (a little more if you've
         // drifted deep, less if you're near the mouth) combined with the wave's own run at the beach
         const want = (-1.3 * C.H - this.s) * 0.6, vT = Math.hypot((w.peelRate || C.peel) + want, cw);
@@ -390,7 +390,7 @@ export class Rider {
     if (this.inBarrel && s < deepAt * H) { this.foamT = (this.foamT || 0) + h; if (this.foamT > foamMax || s < -3.6 * H) return this.wipe('Too deep: the foam ball swallowed you'); }   // (the instant line is well behind: a section surge alone can't drop you past it without warning) }
     else this.foamT = Math.max(0, (this.foamT || 0) - h);
     // over the back
-    if (!onFront && y < 0.4 * Math.max(sl.top, 0.3)) return this.out('Kicked out over the back');
+    if (!onFront && y < 0.4 * Math.max(sl.top, 0.3)) { if (w.closing && this.state === 'RIDE') { this.ride.end = 1; return this.out('Kicked out as it closed out'); } return this.out('Kicked out over the back'); }
     const kmh = this.v * 3.6; this.ride.top = Math.max(this.ride.top, kmh);
     if (riding) {
       if (this.inBarrel) this.ride.barrel += h;
@@ -425,7 +425,7 @@ export class Rider {
       // the end of the wave: it backs off and the barrel breathes out (the spit), shooting whoever's inside out onto the shoulder
       if (this.spitOut > 0) { this.spitOut -= h; if (this.inBarrel && this.v < 1.9 * C.speed) { const k = 1 + 1.4 * h; this.vx *= k; this.vz *= k; } }
       // the wave has backed off to a shoulder (the end of the reef, or the sand): the ride winds down, full credit
-      if ((w.endK === undefined ? 1 : w.endK) < 0.4) { this.ride.end = 1; return this.out(w.endBy === 'beach' ? 'Rode it all the way in' : 'Rode it to the end of the reef'); }
+      if ((w.endK === undefined ? 1 : w.endK) < 0.4) { this.ride.end = 1; return this.out(w.closing ? 'It closed out behind you: you rode it to the end' : w.endBy === 'beach' ? 'Rode it all the way in' : 'Rode it to the end of the reef'); }
       if (w.endK === undefined && (w.peelX > w.xEnd || this.z > w.zBeach)) { this.ride.end = 1; return this.out('Rode it to the end'); }   // (a wave with no ending set up: the old hard stop)
     }
     this.lostSpeed(h);
@@ -495,7 +495,11 @@ export class Rider {
     if (fell) raw *= 0.9;
     return Math.round(100 * (1 - Math.exp(-raw / 6))) / 10;
   }
-  wipe(why) { this.why = why; this.set('WIPE'); this.ride.score = this.ride.t > 0 ? this.liveScore(true) : 0; }
+  wipe(why) {
+    // taken by the closeout at the very end, still on your feet: that's riding the wave to its end, not a fall
+    if (this.state === 'RIDE' && this.wave && this.wave.closing && /whitewater|foam ball|lip|tube/.test(why)) { this.ride.end = 1; return this.out('Closed out: you rode it right to the end'); }   // (once it closes out the whole section throws at once: whatever it does to you then is the wave ending, not a mistake)
+    this.why = why; this.set('WIPE'); this.ride.score = this.ride.t > 0 ? this.liveScore(true) : 0;
+  }
   out(why) {
     this.why = why;
     if (this.ride.tubeT > 0.5 && this.wave) this.move('BARREL', 0.8, this.ride.tubeT);   // the ride ended cleanly with you in (or just out of) the barrel, riding it into the sand included: that counts

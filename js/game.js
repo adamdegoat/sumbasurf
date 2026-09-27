@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=160';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=133';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=139';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=15';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
@@ -13,8 +13,8 @@ import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=27';
-import { wildlife } from './wildlife.js?v=31';
+import { crew } from './crew.js?v=33';
+import { wildlife } from './wildlife.js?v=37';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
@@ -320,6 +320,9 @@ function updateWaves(dt) {
       if (w.secK === undefined || w.secK <= 0) { w.secT -= dt; if (w.secT <= 0) { w.secK = 1.1; w.secA = w.secSoft ? C.softA : 1; w.secSoft = false; w.secT = 5 + Math.random() * 5; if (w.spitT !== undefined) w.spitT = 0.25; } }   // (a heavy wave's section throws hard over you: race it or it closes on you)
       else { w.secK -= dt; const ph = 1 - w.secK / 1.1, A = C.burst; rate *= ph < 0.75 ? 1 + A * (w.secA || 1) * Math.sin(Math.PI * ph / 0.75) : 1 - 0.4 * (w.secA || 1); }
     }
+    // the end near the sand: the rest of the wave closes out, the whole section left throws at once (the break races down
+    // the line, faster and faster) and everything behind it is whitewater; you kick out before it or it takes you
+    if (w.closing) { w.closeT += dt; rate = Math.max(rate, C.peel) * (1 + 5 * Math.min(1, w.closeT / 0.8)); }
     w.px = (w.px === undefined ? C.peel * t : w.px + rate * dt);
     w.peelRate = rate;   // the physics uses the peel speed right now (not the average), so the wave's push matches what you see
     w.place(w.px, C.speed * t);
@@ -327,6 +330,7 @@ function updateWaves(dt) {
     // the shallows; either way it backs off and shrinks away (the barrel softening and closing) instead of stopping dead
     const reefK = Math.min(1, Math.max(0, (REEF.xEnd - w.peelX) / 38)), beachK = Math.min(1, Math.max(0, (REEF.zBeach - w.zW) / 45));
     w.endK = Math.min(reefK, beachK); w.endBy = beachK < reefK ? 'beach' : 'reef';
+    if (!w.closing && !isRanch() && w.endBy === 'beach' && beachK < 0.8) { w.closing = true; w.closeT = 0; }
     if (w.endK < 0.88 && !w.spat) { w.spat = true; if (w.spitT !== undefined) w.spitT = 0.3; if (rider && rider.wave === w && rider.inBarrel) rider.spitOut = 1.8; }   // (the spit: see the rider's judge)
     w.fade = (w.size || 1) * w.endK * Math.min(1, Math.max(0.15, 1 + (w.zW + 160) / 60));
     if (isRanch()) w.fade = Math.min(1, Math.max(0.02, (w.zW - POOL.z0) / 22)) * w.endK;   // the pool wave rises out of the machine wall   // far out it's a small swell; past the end of the reef it backs off
