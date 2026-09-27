@@ -430,13 +430,19 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260927-2247</small>
+    <small id="build">build 260927-2334</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-27-real', date: '27 Sep 2026', time: '11:34 pm', title: 'More like real surfing', items: [
+      'Barrels last a few seconds now, and the wave spits you out at the end, like the real thing.',
+      'Standing up takes a moment longer, like a real pop up.',
+      'Turns are a little smoother at full lean.',
+      'Sit too deep in the barrel and you will feel the foam ball: spray blows past you and drops hit the screen.',
+    ] },
     { id: '2026-09-27-barrel', date: '27 Sep 2026', time: '10:47 pm', title: 'Better barrels', items: [
       'Inside the barrel your view lifts a little so you see more of the tube over you.',
       'Turning back inside the barrel now sends you into the foam ball, like real surfing.',
@@ -535,6 +541,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=754"></script>
+<script type="module" src="js/game.js?v=762"></script>
 </body>
 </html>

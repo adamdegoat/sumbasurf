@@ -172,7 +172,9 @@ export class Wave {
       const push = (0.45 + 0.3 * smooth(0, 30 * L, s)) * Fat * (1 - 0.8 * curl) * Math.pow(1 - smooth(0, 0.85, y), 1.3) * below;
       const back = i >= 9 ? 1.6 : i === 8 ? 1 + 0.6 * t : 1;
       out[k++] = (z * back + push) * H * Wd; out[k++] = Math.max(0, y) * H * amp;
-      const cave = sh === WHITE_SH ? 1 : s < 0 ? smooth(3.3 * H, 4.8 * H, -s) : 0;   // where the tube caves in: the lip smashing down turns the whole end of it white
+      // the foam ball: from about 2 wave heights behind the curl (where it starts to catch you: surf.js 'Too deep') the tube
+      // churns white, thicker the deeper, fully white where the tube caves in. You see how deep is too deep
+      const cave = sh === WHITE_SH ? 1 : s < 0 ? 0.45 * smooth(1.9 * H, 3.3 * H, -s) + 0.55 * smooth(3.3 * H, 4.8 * H, -s) : 0;   // where the tube caves in: the lip smashing down turns the whole end of it white
       out[k++] = Math.min(1, broken * 1.15 + spray * curl * 0.5 + cave * 0.9) * smooth(-0.04, 0.22, y);   // (white where it's piled up; none out on the flat water, where it ended in a hard line at the mesh's edge)
       out[k++] = thin * (1 - broken * 0.7);
     }
@@ -250,6 +252,12 @@ export class Wave {
         if (s < -50 * (this.cond.len || 1)) continue;
         const sh = this.shapeAt(s), crest = sh.P[9], amp = this.amp(s);
         const atLip = Math.random() < 0.4 && sh.broken < 0.5;
+        // spray boiling in the back of the tube, where the foam ball is coming for you (it moves with the curl)
+        if (!this.closing && this.cond.hollow > 0.5 && Math.random() < 0.3) { const sb = -(2 + Math.random() * 2.2) * H, shb = this.shapeAt(sb);
+          P[i * 3] = this.peelX + sb; P[i * 3 + 1] = (0.08 + Math.random() * 0.45) * H * this.amp(sb) * this.fade;
+          P[i * 3 + 2] = (shb.P[7][0] - Math.random() * 0.7) * H * (this.cond.width || 1) + this.zW + this.bend(sb);
+          V[i * 3] = this.cond.peel * (0.8 + Math.random() * 0.3); V[i * 3 + 1] = 0.3 + Math.random() * 0.8; V[i * 3 + 2] = this.cond.speed * 0.9 - Math.random() * 1.5;
+          this.ml[i] = 0.6 + Math.random() * 0.8; continue; }
         P[i * 3] = this.peelX + s + (Math.random() - .5) * 2;
         P[i * 3 + 1] = (atLip ? 0.2 * H : crest[1] * H * amp * (0.7 + Math.random() * 0.4)) * this.fade;   // (the wave is drawn squashed by fade: particles too)
         P[i * 3 + 2] = (atLip ? sh.P[7][0] : crest[0]) * H * (this.cond.width || 1) + this.zW + this.bend(s) + (Math.random() - .5) * H;

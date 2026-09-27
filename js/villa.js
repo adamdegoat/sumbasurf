@@ -7,7 +7,7 @@
 // house carries a spiral stair up to a deck in its canopy, the highest seat on the point.
 import * as THREE from 'three';
 import { makeBoard } from './board.js?v=15';
-import { landMaterial, waterMaterial } from './wave.js?v=162';
+import { landMaterial, waterMaterial } from './wave.js?v=163';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const VILLA = { x0: -100, x1: -86, z0: 30, z1: 44, Y: 26 };   // the house and its floor height (in the point's own frame, below)

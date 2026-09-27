@@ -2,19 +2,19 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=162';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=147';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=163';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=150';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=15';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=87';
-import { villa, VILLA } from './villa.js?v=124';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=88';
+import { villa, VILLA } from './villa.js?v=125';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=41';
-import { wildlife } from './wildlife.js?v=45';
+import { crew } from './crew.js?v=44';
+import { wildlife } from './wildlife.js?v=48';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
@@ -318,6 +318,13 @@ function updateWaves(dt) {
       // set up in the pocket (standing, just ahead of the curl, low on the face, not racing away) and the next section
       // throws right over you soon: real barrels mostly come to you like this, rather than after a long wait
       if (C.assist !== false && rider && rider.wave === w && rider.state === 'RIDE' && !rider.inBarrel && rider.s > 0.2 * C.H && rider.s < 2.2 * C.H && rider.y < 0.6 * C.H && !(w.secK > 0) && w.secT > 0.6) { w.secT = 0.6; w.secSoft = true; }   // (a softer section: it covers you rather than racing past)
+      // a long time in the tube and the barrel breathes out: the spit blows you out onto the open face (if you're sitting
+      // too deep by then, the foam ball gets you first). Real barrels last a few seconds; a perfectly even tube went on for
+      // half a minute. A barrel spits after 4.5-6.5 s
+      if (rider && rider.wave === w && rider.inBarrel) {
+        if (!rider.spitAt) rider.spitAt = 4.5 + Math.random() * 2;
+        if ((rider.ride.tubeT || 0) > rider.spitAt) { rider.spitAt += 3; if (rider.s > -1.5 * C.H || (C.tube || 0) >= 0.8) { rider.spitOut = 1.8; if (w.spitT !== undefined) w.spitT = 0.25; } }   // (at the heavy spots the spit only blows you out if you're near the mouth; the friendly tubes forgive a deeper line)   // (and again every 3 s if you hang on in there)
+      } else if (rider && rider.wave === w && !(rider.ride.tubeT > 0)) rider.spitAt = 0;
       if (w.secK === undefined || w.secK <= 0) { w.secT -= dt; if (w.secT <= 0) { w.secK = 1.1; w.secA = w.secSoft ? C.softA : 1; w.secSoft = false; w.secT = 5 + Math.random() * 5; if (w.spitT !== undefined) w.spitT = 0.25; } }   // (a heavy wave's section throws hard over you: race it or it closes on you)
       else { w.secK -= dt; const ph = 1 - w.secK / 1.1, A = C.burst; rate *= ph < 0.75 ? 1 + A * (w.secA || 1) * Math.sin(Math.PI * ph / 0.75) : 1 - 0.4 * (w.secA || 1); }
     }
@@ -613,6 +620,9 @@ const camPos = new THREE.Vector3(0, 2, 10), camLook = new THREE.Vector3(), pose 
 let camYaw = 0, lookYaw = 0, lookBackK = 0, wipeCut = false;
 const cam = { a: 0, r: 3, y: 1.3, va: 0, vr: 0, vy: 0, vl: new THREE.Vector3() };
 const camOff = new THREE.Vector3(0, 1.3, 3), lookOff = new THREE.Vector3(), _anc = new THREE.Vector3(), anchorS = new THREE.Vector3(), anchorV = new THREE.Vector3();
+// the pop-up's own clock: every bit of the stand-up animation was timed for a 0.35 s pop; this stretches it to the
+// physics' pop time, so the body and your view take as long to get up as the rider really does
+const popClock = () => rider.stateT * 0.35 / (RIDE.popTime || 0.35);
 const smooth01 = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
 const _wq2 = {};
 // how high the wave reaches at a point for sight-line purposes, including a lip overhanging in front of the face
@@ -646,7 +656,7 @@ function povCamera(dt) {
   const travel = moving ? Math.atan2(rider.vz - waveRun, rider.vx) : rider.th;
   // look mostly where you're travelling, partly where the board points (you see the nose swing in a turn/drift)
   const dh = Math.atan2(Math.sin(rider.th - travel), Math.cos(rider.th - travel));
-  const popIn = st === 'POP' ? smooth01(rider.stateT / 0.2) : 1;   // (the catch: the view eases into the pop over 0.2 s; it used to lurch and tip in the first frame)
+  const popIn = st === 'POP' ? smooth01(popClock() / 0.2) : 1;   // (the catch: the view eases into the pop over 0.2 s; it used to lurch and tip in the first frame)
   let yawT = travel + dh * (standing ? 0.8 - 0.4 * popIn : 0.8);   // (a little toward where the board points: you see the nose swing in a turn)
   // in the barrel look down the tube toward the exit (along the line), not out through the open side at the beach
   tubeLook += ((standing && (rider.inBarrel || (rider.ride && rider.ride.tubeT > 0)) ? 1 : 0) - tubeLook) * Math.min(1, dt * 1.5);   // (held through a wobble at the tube's edge: tubeT only clears after 0.4 s out)
@@ -655,13 +665,13 @@ function povCamera(dt) {
   // follows your line as always, and the tube wraps around it)   // (more of the board heading: in a snap the board stays in view instead of swinging out of shot)
   // popping up, the head drives forward over the board (the eye ahead of the shoulders, which stay out of view), easing back as you rise
   const popFwd = st === 'POP' ? 0.15 : st === 'RIDE' ? 0.15 * Math.max(0, 1 - rider.stateT / 0.8) : 0;
-  const sK = standing ? (st === 'POP' ? Math.min(1, rider.stateT / 0.25) : 1) : 0;   // (lying -> standing eye point blended over the start of the pop, not switched in a frame)
+  const sK = standing ? (st === 'POP' ? Math.min(1, popClock() / 0.25) : 1) : 0;   // (lying -> standing eye point blended over the start of the pop, not switched in a frame)
   const ef = -0.05 + (POVCAM.fwd + popFwd + 0.05) * sK, eu = 0.2 + (POVCAM.up - 0.2) * sK;   // lying: eyes at the head, a bit up, so your paddling hands pass below them
   _eye.x += Math.cos(yawT) * ef; _eye.z += Math.sin(yawT) * ef; _eye.y += eu;   // camera just in front of the face, like a surfer's mouth-mounted camera
   // smooth the eye's position relative to the board (not in the world, or at speed it would trail behind your head)
   _eye.sub(rig.position);
   // eyes never lower than this above the board; during the pop it rises with you instead of snapping up in one frame
-  const popT = st === 'POP' ? Math.min(1, rider.stateT / 0.4) : standing ? 1 : 0, eyeFloor = 0.25 + 0.35 * popT * popT * (3 - 2 * popT);
+  const popT = st === 'POP' ? Math.min(1, popClock() / 0.4) : standing ? 1 : 0, eyeFloor = 0.25 + 0.35 * popT * popT * (3 - 2 * popT);
   if (_eye.y < eyeFloor) _eye.y = eyeFloor;
   // pop-up: the clip throws the head out over the rail; a real pop keeps your head over the stringer, eyes on the
   // board between your hands, so the camera stays over the middle of the board while you come up
@@ -680,7 +690,7 @@ function povCamera(dt) {
   else {
     // (a plain exponential follow: stays glued to your head through the pop-up, just takes the jitter off; the old
     // spring was so over-damped it closed only ~2% of the gap a frame and left the camera inside your chest)
-    const k = st === 'POP' ? 8 + 50 * Math.min(1, rider.stateT / 0.35) : st === 'RIDE' && rider.stateT < 0.5 ? 16 + 42 * (1 - rider.stateT / 0.5) : 16;   // (eases into the pop instead of snapping to the new eye height in one frame)
+    const k = st === 'POP' ? 8 + 50 * Math.min(1, popClock() / 0.35) : st === 'RIDE' && rider.stateT < 0.5 ? 16 + 42 * (1 - rider.stateT / 0.5) : 16;   // (eases into the pop instead of snapping to the new eye height in one frame)
     pov.pos.lerp(_eye, 1 - Math.exp(-k * dt));
     const dy = Math.atan2(Math.sin(yawT - pov.yaw), Math.cos(yawT - pov.yaw)), maxY = 3.2 * dt;
     pov.yaw += Math.max(-maxY, Math.min(maxY, dy * Math.min(1, dt * 7)));
@@ -700,7 +710,7 @@ function povCamera(dt) {
   if (pitchLook > pitchT) pitchT = pitchLook;
   if (!standing && isRanch()) pitchT = Math.max(pitchT, -0.2);   // at the Surf Ranch, eyes up on the machine wall where your wave comes from
   pitchT += 0.14 * tubeEase;   // (in the barrel your eyes lift ~8 deg, so you see the tube arching over you)   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
-  pov.pitch += (pitchT - pov.pitch) * Math.min(1, dt * (st === 'POP' ? 4 + 20 * Math.min(1, rider.stateT / 0.3) : st === 'RIDE' ? 5 + 19 * Math.max(0, 1 - rider.stateT / 0.4) : 5));   // (and out of it without a kink: the rates hand over gradually when you're up)   // (the pop: eyes snap down to the board between your hands)
+  pov.pitch += (pitchT - pov.pitch) * Math.min(1, dt * (st === 'POP' ? 4 + 20 * Math.min(1, popClock() / 0.3) : st === 'RIDE' ? 5 + 19 * Math.max(0, 1 - rider.stateT / 0.4) : 5));   // (and out of it without a kink: the rates hand over gradually when you're up)   // (the pop: eyes snap down to the board between your hands)
   pov.roll += ((standing ? -rider.lean * 0.2 : 0) - pov.roll) * Math.min(1, dt * 6);   // you feel the lean: the horizon tips as you lay into a carve (less than the board: people hold their head nearer level)
   // three.js cameras look down -z: turn our heading (angle in x/z) into a yaw about y
   _pe.set(pov.pitch - (rider.standing ? 0.055 * pumpA : 0), -pov.yaw - Math.PI / 2, pov.roll);   // (each pump stroke: the head nods down ~3 deg as you compress, like real POV footage)
@@ -851,7 +861,9 @@ function updateCamera(dt) {
   // whitewater rolling over you (a close-out washing through, a broken wave passing you in the lineup): your eyes are in
   // the foam, so you see churning white, not the flat inside of the wave's surface
   { const inW = heightAt(waves, camera.position.x, camera.position.z) - camera.position.y;
-    foamIn += ((inW > 0 ? Math.min(1, 0.45 + inW * 1.5) : 0) - foamIn) * Math.min(1, dt * (inW > 0 ? 25 : 5));
+    // (and a thin mist of the foam ball's spray hanging in the tube when you're sitting too deep: see railSpray)
+    const deepHaze = rider.inBarrel && rider.wave ? 0.3 * smooth01((-rider.s - 1.4 * rider.wave.cond.H) / (1.2 * rider.wave.cond.H)) : 0;
+    foamIn += ((inW > 0 ? Math.min(1, 0.45 + inW * 1.5) : deepHaze) - foamIn) * Math.min(1, dt * (inW > 0 ? 25 : 5));
     if (foamIn > 0.01 || foamK) setFoam(foamIn > 0.01 ? foamIn : 0);
     if (inW > 0) foamWas = true; else if (foamWas && foamIn < 0.4) { foamWas = false; splashLens(8, 1); } }   // (out of it: water running off the lens)
   // flying, or sliding sideways up the face into the lip, the body turns away from where you look and your front
@@ -941,7 +953,7 @@ function updateRig(dt, t) {
     }
   } else if (st === 'POP') {
     // pop-up: from flat on the board, hands push, feet swing under, straight into the crouch (no jump)
-    const u = Math.min(1, rider.stateT / 0.35), e = u * u * (3 - 2 * u);
+    const u = Math.min(1, popClock() / 0.35), e = u * u * (3 - 2 * u);
     if (curClip !== clips.crouch) { play('crouch', { fade: 0.18 }); clips.stand.reset().play(); }
     clips.crouch.weight = 0.8; clips.stand.weight = 0.2;
     setStance();
@@ -978,7 +990,7 @@ const railSpray = (() => {
   const tex = new THREE.CanvasTexture(cv);
   const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xf6f1ea, size: 0.11, map: tex, transparent: true, opacity: 0.8, depthWrite: false }));   // (bigger, soft drops: at 7 cm they read as specks)
   pts.frustumCulled = false; scene.add(pts);
-  let next = 0, acc = 0, fanAcc = 0, fanHit = false;
+  let next = 0, acc = 0, fanAcc = 0, fanHit = false, ballAcc = 0, ballLens = 0;
   const emit = (p, v, n, spread) => {
     for (let k = 0; k < n; k++) {
       const i = next; next = (next + 1) % SPRAY_N;
@@ -990,6 +1002,7 @@ const railSpray = (() => {
   const _p = new THREE.Vector3(), _v = new THREE.Vector3();
   return {
     burst(p, n = 120, up = 3) { emit(p, _v.set(0, up, 0), n, 3.5); },
+    stream(p, v, n = 1, spread = 0.8) { emit(p, v, n, spread); },
     update(dt) {
       // how much water the rail is throwing: carving load, skidding, and a little at speed
       // (spray keeps much of the board's own speed: thrown from a standstill, or backwards, it was left behind the instant
@@ -1029,6 +1042,22 @@ const railSpray = (() => {
             emit(_p, _v, 1, 0.9);
           }
         } else fanAcc = 0;
+      // the foam ball behind you in the tube: sit too deep and its spray blows past you from behind, thicker the deeper you
+      // are (surf.js catches you from ~2 wave heights behind the curl: you can't see behind you, but you can feel this)
+      if (rider.inBarrel && rider.wave) {
+        const H = rider.wave.cond.H, deepK = smooth01((-rider.s - 1.4 * H) / (1.2 * H));
+        if (deepK > 0) {
+          ballAcc += deepK * 700 * dt;
+          const fx = Math.cos(rider.th), fz = Math.sin(rider.th);
+          while (ballAcc >= 1) { ballAcc--;
+            const side = (Math.random() - 0.5) * 2.2, up = 0.7 + Math.random() * 1.2, back = 0.6 + Math.random() * 2.2;   // (around your head, where you'd feel it)
+            _p.set(rig.position.x - fx * back - fz * side, rig.position.y + up, rig.position.z - fz * back + fx * side);
+            const fast = rider.v + 4 + Math.random() * 5 * deepK;
+            emit(_p, _v.set(fx * fast, 0.4 + Math.random(), fz * fast), 1, 0.8);
+          }
+          ballLens -= dt; if (ballLens <= 0 && deepK > 0.35) { ballLens = 1.1 - 0.7 * deepK; splashLens(2 + Math.round(3 * deepK), 0.6); }
+        } else ballAcc = 0;
+      }
       } else acc = 0;
       for (let i = 0; i < SPRAY_N; i++) {
         if (life[i] <= 0) { if (life[i] > -1) { pos[i * 3 + 1] = -50; life[i] = -1; } continue; }
@@ -1394,7 +1423,7 @@ function plantFeet(w) {
 }
 function surfStance() {
   if (sitting) straddle();
-  const st = rider.state, want = st === 'RIDE' ? 1 : st === 'POP' ? Math.min(1, rider.stateT / 0.45) : 0;
+  const st = rider.state, want = st === 'RIDE' ? 1 : st === 'POP' ? Math.min(1, popClock() / 0.45) : 0;
   stanceW += (want - stanceW) * (1 - Math.exp(-13 * dtArm));
   if ((stanceW < 0.02 && st !== 'POP') || (st === 'WIPE' && W.on)) return;   // (never pose a body that's been thrown off)
   if (!bones.thigh_l) surfer.traverse((o) => { if (o.isBone) bones[o.name] = o; });
