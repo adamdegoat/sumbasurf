@@ -8,14 +8,14 @@ import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=15';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
 import { SPOTS, spotGroup, builtSpots } from './spots.js?v=90';
-import { villa, VILLA } from './villa.js?v=127';
+import { villa, VILLA } from './villa.js?v=128';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
 import { crew } from './crew.js?v=48';
 import { wildlife } from './wildlife.js?v=52';
-import { droneShow } from './show.js?v=4';
+import { droneShow } from './show.js?v=11';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
@@ -1907,6 +1907,7 @@ function applyNight(k) {
   if (!dayEnv) return;
   for (const c of ['zen', 'hor', 'sunCol', 'fog', 'deep', 'turq']) ENV['u' + c[0].toUpperCase() + c.slice(1)].value.copy(dayEnv[c]).lerp(NIGHT[c], k);
   ENV.uGold.value = dayEnv.gold * (1 - k); ENV.uSunVis.value = dayEnv.sunVis * (1 - k); ENV.uCloud.value = dayEnv.cloud * (1 - 0.8 * k); ENV.uNight.value = k;   // (a clear night: bright clouds glowing in the dark looked wrong)
+  if (villaW && villaW.setLights) villaW.setLights(1 - 0.85 * k);   // (the house lights go down for the show)
   hemi.intensity = dayEnv.hemi * (1 - 0.8 * k); sunLight.intensity = dayEnv.sun * (1 - 0.85 * k); renderer.toneMappingExposure = dayEnv.exp * (1 - 0.1 * k);
 }
 function showOff(now = false) {
@@ -1920,10 +1921,14 @@ function showStart() {
   if (drone.on) droneSet(false); if (W_.sit) vStand(); if (W_.watch) document.getElementById('vWatch').click(); if (W_.zoom) document.getElementById('vZoom').click();
   if (!dayEnv) dayEnv = { gold: ENV.uGold.value, sunVis: ENV.uSunVis.value, cloud: ENV.uCloud.value, hemi: hemi.intensity, sun: sunLight.intensity, exp: renderer.toneMappingExposure,
     ...Object.fromEntries(['zen', 'hor', 'sunCol', 'fog', 'deep', 'turq'].map((c) => [c, ENV['u' + c[0].toUpperCase() + c.slice(1)].value.clone()])) };
-  // out on the east balcony by the radio, looking out over the bay where the show will be
-  W_.x = 88 + 83.4; W_.z = 31 + 37; W_.y = VILLA.Y + 1.65; W_.yaw = Math.PI; W_.pitch = 0.12; W_.near = null;   // (at the rail, clear of the lanterns hanging from the eave)
-  const dz = SPOTS.medium.dz, C = new THREE.Vector3(W_.x - 125, VILLA.Y + 30, W_.z + dz);
-  showW.start(C, new THREE.Vector3(0, 0, -1), heightAt(waves, C.x, C.z), 78);   // (looking toward -x, left to right runs toward -z)
+  // out at the corner of the balcony, where it wraps round the two sea sides, looking out to the open sea (not along the
+  // bay parallel to the house): the show is 130 m out
+  // (standing just off the corner and looking a little more out to sea than the diagonal: dead on the diagonal the
+  //  roof's corner post stood right in the middle of the show)
+  const lx = VILLA.x1 + 1.7, lz = VILLA.z0 - 1.8, ya = -115 * Math.PI / 180, dx = Math.cos(ya), dzz = Math.sin(ya);   // (villa east = world -x, south = world -z)
+  W_.x = 88 - lx; W_.z = 31 + lz; W_.y = VILLA.Y + 1.65; W_.yaw = Math.atan2(dzz, dx); W_.pitch = 0.1; W_.near = null;
+  const dz = SPOTS.medium.dz, C = new THREE.Vector3(W_.x + dx * 130, 0, W_.z + dz + dzz * 130); C.y = heightAt(waves, C.x, C.z);
+  showW.start(C, new THREE.Vector3(-dzz, 0, dx));   // (left to right as you look at it)
   showB.classList.add('on'); showB.querySelector('span').textContent = 'END SHOW'; document.body.classList.add('show');
   const tip = document.getElementById('vTip'); tip.textContent = 'Drone show over the bay. Look around as you like.'; tip.style.opacity = 1; clearTimeout(tip.t); tip.t = setTimeout(() => { tip.style.opacity = 0; }, 4000);
 }
@@ -1969,7 +1974,7 @@ function villaTick(dt) {
   updateWaves(dt); crewW.detail = !!(walker && (walker.watch || walker.zoom || drone.on)); crewW.update(dt, waves, T); if (!(showW && showW.on)) wildW.update(dt, waves); birdsW.update(dt);   /* (the whales and eagles wait while the drone show is on: their 'tap ZOOM' notes would pop up with ZOOM hidden) */   // (zoomed in on them: every surfer posed every frame)
   if (!friendsW && surfer && (people || peopleFailed)) friendsW = friends(scene, surfer, villaW.friendSpots.map((f) => ({ ...f, z: f.z + SPOTS.medium.dz, board: f.board && [f.board[0], f.board[1], f.board[2] + SPOTS.medium.dz] })), people, life);   // (your friends: as soon as the body model is in)
   if (friendsW) friendsW.update(dt, T, beat, { x: walker.x, y: walker.y, z: walker.z + SPOTS.medium.dz }, camera); if (villaW.tick) villaW.tick(dt, beat, walker.x, walker.z, walker.y - 1.65);
-  if (showW && dayEnv) { showW.update(dt, renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360))); applyNight(showW.night);
+  if (showW && dayEnv) { showW.update(dt, renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360)), beat); applyNight(showW.night);
     if (showW.done && showB.classList.contains('on')) showOff();   // (over: the button goes back, the evening comes back)
     if (showW.done && showW.night < 0.005) { applyNight(0); dayEnv = null; } }
   const W_ = walker, V = villaW;

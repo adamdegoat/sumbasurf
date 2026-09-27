@@ -194,8 +194,10 @@ export function villa(scene) {
     block(x - 0.35 * s, x + 0.35 * s, z - 0.35 * s, z + 0.35 * s); };
   plant(-87.5, 42.5, 1.1); plant(-94.4, 31.3, 0.95); plant(-89.8, 31.5, 1.0);   // (leaves reach 1.15 m per unit of size: each far enough from the walls that none pokes through; the last clear of the egg chair's view)
   const leafMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide });
-  const glow = new THREE.MeshBasicMaterial({ color: 0xffc27a, toneMapped: false });   // (full brightness, not dimmed by the tone curve: lit bulbs, not cream beads)
-  const shadeMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide, emissive: 0x7a4818, emissiveIntensity: 0.7 });   // (woven shades glow with the bulb inside)
+  // (every evening light's material, so the drone show can dim them: see setLights)
+  const LIGHTS = [], light = (mat, kind) => { LIGHTS.push({ mat, kind, base: kind === 'color' ? mat.color.clone() : kind === 'opacity' ? mat.opacity : mat.emissiveIntensity }); return mat; };
+  const glow = light(new THREE.MeshBasicMaterial({ color: 0xffc27a, toneMapped: false }), 'color');   // (full brightness, not dimmed by the tone curve: lit bulbs, not cream beads)
+  const shadeMat = light(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide, emissive: 0x7a4818, emissiveIntensity: 0.7 }), 'emissive');   // (woven shades glow with the bulb inside)
   for (const [x, z] of [[-91.5, 39], [-88.8, 39], [-97.5, 37]]) {
     const shade = new THREE.Mesh(tint(new THREE.SphereGeometry(0.35, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.6), RATTAN), shadeMat); shade.position.set(x, Y + 2.7, z); shade.rotation.x = Math.PI; g.add(shade);
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), glow); bulb.position.set(x, Y + 2.62, z); g.add(bulb);
@@ -516,7 +518,7 @@ export function villa(scene) {
   const haloTex = (() => { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const c = cv.getContext('2d'), gr = c.createRadialGradient(32, 32, 0, 32, 32, 32);
     gr.addColorStop(0, 'rgba(255,226,170,1)'); gr.addColorStop(0.22, 'rgba(255,184,96,.55)'); gr.addColorStop(0.55, 'rgba(255,150,60,.12)'); gr.addColorStop(1, 'rgba(255,140,50,0)'); c.fillStyle = gr; c.fillRect(0, 0, 64, 64);
     const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t; })();
-  const haloMat = (size, opacity) => new THREE.PointsMaterial({ map: haloTex, size, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false });
+  const haloMat = (size, opacity) => light(new THREE.PointsMaterial({ map: haloTex, size, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false, fog: false }), 'opacity');
   const bulbP = [], cableP = [];
   const strand = (a, b, sag, n) => { let prev = null; for (let k = 0; k <= n; k++) { const t = k / n, p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - sag * 4 * t * (1 - t), a[2] + (b[2] - a[2]) * t];
     if (prev) cableP.push(...prev, ...p); prev = p; if (k > 0 && k < n) bulbP.push([p[0], p[1] - 0.06, p[2]]); } };
@@ -532,7 +534,7 @@ export function villa(scene) {
   { const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute(bulbP.flat(), 3)); g.add(new THREE.Points(hg, haloMat(0.7, 0.75))); }
   { const cg = new THREE.BufferGeometry(); cg.setAttribute('position', new THREE.Float32BufferAttribute(cableP, 3)); g.add(new THREE.LineSegments(cg, new THREE.LineBasicMaterial({ color: 0x1d1611 }))); }
   // paper lanterns hung from the tree deck rail: warm orange, capped in rattan, each on its own string, swaying
-  const lanterns = [], lanternMat = new THREE.MeshBasicMaterial({ color: 0xff9a4a, toneMapped: false }), capMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1c, roughness: 0.9 });
+  const lanterns = [], lanternMat = light(new THREE.MeshBasicMaterial({ color: 0xff9a4a, toneMapped: false }), 'color'), capMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1c, roughness: 0.9 });
   { const body = new THREE.SphereGeometry(0.16, 12, 8); body.scale(1, 1.25, 1); const cap = new THREE.CylinderGeometry(0.07, 0.09, 0.05, 10), str = new THREE.CylinderGeometry(0.005, 0.005, 0.28, 3);
     const hp = [];
     for (let k = 0; k < 8; k++) { const an = k * Math.PI / 4 + 0.35, x = TX + Math.cos(an) * (RD - 0.06), z = TZ + Math.sin(an) * (RD - 0.06), hook = new THREE.Group(); hook.position.set(x, Y + DH + 1.02, z); g.add(hook);
@@ -819,5 +821,7 @@ export function villa(scene) {
     const bm = new THREE.MeshStandardMaterial({ color: 0xb89a62, roughness: 0.6 }); const top = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.03, 12), bm); ch.add(top);
     for (let k = 0; k < 6; k++) { const an = k / 6 * Math.PI * 2, L = 0.28 + (k % 3) * 0.1, c = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, L, 6), bm); c.position.set(Math.cos(an) * 0.12, -0.12 - L / 2, Math.sin(an) * 0.12); ch.add(c); }
     root.userData.chime = ch; }
-  return { group: root, rack, colliders, walk, floorAt, solid, fix, inPool, tick, seats, sounds, setSong, dog, friendSpots, spawn: { x: OX + 91, z: 37.5 + OZ, yaw: Math.PI + 0.2 }, rackAt: { x: OX - (V.x0 + 0.6), z: 37 + OZ } };
+  // dim every evening light (0 = off, 1 = as built): the house goes dark for the drone show
+  const setLights = (k) => { for (const L of LIGHTS) { if (L.kind === 'color') L.mat.color.copy(L.base).multiplyScalar(k); else if (L.kind === 'opacity') L.mat.opacity = L.base * k; else L.mat.emissiveIntensity = L.base * k; } };
+  return { setLights, group: root, rack, colliders, walk, floorAt, solid, fix, inPool, tick, seats, sounds, setSong, dog, friendSpots, spawn: { x: OX + 91, z: 37.5 + OZ, yaw: Math.PI + 0.2 }, rackAt: { x: OX - (V.x0 + 0.6), z: 37 + OZ } };
 }
