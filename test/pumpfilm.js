@@ -41,3 +41,29 @@ export async function side(name, { mode = 'medium', seed = 7 } = {}) {
   }
   g.input.paddleBtn = false; g.input.stick = null; return k;
 }
+
+// a deliberate air, filmed first person (size locked): drop, turn up at the lip, fly, land
+export async function airPov(name, { mode = 'easy', seed = 7, upAngle = 0.5, outside = false } = {}) {
+  const g = G(); await moment(mode, 'trim', seed);
+  const fov0 = g.camera.fov, afov = g.armCam.fov, asp = g.camera.aspect, r = g.rider, rd = g.renderer, log = [];
+  const fix = () => { rd.setPixelRatio(1.5); rd.setSize(844, 390, false); for (const c of [g.camera, g.armCam]) c.aspect = asp; g.camera.fov = fov0; g.armCam.fov = afov; g.camera.updateProjectionMatrix(); g.armCam.updateProjectionMatrix(); };
+  const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a)), along = Math.sign(Math.cos(r.th)) || 1; let phase = 'drop', landedAt = -1;
+  for (let i = 0; i < 60 * 10; i++) {
+    if (r.state !== 'RIDE') break;
+    if (r.air) { g.input.test = 0; g.input.paddleBtn = false; }
+    else { const sl = r.wave.prof.slice(r.s), hTop = r.y / Math.max(sl.top, 0.3); let want;
+      if (landedAt >= 0) want = Math.atan2(0.3, along); else if (phase === 'drop') { want = Math.atan2(0.85, along * 0.5); if (hTop < 0.22) phase = 'up'; } else want = Math.atan2(-1, along * upAngle);
+      g.input.test = Math.max(-1, Math.min(1, wrap(want - r.th) * 3)); g.input.paddleBtn = phase === 'drop' && landedAt < 0; }
+    const was = !!r.air; g.step(1 / 60, 1 / 60, false); if (was && !r.air && landedAt < 0) landedAt = i;
+    if (outside && i % 3 === 0 && (r.air || (i > 30 && r.y / Math.max(r.wave.prof.slice(r.s).top, 0.3) > 0.5))) {
+      const c = g.camera, p = c.position.clone(), q = c.quaternion.clone(), rp = g.rig.position; rd.setPixelRatio(1); rd.setSize(700, 600, false); c.aspect = 700 / 600; c.updateProjectionMatrix();
+      c.position.set(rp.x + 1.0, rp.y + 1.4, rp.z + 4.5); c.lookAt(rp.x, rp.y + 0.6, rp.z); c.layers.enable(1); g.HIDELEGS.value = 0; g.CUT.value = 0; g.WATERY.value = -99; g.ARMCUT.value = 0; g.surfer.traverse((o) => { if (o.name === 'head') o.scale.setScalar(1); if (o.isMesh && o.material.name === 'hair') o.visible = true; });
+      rd.render(g.scene, c); await post(name, i, rd); c.layers.disable(1); g.CUT.value = 0.21; g.surfer.traverse((o) => { if (o.name === 'head') o.scale.setScalar(0.001); }); c.aspect = asp; c.updateProjectionMatrix(); c.position.copy(p); c.quaternion.copy(q);
+    }
+    if (!outside && i % 2 === 0) { fix(); rd.autoClear = false; rd.clear(); rd.render(g.scene, g.camera); const a = g.armCam; a.position.copy(g.camera.position); a.quaternion.copy(g.camera.quaternion); rd.clearDepth(); rd.render(g.scene, a); rd.autoClear = true; await post(name, i / 2, rd); log.push([Math.round(r.v * 3.6), r.air ? 1 : 0, 0, r.state]); }
+    if (landedAt >= 0 && i - landedAt > 90) break;
+  }
+  g.input.test = null; g.input.paddleBtn = false;
+  await fetch('http://127.0.0.1:8799/f?shot=meta&i=0', { method: 'POST', body: JSON.stringify(log) });
+  return log.length;
+}

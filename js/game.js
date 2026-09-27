@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=158';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=128';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=129';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=15';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
@@ -13,8 +13,8 @@ import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=22';
-import { wildlife } from './wildlife.js?v=26';
+import { crew } from './crew.js?v=23';
+import { wildlife } from './wildlife.js?v=27';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
@@ -819,7 +819,14 @@ function updateCamera(dt) {
   if (st === 'WIPE' && W.on && surfer) { povWipe(dt); return; }
   setUnder(0, dt);
   povCamera(dt);
+  // flying, or sliding sideways up the face into the lip, the body turns away from where you look and your front
+  // shoulder swings right up to the lens (you saw the inside of your own upper arm as a brown blob): the upper arm near
+  // the lens is left out then, only forearm and hand show, as they already do lying on the board
+  { const slip = Math.abs(Math.atan2(Math.sin(rider.th - Math.atan2(rider.vz, rider.vx)), Math.cos(rider.th - Math.atan2(rider.vz, rider.vx))));
+    const want = rider.standing && (rider.air || (rider.v > 3 && slip > 0.35)) ? 1 : 0;
+    armCutK += (want - armCutK) * Math.min(1, dt * (want ? 12 : 3)); ARMCUT.value = 0.34 * armCutK; }
 }
+let armCutK = 0;
 
 // ---------- surfer pose on the board
 const WORLD_UP = new THREE.Vector3(0, 1, 0), INTO_WAVE = new THREE.Vector3(0, 0, -1), tmpM = new THREE.Matrix4(), xAxis = new THREE.Vector3(), bodyUp = new THREE.Vector3(), bodyFwd = new THREE.Vector3(), bodyX = new THREE.Vector3();
@@ -1956,7 +1963,7 @@ renderer.setAnimationLoop(() => {
   ARMTH.value = rider && rider.standing ? 0.02 : 0.12;   // standing, shoulder skin is kept whole (no holes up the arm); sitting or lying your shoulder is right at the lens, so it's cut away   // (outside views, e.g. tests and replays, show the whole body)
   if (camera.layers.isEnabled(1)) renderer.render(scene, camera);
   else {
-    ARMCUT.value = 0; WATERY.value = rider && rider.state === 'LIE' && !W.on ? rig.position.y + 0.01 : -99;
+    ARMCUT.value = rider && rider.standing ? 0.34 * armCutK : 0; WATERY.value = rider && rider.state === 'LIE' && !W.on ? rig.position.y + 0.01 : -99;
     armK += ((rider && rider.standing && !(W.on) ? 1 : 0) - armK) * Math.min(1, dt * 4);
     armCam.position.copy(camera.position); armCam.quaternion.copy(camera.quaternion);
     armCam.aspect = camera.aspect; armCam.fov = camera.fov + (62 - camera.fov) * armK; armCam.updateProjectionMatrix(); if (mir) flipProj(armCam);

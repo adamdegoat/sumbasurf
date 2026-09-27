@@ -147,7 +147,7 @@ export class Rider {
     this.paddling = false; this.paddleT = 0; this.catchT = 0;
     this.turn = 0; this.lean = 0; this.skid = 0; this.relS = 1; this.v = 0; this.hx = 0; this.hz = 0; this.gAlong = 0;
     this.wave = null; this.s = 99; this.zl = 99; this.inBarrel = false; this.onFace = false; this.lowT = 0;
-    this.air = null; this.vyS = 0; this.prevY = undefined;
+    this.air = null; this.vyS = 0; this.hitV = 0; this.vyPk = 0; this.prevY = undefined;
     this.pumpWas = false; this.pumpN = 0; this.pumpGap = 9; this.pumpT = 9; this.pumpQ = 0; this.weave = 0; this.pumping = false; this.foamT = 0; this.wwFloatT = 0; this.tubeOut = 0; this.turnHold = 0; this.recentPaddle = 0; this.slide = 0; this.stalling = 0;
     this.ride = { t: 0, top: 0, barrel: 0, pocket: 0, turns: 0, cutbacks: 0, snaps: 0, speed: 0, end: 0, score: 0, moves: [], tubeT: 0, leanPk: 0 }; this.turnSign = 0; this.cbArmed = false; this.snapArm = 0; this.trick = null;
   }
@@ -178,6 +178,9 @@ export class Rider {
     this.vyS += (Math.max(-12, Math.min(12, hx * this.vx + hz * (this.vz - cw))) - this.vyS) * Math.min(1, h * 12);
     // pointing straight up the face without carving (the run at the lip that makes an air, not the swing of a turn)
     this.upT = this.standing && Math.sin(this.th) < -0.2 && Math.abs(this.turn) < 1.7 ? (this.upT || 0) + h : 0;
+    // what you carry into the lip: the speed and climb of your run at it over the last moment, not what's left the
+    // instant you touch it (the climb itself scrubs speed, so judging the very top left airs almost impossible)
+    this.hitV = Math.max(this.v, (this.hitV || 0) - 2.5 * h); this.vyPk = Math.max(this.vyS, (this.vyPk || 0) - 8 * h);
     const dx = Math.cos(this.th), dz = Math.sin(this.th);
     const slope2 = hx * hx + hz * hz;
     this.gAlong = hx * dx + hz * dz;                                   // rise per metre in the direction the board points
@@ -358,8 +361,8 @@ export class Rider {
     else if (this.wwFloatT > 0) { if (this.wwFloatT > 0.35) this.move('FLOATER', Math.min(1, this.wwFloatT / 1.2)); this.wwFloatT = 0; }   // made it back onto the clean face
     // an air: come up the face fast and hit the lip, and it throws you into the sky with it (going up slowly, it just
     // takes you over the falls, below). Needs speed and a steep, rising face; not from inside the tube
-    if (P.air && this.state === 'RIDE' && this.stateT > 0.8 && onFront && s > -0.25 * H && y > 0.78 * sl.top && this.vyS > Math.max(2.6, 0.42 * Math.sqrt(9.8 * H)) && this.v > 0.8 * C.speed && this.upT > 0.12) {   // (a deliberate hit: fast, and pointing up at the lip, not a top turn that happens to rise)
-      this.air = { t: 0, vy: Math.min(0.9 * Math.sqrt(9.8 * H), this.vyS * 1.1 + 1.2), spin: 0, peak: 0 };   // (capped: you fly about as high as the wave is steep, not further)
+    if (P.air && this.state === 'RIDE' && this.stateT > 0.8 && onFront && s > -0.25 * H && y > 0.78 * sl.top && this.vyPk > Math.max(2.6, 0.42 * Math.sqrt(9.8 * H)) && this.hitV > 0.8 * C.speed && this.upT > 0.12) {   // (a deliberate hit: fast, and pointing up at the lip, not a top turn that happens to rise)
+      this.air = { t: 0, vy: Math.min(0.9 * Math.sqrt(9.8 * H), this.vyPk * 1.1 + 1.2), spin: 0, peak: 0 };   // (capped: you fly about as high as the wave is steep, not further)
       this.vz = Math.max(this.vz, C.speed * 1.02);   // the throwing lip carries you forward with it
       this.inBarrel = false; this.onFace = false; return;
     }

@@ -279,3 +279,16 @@ export async function smoothness(mode = 'medium', seed = 7) {
   await moment(mode, 'trim', seed); { let t = 0; out.flicks = measure(() => { t += 1 / 60; g.input.test = Math.sin(t * Math.PI / 0.5) > 0 ? 1 : -1; }, 240); }   // worst case: full thumb flicked side to side
   return out;
 }
+
+// airs, many tries: the deliberate air line on each spot at several climb angles and seeds; plus whether ordinary
+// carving and barrel rides now launch by accident (the challenge bots)
+export async function airSurvey() {
+  const out = {};
+  for (const m of ['easy', 'medium', 'hard']) { let n = 0, launched = 0, landed = 0; const why = {};
+    for (const seed of [7, 11, 13]) for (const a of [0.2, 0.5, 1.0]) { const o = await airTry(m, seed, a); if (typeof o === 'string') continue; n++;
+      if (!o.res.startsWith('wiped before launch') && o.res !== 'no launch') launched++; if (o.res === 'LANDED') landed++; else why[o.res.split(':')[0]] = (why[o.res.split(':')[0]] || 0) + 1; }
+    out['try_' + m] = `${launched}/${n} launched, ${landed} landed | ${JSON.stringify(why)}`; }
+  const C = await import('./chalsim.js');
+  for (const m of ['easy', 'medium', 'hard', 'kanan', 'hiu']) for (const k of ['carve', 'barrel']) { const s = await C.ride(m, k, 7); out[`bot_${m}_${k}`] = s.replace(/^.*?: /, '').slice(0, 140); }
+  return out;
+}

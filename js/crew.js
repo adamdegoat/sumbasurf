@@ -6,7 +6,7 @@
 // boardshorts, see surfers.js) each is posed from the same points the old stick figures were drawn from; until then (or
 // if they can't load) they're drawn as three instanced meshes (limbs, heads, boards).
 import * as THREE from 'three';
-import { heightAt } from './surf.js?v=128';
+import { heightAt } from './surf.js?v=129';
 import { waterPerson, poseFrom } from './surfers.js?v=3';
 
 const N = 7, SEG = 7;   // surfers; limb pieces each (2 thighs, 2 shins, torso, 2 arms)
