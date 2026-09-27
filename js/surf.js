@@ -17,7 +17,7 @@ export const RIDE = {
   // carving works like a skier or a leaning bike: you tip the board onto its rail and the lean makes the turn,
   // turn rate = g * tan(lean) / speed. The fins hold up to gripMax sideways; lean past that and the tail drifts out.
   leanMax: 1.25, leanRate: 9.0, leanEase: 14, yawLag: 0.08, railBite: 0.3, tailLet: 0.35, tailBack: 0.3,        // full thumb = ~66 deg on the rail (a ~2.3 g carve); how fast you can roll the board over (rad/s)   (answers like a real shortboard: turning within ~0.2 s, a full turn in under half a second; the long boards keep their slow, heavy response)
-  finGrip: 4.2, gripMax: 24,            // sideways: fins kill sliding at this rate, up to this much force (m/s^2): a buried rail holds ~2 g
+  finGrip: 4.2, gripMax: 24, relFrom: 0.45,            // sideways: fins kill sliding at this rate, up to this much force (m/s^2): a buried rail holds ~2 g
   skidLoss: 0.16,                      // share of the excess sideways force lost as speed while the tail drifts
   glide: 0.7,                          // share of the fins' braking given back in a carve (0 = raw physics, 1 = no loss)
   stallDrag: 3.0,                      // full brake (back foot + hand drag) slows you by this (m/s^2)
@@ -33,13 +33,14 @@ export const RIDE = {
 
 // The boards. Each changes the physics the way the real thing does (relative to the 6'2" shortboard above):
 //   fish      5'8" wide twin fin: paddles and planes easily and holds speed with little pumping; loose, skatey turns that
+//             (a touch more turn at full thumb than the shortboard, and the tail lets go from a gentler lean: relFrom)
 //             drift early; less grip on steep heavy waves
 //   longboard 9'2": paddles fast and catches waves early; very stable and glides; slow, wide turns; no snaps or airs
 //   gun       9'6" big-wave board: paddles into huge waves early; holds a line at high speed with lots of grip; stiff turns
 const BASE = { ...RIDE };
 export const BOARDS = {
   short: {},
-  fish: { paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.25, leanRate: 10.0, yawLag: 0.06, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85, catchPaddle: 0.6, catchLate: 1.9 },
+  fish: { paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.3, relFrom: 0.3, leanRate: 10.0, yawLag: 0.06, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85, catchPaddle: 0.6, catchLate: 1.9 },
   long: { paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.5, catchK: 0.65, catchPaddle: 0.35, catchLate: 2.5, air: false, turnMin: 0.55 },
   gun: { paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.42, catchK: 0.75, catchPaddle: 0.5, catchLate: 2.0, turnMin: 0.75 },
 };
@@ -151,7 +152,7 @@ export class Rider {
     this.wave = null; this.s = 99; this.zl = 99; this.inBarrel = false; this.onFace = false; this.lowT = 0;
     this.air = null; this.vyS = 0; this.hitV = 0; this.vyPk = 0; this.prevY = undefined;
     this.pumpWas = false; this.pumpN = 0; this.pumpGap = 9; this.pumpT = 9; this.pumpQ = 0; this.weave = 0; this.pumping = false; this.foamT = 0; this.wwFloatT = 0; this.tubeOut = 0; this.turnHold = 0; this.recentPaddle = 0; this.slide = 0; this.stalling = 0;
-    this.ride = { t: 0, top: 0, barrel: 0, pocket: 0, turns: 0, cutbacks: 0, snaps: 0, speed: 0, end: 0, score: 0, moves: [], tubeT: 0, leanPk: 0 }; this.turnSign = 0; this.cbArmed = false; this.snapArm = 0; this.trick = null;
+    this.ride = { t: 0, top: 0, barrel: 0, pocket: 0, turns: 0, cutbacks: 0, snaps: 0, speed: 0, end: 0, score: 0, moves: [], tubeT: 0, leanPk: 0 }; this.turnSign = 0; this.tyMin = this.tyMax = undefined; this.cbArmed = false; this.snapArm = 0; this.trick = null;
   }
   set(state) { this.state = state; this.stateT = 0; }
   get standing() { return this.state === 'POP' || this.state === 'RIDE'; }
@@ -278,7 +279,7 @@ export class Rider {
       // the harder you lay the rail over, the more the tail lets go: a little slide in an easy turn, a full drift at full thumb
       // the harder you lay it over, the more the tail lets go, but not at once: in a hard turn the tail holds for a moment,
       // then slides out; straighten up and it eases back in (a drift that builds, not a switch)
-      const relT = 1 - 0.3 * smooth(0.45 * P.leanMax, P.leanMax, Math.abs(this.lean));   // fins hold a carve (~2 g); only the deepest lean lets the tail slide
+      const relT = 1 - 0.3 * smooth((P.relFrom || 0.45) * P.leanMax, P.leanMax, Math.abs(this.lean));   // fins hold a carve (~2 g); only the deepest lean lets the tail slide
       this.relS += (relT - this.relS) * Math.min(1, h / (relT < this.relS ? P.tailLet : P.tailBack));
       const release = this.relS;
       const latA = P.finGrip * Math.hypot(lx, lz), lim = P.gripMax * pop * release;
@@ -329,7 +330,7 @@ export class Rider {
     this.onFace = onFront && slope > 0.22 && this.hz < -0.1;          // downhill is toward the beach
     // the lip lands on anyone under it
     const fgL = C.forgive || 1;   // (a forgiving wave: the lip's landing zone is narrower and it throws you a little later)
-    if (lipDown && s < -0.3 * H && s > -4.5 * H && zl > sl.lipZ - 0.3 && zl - sl.lipZ < (0.45 + 0.1 * H) * fgL && y < 0.55 * H) return this.wipe('The lip landed on you');   // (only where it lands and just outside: tucked inside under it you're in the barrel, not under the hammer)
+    if (lipDown && s < -0.3 * H && s > -4.5 * H && zl > sl.lipZ - 0.3 && zl - sl.lipZ < (0.45 + 0.1 * H) * fgL && y < 0.55 * H) return this.wipe(this.standing && this.ride.t < 3 ? 'The lip landed on you: angle along the wave as you stand up, not straight down' : 'The lip landed on you');   // (only where it lands and just outside: tucked inside under it you're in the barrel, not under the hammer)
     if (!this.standing) {
       // caught inside: the whitewater rolls you toward the beach (you hang on to the board)
       if (sl.broken > 0.35 && onFront && y > 0.1 * H) this.washed = true;
@@ -404,9 +405,10 @@ export class Rider {
       if (this.inBarrel) this.tubeOut = 0;
       // a turn counts when the carve swings hard one way and then hard the other at speed
       // (and only a real carve: the last one held for at least 0.35 s, so thumb wiggles don't count)
+      const hFace = y / Math.max(sl.top, 0.3); this.tyMin = Math.min(this.tyMin ?? hFace, hFace); this.tyMax = Math.max(this.tyMax ?? hFace, hFace);   // how far up and down the face you've been since the last turn
       if (Math.abs(this.turn) > 0.9 * P.turnMin && this.v > C.peel * 0.8) {   // (a longboard's flowing turns count at its own, gentler rate)
         const sg = Math.sign(this.turn);
-        if (sg !== this.turnSign) { if (this.turnSign !== 0 && this.turnHold > 0.35) { this.ride.turns++; this.move('TURN', crit); } this.turnSign = sg; this.turnHold = 0; }
+        if (sg !== this.turnSign) { if (this.turnSign !== 0 && this.turnHold > 0.35) { this.ride.turns++; this.move('TURN', crit, 0, 0.35 + 0.65 * smooth(0.15, 0.45, this.tyMax - this.tyMin)); } this.turnSign = sg; this.turnHold = 0; this.tyMin = this.tyMax = hFace; }   // (a turn is judged on how much of the face it used: flat S-bends in the middle score a third)
         else this.turnHold = (this.turnHold || 0) + h;
       }
       // a cutback: from running down the line, turn right round to face the breaking part, still with speed
@@ -471,11 +473,11 @@ export class Rider {
     if (!sl || q.zl < sl.topZ - 0.3) return this.out('Landed the air out the back');   // (the air still counts)
     this.vx *= 0.85; this.vz *= 0.85; this.v = Math.hypot(this.vx, this.vz);   // your legs soak up the landing
   }
-  move(name, crit, dur = 0) {
+  move(name, crit, dur = 0, k = 1) {
     const C = this.wave.cond, spd = Math.min(1, this.v / (C.speed * 1.1)), pow = this.ride.leanPk;
     let q = Math.min(1, 0.35 * spd + 0.3 * pow + 0.35 * crit), base = { TURN: 1.2, SNAP: 2.0, CUTBACK: 2.2, FLOATER: 1.8, AIR: 2.6, 'AIR 360': 3.4 }[name] || 0;
     if (name === 'BARREL') { base = 1.4 + 1.1 * Math.min(dur, 6); q = crit; }
-    const pts = base * (0.4 + 0.6 * q) * (0.8 + 0.2 * Math.min(1.5, C.H / 3));   // bigger surf, bigger scores
+    const pts = k * base * (0.4 + 0.6 * q) * (0.8 + 0.2 * Math.min(1.5, C.H / 3));   // bigger surf, bigger scores
     this.ride.moves.push({ name, pts, t: this.ride.t });
     const big = q > 0.75 ? (name === 'BARREL' ? 'DEEP ' : 'BIG ') : '';
     this.trick = { name: big + name + (name === 'BARREL' ? ` ${dur.toFixed(1)}s` : name.startsWith('AIR') ? ` ${dur.toFixed(1)}m` : ''), t: 0 };
