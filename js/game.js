@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=157';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard } from './surf.js?v=123';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=126';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=15';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
@@ -13,8 +13,8 @@ import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=17';
-import { wildlife } from './wildlife.js?v=21';
+import { crew } from './crew.js?v=20';
+import { wildlife } from './wildlife.js?v=24';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
@@ -686,7 +686,7 @@ function povCamera(dt) {
   pov.pitch += (pitchT - pov.pitch) * Math.min(1, dt * (st === 'POP' ? 4 + 20 * Math.min(1, rider.stateT / 0.3) : 5));   // (the pop: eyes snap down to the board between your hands)
   pov.roll += ((standing ? -rider.lean * 0.2 : 0) - pov.roll) * Math.min(1, dt * 6);   // you feel the lean: the horizon tips as you lay into a carve (less than the board: people hold their head nearer level)
   // three.js cameras look down -z: turn our heading (angle in x/z) into a yaw about y
-  _pe.set(pov.pitch, -pov.yaw - Math.PI / 2, pov.roll);
+  _pe.set(pov.pitch - (rider.standing ? 0.055 * pumpA : 0), -pov.yaw - Math.PI / 2, pov.roll);   // (each pump stroke: the head nods down ~3 deg as you compress, like real POV footage)
   camera.quaternion.setFromEuler(_pe);
   camera.position.copy(pov.pos).add(rig.position);
   // feel the water: small quick bumps through the board (chop under you), stronger with speed and chop, and a
@@ -841,7 +841,11 @@ function updateRig(dt, t) {
   // standing, the board rides on its rail (partway between the face and level) and rolls into the carve
   if (standing) {
     pose.up.lerp(WORLD_UP, 0.45).normalize();
-    const roll = rider.lean * 0.8;                                      // the board on its rail: the lean you're carving with
+    // each pump stroke swoops the board a little, rail to rail and nose swinging, like the small S a real pump makes
+    // (only what you see: your line and the physics are untouched). One stroke one way, the next the other way.
+    const pw = rider.pumping ? Math.sin(Math.PI * rider.pumpT / PUMP_STROKE) : 0, ps = rider.pumpN % 2 ? 1 : -1;
+    const roll = rider.lean * 0.8 + ps * 0.12 * pw;                     // the board on its rail: the lean you're carving with
+    pose.fwd.applyAxisAngle(WORLD_UP, ps * 0.07 * pw);
     pose.up.applyAxisAngle(pose.fwd, roll);   // (+lean turns right, toward +z; rolling up toward +z puts the right rail in the water)
   }
   pose.up.addScaledVector(pose.fwd, -pose.up.dot(pose.fwd)).normalize();
@@ -897,9 +901,9 @@ function updateRig(dt, t) {
     // crouch: deeper at speed and in the barrel; pumping compresses the legs, letting go extends them
     pumpC += ((input.paddle ? 1 : 0) - pumpC) * Math.min(1, dt * 7);
     // pumping is a rhythm, not a held squat: compress onto the board on the way down, spring up light, ~1.4 times a second
-    pumpA += ((input.paddle ? 1 : 0) - pumpA) * Math.min(1, dt * 5); if (pumpA > 0.01) pumpPh += dt * Math.PI * 2 * 1.4;
+    { const pe = rider.pumping ? 0.5 - 0.5 * Math.cos(2 * Math.PI * rider.pumpT / PUMP_STROKE) : 0; pumpA += (pe - pumpA) * Math.min(1, dt * 20); }   // (each stroke of the physics, not a clock of its own: what you see is what pushes you)   // (smooth down and up each stroke: back to back they make one continuous bob)
     // knees: deeper at speed, in the barrel and when pumping; they compress under the load of a hard turn and extend out of it
-    const deep = Math.min(0.7, (0.14 + 0.06 * Math.min(1, rider.v / 10) + (0.31 - 0.06 * Math.min(1, rider.v / 10)) * barrelK) + 0.22 * pumpA * (0.5 + 0.5 * Math.sin(pumpPh)) + 0.2 * airK + 0.25 * gLoad + 0.22 * Math.min(1, Math.abs(rider.lean) / RIDE.leanMax) + 0.2 * (rider.stalling || 0));   // (the crouch clip is a full squat: trim is a light knee bend, hips well above the knees)
+    const deep = Math.min(0.7, (0.14 + 0.06 * Math.min(1, rider.v / 10) + (0.31 - 0.06 * Math.min(1, rider.v / 10)) * barrelK) + 0.25 * pumpA + 0.2 * airK + 0.25 * gLoad + 0.22 * Math.min(1, Math.abs(rider.lean) / RIDE.leanMax) + 0.2 * (rider.stalling || 0));   // (the crouch clip is a full squat: trim is a light knee bend, hips well above the knees)
     if (curClip !== clips.crouch) { play('crouch', { fade: 0.3 }); clips.stand.reset().play(); }
     // rising out of the pop-up's deep squat over half a second (not snapping up: that jerks your eyes up 16 cm in a frame)
     const up_ = Math.min(1, rider.stateT / 0.6), rise = up_ * up_ * (3 - 2 * up_);
@@ -1373,7 +1377,13 @@ function surfStance() {
   bones.upperarm_l.getWorldPosition(_ik1); bones.upperarm_r.getWorldPosition(_ik2);
   const chest = _cv.crossVectors(WORLD_UP, _ik3.subVectors(_ik2, _ik1)).dot(INTO_WAVE) > 0 ? 1 : 0;   // up x (right - left shoulder) = chest
   const leanW = Math.abs(leanN) * (Math.sign(_in.dot(R) * ws) || 0);   // + = leaning toward the wave (bottom turn), - = away (top turn / cutback)
-  const bt = Math.max(0, leanW), tt = Math.max(0, -leanW), pumpUp = pumpA * Math.sin(pumpPh) * 0.1;   // + = compressed: the arms drive down and forward with the legs, back up as you spring
+  const bt = Math.max(0, leanW), tt = Math.max(0, -leanW), pumpUp = 0;
+  // pumping arms: in time with each stroke, both hands drive down and forward as the legs compress, then lift a little
+  // above where they were as you spring up (a full swing every stroke, like a skater pumping a ramp); the front hand
+  // leads, the back hand follows smaller. Only what you see: the physics doesn't know about the arms.
+  { const pg = rider.pumpGap, want = rider.standing && pg < PUMP_PERIOD ? Math.sin(2 * Math.PI * pg / PUMP_PERIOD) : 0;
+    armPw += (want - armPw) * Math.min(1, dtArm * 18); }
+  const aw = (armPw > 0 ? armPw : 0.55 * armPw) * 0.14 * (1 - popK);   // metres: down 14 cm at the press, up ~8 cm on the spring
   // your eyes this frame (the camera itself is placed after the pose, a frame behind: at 10 m/s that's 17 cm)
   const eye = bones.head.getWorldPosition(_eyeA).addScaledVector(F, POVCAM.fwd).addScaledVector(WORLD_UP, POVCAM.up);
   // a target in eye space: f forward, d down, x toward the wave (negative = open side)
@@ -1384,12 +1394,12 @@ function surfStance() {
     const front = s === frontArm, sway = Math.sin(bodyT * 1.7 + (front ? 0 : 1.3)) * 0.03;
     const P = _ap;
     if (front) {
-      at(P, (chest ? 0.64 : 0.6) + 0.6 * pumpUp, 0.58 - sway + pumpUp, chest ? 0.3 : -0.3);   // out over the rail, beside the board                       // trim
+      at(P, chest ? 0.64 : 0.6, 0.58 - sway, chest ? 0.3 : -0.3);   // out over the rail, beside the board                       // trim
       if (bt) P.lerp(chest ? at(_aq, 0.55, 0.5, 0.3) : at(_aq, 0.45, 0.78, 0.34), bt);                               // bottom turn
       if (tt) P.lerp(at(_aq, 0.5, 0.68, -0.32), tt);                                                                  // top turn / cutback: leads round, points down the face
       if (deep) P.lerp(chest ? at(_aq, 0.45, 0.66, 0.45) : at(_aq, 0.48, 0.72, -0.22), deep);                           // barrel (backside pigdog: low, grabbing the outside rail)
     } else {
-      at(P, -0.08 - 0.9 * pumpUp, 0.78 - sway + 0.3 * pumpUp, -0.3);   // relaxed and low, just ahead of the back hip toward the rail (the shoulder is ~0.35 below the eyes)                                                                                // trim: by the back hip
+      at(P, -0.08, 0.78 - sway, -0.3);   // relaxed and low, just ahead of the back hip toward the rail (the shoulder is ~0.35 below the eyes)                                                                                // trim: by the back hip
       if (bt) P.lerp(chest ? at(_aq, -0.08, 0.92, 0.35) : at(_aq, -0.2, 0.62, -0.25), bt);
       if (tt) P.lerp(at(_aq, 0.3, 0.75, -0.15), tt);                                                                  // comes across low
       if (deep) P.lerp(chest ? at(_aq, -0.15, 0.7, 0.2) : at(_aq, -0.3, 0.6, 0.4), deep);                             // barrel (backside: trailing arm along the face)
@@ -1402,6 +1412,7 @@ function surfStance() {
     // pop-up: hands flat on the deck either side of the stringer, just ahead of your chest (placed on the board itself)
     if (popK > 0) { const sideSign = Math.sign(_cv.subVectors(bones['upperarm_' + s].getWorldPosition(_ik4), bones.spine_03.getWorldPosition(_ik1)).dot(_ik2.set(1, 0, 0).applyQuaternion(rig.quaternion))) || 1;
       P.lerp(rig.localToWorld(_aq.set(0.17 * sideSign, 0.1, 0.35)), popK); }
+    if (aw) P.addScaledVector(F, (front ? 0.6 : 0.25) * aw).addScaledVector(WORLD_UP, -(front ? 1 : 0.6) * aw);   // (the pump swing, on top of whatever the arms are doing)
     // smooth each hand's path (the pose blends above can jump between frames when the lean changes side)
     // (smoothed relative to your eyes: smoothing in the world would leave the hands trailing behind you at speed)
     const sm = armSm[s]; P.sub(eye); if (!sm.ok || snapCam) { sm.p.copy(P); sm.ok = true; } else sm.p.lerp(P, Math.min(1, dtArm * 14)); P.copy(sm.p).add(eye);
@@ -1422,7 +1433,7 @@ function surfStance() {
     reachArm(ua, la, hd, P, _aq, st === 'POP' ? 0.95 : 0.92 * w);
   }
 }
-let waveSide = -1; const _eyeA = new THREE.Vector3(), _wr = new THREE.Vector3(), _ray = new THREE.Raycaster(); const armSm = { l: { p: new THREE.Vector3(), ok: false }, r: { p: new THREE.Vector3(), ok: false } }, _hq = new THREE.Quaternion();
+let waveSide = -1, armPw = 0; const _eyeA = new THREE.Vector3(), _wr = new THREE.Vector3(), _ray = new THREE.Raycaster(); const armSm = { l: { p: new THREE.Vector3(), ok: false }, r: { p: new THREE.Vector3(), ok: false } }, _hq = new THREE.Quaternion();
 let dtArm = 1 / 60;
 
 // ---------- HUD + end of ride
@@ -1445,9 +1456,9 @@ function updateHUD(dt) {
     else if (inc.w && inc.t < 7 && inc.t > -0.5) hint = !facingIn ? `Wave coming: turn to face ${isRanch() ? 'the shallow end' : 'the beach'}` : inc.t < 2.5 ? 'Paddle hard!' : 'Wave coming... get ready';
     else if (session.waves < 2 && inc.t >= 7) hint = 'Watch the horizon for the next set';
     else if (rider.z > 12) hint = 'Too far in: paddle back out past the break';
-  } else if (st === 'POP') hint = session.waves < 5 ? `Up! Go ${MIRROR ? 'RIGHT' : 'LEFT'} along the wave, tap PUMP for speed` : 'Up!';
+  } else if (st === 'POP') hint = session.waves < 5 ? `Up! Go ${MIRROR ? 'RIGHT' : 'LEFT'} along the wave, hold PUMP for speed` : 'Up!';
   else if (st === 'RIDE' && rider.inBarrel && (rider.foamT || 0) > 0.4) hint = 'Too deep! PUMP and steer up the face to get out';
-  else if (st === 'RIDE' && rider.stateT < 7.5 && session.waves < 3) hint = rider.stateT < 2.5 ? 'Slide your thumb left and right to carve, like a steering wheel' : rider.stateT < 5 ? 'Tap PUMP in a steady rhythm for speed, STALL to brake and let the barrel catch you' : 'Let go and the board just glides straight';
+  else if (st === 'RIDE' && rider.stateT < 7.5 && session.waves < 3) hint = rider.stateT < 2.5 ? 'Slide your thumb left and right to carve, like a steering wheel' : rider.stateT < 5 ? 'Hold PUMP and carve gently for speed, STALL to brake and let the barrel catch you' : 'Let go and the board just glides straight';
   else if (st === 'RIDE' && rider.stateT > 8 && rider.stateT < 12 && session.waves < 5 && !rider.ride.cutbacks) hint = `Cutback: keep turning ${MIRROR ? 'left' : 'right'} till you face the breaking wave, then turn back`;
   else if (st === 'RIDE' && rider.stateT > 13 && rider.stateT < 17 && session.waves >= 1 && session.waves < 6 && !rider.ride.moves.some((m) => m.name.startsWith('AIR')) && RIDE.air) hint = 'Air: race down, then turn hard up the face into the lip and it launches you';
   // the curl is right behind you: tell the player how to get covered (a barrel comes to whoever sets up for it)
@@ -1532,7 +1543,7 @@ const portrait = matchMedia('(orientation: portrait) and (max-width: 900px)'); l
         setTimeout(() => { if (document.visibilityState === 'visible') btn.textContent = ok ? 'LINK COPIED. PASTE IT IN SAFARI' : 'SEE THE LINK BELOW'; }, 1500); }); }
   } }
 let liveShown = false;
-let last = performance.now(), T = 0, strokeT = 0, lastState = '', lastTrick = null, crashT = 1, lastPump = false;
+let last = performance.now(), T = 0, strokeT = 0, lastState = '', lastTrick = null, crashT = 1, lastPump = false, speedFlash = 0;
 // ---------- your villa: walk around the clifftop villa at Tanjung Uma, pick a board from the rack, watch the waves
 const _wl = new THREE.Vector3();
 const vSitB = document.getElementById('vSit');
@@ -1903,7 +1914,8 @@ function tick(dt) {
     // a snap or cutback rips spray off the rail: a sharp tearing hiss
     if (rider.trick && rider.trick !== lastTrick) { audio.burst(0.3, 3200, 0.45, 'highpass'); audio.burst(0.2, 1300, 0.35); }
     lastTrick = rider.trick;
-    const pumpNow = !!(rider.standing && st === 'RIDE' && inp.pump); if (pumpNow && !lastPump) audio.pump(); lastPump = pumpNow;
+    if (rider.pumpN !== lastPump) { if (rider.standing && st === 'RIDE' && rider.pumpN > 0) { audio.pump(); railSpray.burst(rig.position, 22, 1.1); speedFlash = 0.3; } lastPump = rider.pumpN; }   // every stroke: a push of water off the rails, a little spray and the speed lights up
+    if (speedFlash > 0) { speedFlash -= dt; if (speedFlash <= 0) ui.speed.classList.remove('up'); else if (!ui.speed.classList.contains('up')) ui.speed.classList.add('up'); }
 
     sunLight.position.copy(camera.position).addScaledVector(ENV.uSun.value, 30); sunLight.target.position.copy(camera.position);
   } else if (mode === 'villa' && walker) {
