@@ -4,11 +4,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=165';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=154';
-import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=15';
+import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=16';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
 import { SPOTS, spotGroup, builtSpots } from './spots.js?v=90';
-import { villa, VILLA } from './villa.js?v=128';
+import { villa, VILLA } from './villa.js?v=129';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
@@ -583,7 +583,7 @@ for (const b of document.querySelectorAll('[data-board]')) b.addEventListener('c
 let starting = false;
 // back to the level select: stop the game behind the menu (you pick a level again to restart)
 function toMenu() {
-  starting = false; chalHide(); if (drone.on) droneSet(false); showOff(true); audio.quiet(true);
+  starting = false; chalHide(); if (drone.on) droneSet(false); showOff(true); glareTick(false); audio.quiet(true);
   // clear the session: the menu gets its slow drifting wave behind it again (and nothing of the old ride keeps running)
   if (surfer) endWipe(); rider = null; rig.visible = false; endT = -1;
   for (const w of waves) w.dispose(scene); waves = [];
@@ -834,18 +834,34 @@ for (let i = 0; i < 14; i++) { const el = document.createElement('div'); el.clas
 function splashLens(n, big = 1) {
   if (Q.has('nolens')) return;
   const w = innerWidth, h = innerHeight, k = Math.min(1.4, h / 400);
+  // (riding fast, the drops get dragged: most of them run, further, stretching into streaks)
+  const fast = !globalThis.__fxOff && rider && rider.standing ? Math.min(1, Math.max(0, (rider.v - 7) / 6)) : 0;
   for (let i = 0; i < n; i++) {
     const d = lensDrops[lensI++ % lensDrops.length]; if (d.anim) d.anim.cancel();
-    const sz = (10 + Math.random() * Math.random() * 55 * big) * k, run = Math.random() < 0.45, life = 1300 + Math.random() * 2200, fall = run ? h * (0.12 + Math.random() * 0.35) : sz * 0.3;
+    const sz = (10 + Math.random() * Math.random() * 55 * big) * k, run = Math.random() < 0.45 + 0.4 * fast, life = (1300 + Math.random() * 2200) * (1 - 0.35 * fast), fall = run ? h * (0.12 + Math.random() * 0.35) * (1 + fast) : sz * 0.3, drift = (Math.random() - 0.5) * 60 * fast;
     const rr = () => 38 + Math.random() * 24 | 0;   // (each drop its own lumpy shape: perfect circles read as bubbles)
     Object.assign(d.el.style, { borderRadius: `${rr()}% ${rr()}% ${rr()}% ${rr()}%/${rr()}% ${rr()}% ${rr()}% ${rr()}%`, width: sz * (0.8 + Math.random() * 0.4) + 'px', height: sz * (0.8 + Math.random() * 0.4) + 'px', left: Math.random() * w + 'px', top: Math.random() * h * 0.85 + 'px' });
     d.anim = d.el.animate([
       { transform: 'translateY(0) scale(.5)', opacity: 0 },
       { transform: 'translateY(0) scale(1)', opacity: 0.95, offset: 0.05 },
       { transform: `translateY(${fall * 0.25}px) scale(1)`, opacity: 0.85, offset: 0.5 },
-      { transform: `translateY(${fall}px) scale(${run ? '.75,1.3' : '.85'})`, opacity: 0 }],
+      { transform: `translate(${drift}px, ${fall}px) scale(${run ? `${0.75 - 0.2 * fast},${1.3 + 0.8 * fast}` : '.85'})`, opacity: 0 }],
       { duration: life, delay: Math.random() * 150, easing: 'ease-in', fill: 'both' });
   }
+}
+// the sun on the lens: a soft warm glare where the sun is, when you look toward it (screen-blended, so it only lightens)
+const glareEl = document.createElement('div');
+glareEl.style.cssText = 'position:fixed;left:0;top:0;width:70vmax;height:70vmax;margin:-35vmax 0 0 -35vmax;pointer-events:none;z-index:5;opacity:0;mix-blend-mode:screen;background:radial-gradient(circle,rgba(255,240,210,.55),rgba(255,214,160,.18) 30%,rgba(255,200,140,0) 62%);will-change:transform,opacity';
+document.body.appendChild(glareEl);
+const _gv = new THREE.Vector3(), _gf = new THREE.Vector3();
+function glareTick(on) {
+  if (!on || globalThis.__fxOff) { if (glareEl.style.opacity !== '0') glareEl.style.opacity = '0'; return; }
+  const sun = ENV.uSun.value; camera.getWorldDirection(_gf); const face = _gf.dot(sun);
+  if (face < 0.3) { if (glareEl.style.opacity !== '0') glareEl.style.opacity = '0'; return; }
+  _gv.copy(camera.position).addScaledVector(sun, 500).project(camera);
+  if (MIRROR) _gv.x = -_gv.x;
+  glareEl.style.transform = `translate(${((_gv.x + 1) / 2 * innerWidth).toFixed(0)}px,${((1 - _gv.y) / 2 * innerHeight).toFixed(0)}px)`;
+  glareEl.style.opacity = (ENV.uSunVis.value * Math.pow((face - 0.3) / 0.7, 2) * 0.8).toFixed(3);
 }
 function clearLens() { for (const d of lensDrops) if (d.anim) { d.anim.cancel(); d.anim = null; } }
 let lensBarrelT = 0, lensSpit = 0, lensWashed = false;
@@ -891,9 +907,9 @@ function updateCamera(dt) {
   if (bones.head) bones.head.scale.setScalar(0.001);   // hide your own head from your own eyes
   setHfov(55 + 7 * smooth01(tubeLook));   // (and the lens opens up a little in there, like a GoPro: more of the roof and the lip)
   tubeK = 0;
-  if (st === 'WIPE' && W.on && surfer) { povWipe(dt); return; }
+  if (st === 'WIPE' && W.on && surfer) { glareTick(false); povWipe(dt); return; }
   setUnder(0, dt);
-  povCamera(dt);
+  povCamera(dt); glareTick(true);
   // whitewater rolling over you (a close-out washing through, a broken wave passing you in the lineup): your eyes are in
   // the foam, so you see churning white, not the flat inside of the wave's surface
   { const inW = heightAt(waves, camera.position.x, camera.position.z) - camera.position.y;
@@ -1104,6 +1120,91 @@ const railSpray = (() => {
         pos[i * 3] += vel[i * 3] * dt; pos[i * 3 + 1] += vel[i * 3 + 1] * dt; pos[i * 3 + 2] += vel[i * 3 + 2] * dt;
       }
       g.attributes.position.needsUpdate = true;
+    },
+  };
+})();
+
+// ---------- first-person water: what you see around the board as you surf (all looks, none of it touches the ride).
+//  - flecks: foam specks sitting on the water ahead, so at speed they rush past under the nose, and a thin V of
+//    white water peeling off the nose either side
+//  - sheets: big soft clouds of spray thrown off the rail in a carve, and a burst that fills the view for a moment in
+//    a snap or cutback; fine spray blowing back off the lip over you when you're up near it
+//  - drops: water beading on the deck and running back toward the tail at speed; a spurt over the nose off the chop
+// __fxOff = true turns them all off (for measuring what they cost)
+const surfFx = (() => {
+  const soft = (() => { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const x = cv.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(0.45, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(cv); })();
+  // flecks (flat foam on the water, same look as the wake)
+  const FN = 260, fp = new Float32Array(FN * 3), fa = new Float32Array(FN), fs = new Float32Array(FN), fl = new Float32Array(FN), f0 = new Float32Array(FN), fv = new Float32Array(FN * 2);
+  const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.BufferAttribute(fp, 3)); fg.setAttribute('aA', new THREE.BufferAttribute(fa, 1)); fg.setAttribute('aS', new THREE.BufferAttribute(fs, 1));
+  const fm = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { uScale: { value: 1 }, uMax: { value: 8 } },
+    vertexShader: 'attribute float aA; attribute float aS; varying float vA; uniform float uScale; uniform float uMax; void main(){ vA = aA; vec4 mv = modelViewMatrix * vec4(position, 1.); gl_PointSize = min(aS * uScale / -mv.z, uMax); gl_Position = projectionMatrix * mv; }',
+    fragmentShader: 'varying float vA; void main(){ vec2 d = gl_PointCoord - .5; d.y *= 3.2; float r = dot(d, d) * 4.; if (r > 1.) discard; gl_FragColor = vec4(vec3(.92, .95, .95), vA * (1. - r) * (1. - r) * .8); }' });   // (squashed flat and soft-edged: foam lying on the water, not dots floating over it)
+  const fpts = new THREE.Points(fg, fm); fpts.frustumCulled = false; scene.add(fpts);
+  for (let i = 0; i < FN; i++) fp[i * 3 + 1] = -99;
+  // sheets (big soft spray)
+  const SN = 280, sp = new Float32Array(SN * 3), sv = new Float32Array(SN * 3), sl = new Float32Array(SN).fill(-1);
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+  const spts = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xf4f7f6, size: 0.34, map: soft, transparent: true, opacity: 0.42, depthWrite: false }));
+  spts.frustumCulled = false; scene.add(spts); for (let i = 0; i < SN; i++) sp[i * 3 + 1] = -99;
+  // drops on the deck (in the board's own frame, so they ride with it)
+  const DN = 48, dp = new Float32Array(DN * 3), dsp = new Float32Array(DN);
+  const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(dp, 3));
+  const dpts = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xf2fbff, size: 0.045, map: soft, transparent: true, opacity: 0.95, depthWrite: false }));
+  dpts.frustumCulled = false; for (let i = 0; i < DN; i++) dp[i * 3 + 1] = -99;
+  let fNext = 0, fAcc = 0, vAcc = 0, sNext = 0, sAcc = 0, mAcc = 0, lastTrick = null, frame = 0, spurtT = 2;
+  const _a = new THREE.Vector3(), _b = new THREE.Vector3();
+  const fleck = (x, z, vx, vz, life, size, y) => { const i = fNext; fNext = (fNext + 1) % FN; fp[i * 3] = x; fp[i * 3 + 1] = y ?? heightAt(waves, x, z) + 0.03; fp[i * 3 + 2] = z; fv[i * 2] = vx; fv[i * 2 + 1] = vz; fl[i] = f0[i] = life; fs[i] = size; };
+  const sheet = (p, v, spread) => { const i = sNext; sNext = (sNext + 1) % SN; sp[i * 3] = p.x; sp[i * 3 + 1] = p.y; sp[i * 3 + 2] = p.z; sv[i * 3] = v.x + (Math.random() - .5) * spread; sv[i * 3 + 1] = v.y + Math.random() * spread; sv[i * 3 + 2] = v.z + (Math.random() - .5) * spread; sl[i] = 0.55 + Math.random() * 0.5; };
+  return {
+    attach() { if (dpts.parent !== board) board.add(dpts); },
+    update(dt) {
+      fm.uniforms.uScale.value = renderer.domElement.height * 0.9; fm.uniforms.uMax.value = 20 * renderer.getPixelRatio(); frame++;   // (up close under the nose they're allowed to be big: that's what reads as speed)
+      const on = !globalThis.__fxOff && rider && rider.standing && rider.y > -1 && rider.state === 'RIDE';
+      if (on) {
+        const v = rider.v, fx = Math.cos(rider.th), fz = Math.sin(rider.th), vx = rider.vx, vz = rider.vz;
+        // foam on the water ahead: it stays where it is, so the faster you go the faster it rushes past under you
+        fAcc += Math.max(0, v - 3) * 17 * dt;
+        while (fAcc >= 1) { fAcc--; const d = 1.5 + Math.pow(Math.random(), 0.8) * 16, side = (Math.random() - 0.5) * (1.6 + d * 0.5);
+          fleck(rig.position.x + fx * d - fz * side, rig.position.z + fz * d + fx * side, 0, 0, 1.2 + Math.random(), 0.09 + Math.random() * 0.13); }
+        // the V off the nose: white water peeling away either side, spreading as you pass
+        const L = board.position.z + BOARD_LENGTH(boardType) / 2 - 0.15;
+        vAcc += Math.max(0, v - 4) * 18 * dt;
+        while (vAcc >= 1) { vAcc--; const sd = Math.random() < 0.5 ? -1 : 1, ox = -fz * sd, oz = fx * sd, out = 0.9 + Math.random() * 0.8;
+          _a.copy(rig.position).addScaledVector(pose.fwd, L + 0.2 + Math.random() * 1.0);   // (just ahead of the nose, where you can see it: it sweeps back past you either side)
+          fleck(_a.x + ox * 0.18, _a.z + oz * 0.18, ox * out - fx * 0.4, oz * out - fz * 0.4, 0.7 + Math.random() * 0.5, 0.07 + Math.random() * 0.05); }
+        // spray sheets off the rail in a carve (to the outside of the turn, up and carried along with you)
+        const curtain = Math.min(1, Math.abs(rider.turn) * v / 10 + rider.skid), out = Math.sign(rider.lean) || 1, sx = Math.sin(rider.th) * out, sz = -Math.cos(rider.th) * out;
+        if (v > 5) sAcc += curtain * curtain * 80 * dt;
+        while (sAcc >= 1) { sAcc--; _a.copy(rig.position).addScaledVector(pose.fwd, -0.2 - Math.random() * 0.6).addScaledVector(pose.up, 0.05);
+          const keep = 0.55 + Math.random() * 0.3; _b.set(vx * keep + sx * (2.5 + Math.random() * 3.5) * curtain, 1.8 + Math.random() * 2.4 * curtain, vz * keep + sz * (2.5 + Math.random() * 3.5) * curtain); sheet(_a, _b, 1.2); }
+        // a snap or cutback throws a wall of it up in front of you for a moment
+        if (rider.trick && rider.trick !== lastTrick && /SNAP|CUTBACK/.test(rider.trick.name)) {
+          for (let k = 0; k < 70; k++) { _a.copy(rig.position).addScaledVector(pose.fwd, -0.3 + Math.random() * 0.8).addScaledVector(pose.up, 0.1);
+            _b.set(vx * 0.8 + sx * (3 + Math.random() * 4) + fx * 1.5, 3 + Math.random() * 4, vz * 0.8 + sz * (3 + Math.random() * 4) + fz * 1.5); sheet(_a, _b, 2); } }
+        lastTrick = rider.trick;
+        // up near the lip: fine spray blowing back off it over you (the offshore wind)
+        const w = rider.wave;
+        if (w && !rider.inBarrel && rider.s > -1.2 * w.cond.H && rider.s < 2.5 * w.cond.H && rider.y > 0.45 * w.cond.H) {
+          const wind = ENV.weather && ENV.weather.wind !== undefined ? ENV.weather.wind : 1; mAcc += 30 * wind * dt;
+          while (mAcc >= 1) { mAcc--; const L2 = w.lipAt(rider.s + (Math.random() - 0.3) * 8); _a.set(L2[0], L2[1] * (w.fade || 1) + 0.3, L2[2]);
+            _b.set((Math.random() - 0.5) * 0.8, 1.2 + Math.random(), w.cond.speed - (3 + Math.random() * 4) * wind); sheet(_a, _b, 0.8); } }
+        // drops on the deck, blown back toward the tail at speed; a spurt over the nose now and then off the chop
+        const run = 0.4 + v * 0.14, nose = board.position.z + BOARD_LENGTH(boardType) / 2 - 0.25, tail = boardTail + 0.1;
+        for (let i = 0; i < DN; i++) { if (dp[i * 3 + 1] < -9 || dp[i * 3 + 2] < tail) { if (v > 5 && Math.random() < dt * 6) { dp[i * 3] = (Math.random() - 0.5) * 0.34; dp[i * 3 + 1] = 0.045; dp[i * 3 + 2] = nose - Math.random() * 0.5; dsp[i] = run * (0.6 + Math.random() * 0.8); } else { dp[i * 3 + 1] = -99; continue; } }
+          dp[i * 3 + 2] -= dsp[i] * dt; dp[i * 3] += Math.sin(frame * 0.3 + i) * 0.02 * dt; }
+        dg.attributes.position.needsUpdate = true;
+        if (v > 8 && (spurtT -= dt) <= 0) { spurtT = 1 + Math.random() * 2.5; _a.copy(rig.position).addScaledVector(pose.fwd, nose); _b.set(vx * 0.9, 2.2, vz * 0.9); railSpray.stream(_a, _b, 12, 1.2); if (Math.random() < 0.25) splashLens(2, 0.5); }
+      } else if (dpts.visible) { for (let i = 0; i < DN; i++) dp[i * 3 + 1] = -99; dg.attributes.position.needsUpdate = true; }
+      // age everything
+      for (let i = 0; i < FN; i++) { if (fl[i] <= 0) continue; fl[i] -= dt; if (fl[i] <= 0) { fp[i * 3 + 1] = -99; fa[i] = 0; continue; }
+        const age = f0[i] - fl[i]; fa[i] = Math.min(1, age / 0.2) * Math.min(1, fl[i] / 0.5);
+        fp[i * 3] += fv[i * 2] * dt; fp[i * 3 + 2] += (fv[i * 2 + 1] + 1.2) * dt; fv[i * 2] *= 1 - dt * 1.5; fv[i * 2 + 1] *= 1 - dt * 1.5;
+        if ((i + frame) % 3 === 0) fp[i * 3 + 1] = heightAt(waves, fp[i * 3], fp[i * 3 + 2]) + 0.03; }
+      fg.attributes.position.needsUpdate = true; fg.attributes.aA.needsUpdate = true; fg.attributes.aS.needsUpdate = true;
+      for (let i = 0; i < SN; i++) { if (sl[i] <= 0) { if (sl[i] > -1) { sp[i * 3 + 1] = -99; sl[i] = -1; } continue; } sl[i] -= dt; sv[i * 3 + 1] -= 9.8 * dt; const k = Math.exp(-dt * 1.6); sv[i * 3] *= k; sv[i * 3 + 2] *= k;
+        sp[i * 3] += sv[i * 3] * dt; sp[i * 3 + 1] += sv[i * 3 + 1] * dt; sp[i * 3 + 2] += sv[i * 3 + 2] * dt; }
+      sg.attributes.position.needsUpdate = true;
     },
   };
 })();
@@ -1839,7 +1940,7 @@ function startVilla() {
   for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 3; setLeft = 0; setPos = 0;
   if (surfer) endWipe(); rider = null; rig.visible = false;
   document.getElementById('vZoom').classList.remove('on'); document.querySelector('#vZoom span').textContent = 'ZOOM'; document.getElementById('vWatch').classList.remove('on'); document.querySelector('#vWatch span').textContent = 'WATCH A RIDE'; vSitB.classList.remove('on');
-  if (drone.on) droneSet(false); showOff(true); setTimeout(() => { if (!showW && mode === 'villa') showW = droneShow(scene); }, 2500);   // (the show's shapes are worked out while you look around, not the moment you press the button)
+  if (drone.on) droneSet(false); showOff(true); glareTick(false); setTimeout(() => { if (!showW && mode === 'villa') showW = droneShow(scene); }, 2500);   // (the show's shapes are worked out while you look around, not the moment you press the button)
   walker = { x: villaW.spawn.x, z: villaW.spawn.z, yaw: villaW.spawn.yaw, pitch: -0.08, y: VILLA.Y + 1.65, mx: 0, mz: 0 };
   ui.start.style.display = 'none'; document.body.classList.add('playing', 'villa'); ui.cond.textContent = 'Your villa';
   document.getElementById('vTip').textContent = DESK ? 'WASD or the arrow keys walk, drag the mouse to look, click to pick. Boards are in the board room.' : 'Left thumb walks, right thumb looks. Boards are in the board room.';
@@ -2103,7 +2204,7 @@ function tick(dt) {
     if (mixer) { mixer.update(dt); paddleArms(dt); dtArm = dt; surfStance(); }
     updateLeash(); updateScenery(dt); updateLocals(dt);
     railSpray.update(dt);
-    wake.update(dt); track.update(dt);
+    wake.update(dt); track.update(dt); surfFx.attach(); surfFx.update(dt);
     updateCamera(dt);
     updateHUD(dt); lensTick(dt);
     // sound follows what's happening: the breaking wave is loud near the curl

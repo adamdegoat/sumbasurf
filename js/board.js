@@ -135,7 +135,7 @@ export function makeBoard(type = 'short') {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(col, 2));
   g.setIndex(idx); g.computeVertexNormals();
-  const board = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: paintSheet(type, S), roughness: 0.35, side: THREE.DoubleSide }));
+  const board = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: paintSheet(type, S), roughness: 0.2, side: THREE.DoubleSide })   /* (a wet glossy deck: the sun catches it) */);
   // three fins under the tail
   const fin = new THREE.Shape(); fin.moveTo(0, 0); fin.quadraticCurveTo(0.02, -0.1, 0.07, -0.11); fin.lineTo(0.09, 0); fin.lineTo(0, 0);
   const fg = new THREE.ExtrudeGeometry(fin, { depth: 0.006, bevelEnabled: false });
