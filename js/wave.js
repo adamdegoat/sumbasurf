@@ -30,7 +30,7 @@ export const CONDITIONS = {
   // the two rights (drawn mirrored): their own waves, not copies of the lefts
   kanan:   { H: 7.0,  speed: 8.2,  peel: 5.6,  angle: 60, period: 13, hollow: 0.92, forgive: 0.95, len: 1.0, width: 1.05, fat: 1.0, tube: 0.8,  wobble: 0.18, burst: 1.3, softA: 0.35, name: 'Medium' },   // a racier, hollower mid-size right: more tube, a bit less wall
   hiu:     { H: 9.3,  speed: 10.0, peel: 8.1,  angle: 52, period: 15, hollow: 1.0,  forgive: 0.85, len: 1.35, width: 0.92, fat: 0.76, tube: 0, wobble: 0.3,  burst: 1.7, softA: 0.8,  name: 'Hard' },     // a fast, shallow, square right over coral: runs away from you: a racing barrel, keep your speed or the foam ball has you
-  extreme: { H: 15,   speed: 13.5, peel: 11,   angle: 45, period: 20, hollow: 1.0,  forgive: 1,   len: 4,   width: 1.25, fat: 1.1, tube: 0.3,  wobble: 0.3,  burst: 2.1, softA: 0.8,  name: 'Extreme' },  // a 15 m mountain of water; a giant reef wave breaks in shallower water (H/d ~1.1) and runs ~13-14 m/s, like Jaws
+  extreme: { H: 15,   speed: 13.5, peel: 11,   angle: 45, period: 20, hollow: 1.0,  forgive: 0.85, len: 4,   width: 1.25, fat: 1.1, tube: 0.2,  wobble: 0.3,  burst: 2.1, softA: 0.8,  name: 'Extreme' },  // a 15 m mountain of water; a giant reef wave breaks in shallower water (H/d ~1.1) and runs ~13-14 m/s, like Jaws
 };
 
 // The Surf Ranch's machine waves: the pool's own settings (a machine makes the same wave every time), so tuning a reef
