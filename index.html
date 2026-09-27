@@ -438,13 +438,16 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-0054</small>
+    <small id="build">build 260928-0110</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-28-music', date: '28 Sep 2026', time: '1:10 am', title: 'Six new songs', items: [
+      'New on the radio from OpenMindAudio: Relaxed Summer Groove, Moonlit Mermaids, Sun Kiss Sip, Break of Day, Old Friends and Sunset Cup.',
+    ] },
     { id: '2026-09-28-judge', date: '28 Sep 2026', time: '12:54 am', title: 'New judging', items: [
       'Every move is judged on speed, power and how close to the curl you did it. Wiggles no longer count as turns.',
       'Link different moves for a combo. Repeating the same move is worth less each time.',
@@ -560,6 +563,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=772"></script>
+<script type="module" src="js/game.js?v=775"></script>
 </body>
 </html>

@@ -1717,14 +1717,16 @@ let last = performance.now(), T = 0, strokeT = 0, lastState = '', lastTrick = nu
 // ---------- your villa: walk around the clifftop villa at Tanjung Uma, pick a board from the rack, watch the waves
 const _wl = new THREE.Vector3();
 const vSitB = document.getElementById('vSit');
-// music: all 13 of OpenMindAudio's reggae songs, shuffled. From the villa radio (quieter and duller the further you are from it), under the
+// music: OpenMindAudio (Pixabay): all 14 reggae songs plus three island calypso and two dancehall tracks, shuffled. From the villa radio (quieter and duller the further you are from it), under the
 // menu, loud at the Surf Ranch like a pool speaker; never on the reef
 const SONGS = {
   'stand-firm-like-a-tree': ['Stand Firm Like a Tree', 'OpenMindAudio'], 'barefoot-in-the-breeze': ['Barefoot in the Breeze', 'OpenMindAudio'], 'streets-still-singing': ['Streets Still Singing', 'OpenMindAudio'],
   'drop-of-peace': ['Drop of Peace', 'OpenMindAudio'], 'generational-stew': ['Generational Stew', 'OpenMindAudio'], 'shelter-in-the-storm': ['Shelter in the Storm', 'OpenMindAudio'],
   'yardman-sing-along': ['Yardman Sing Along', 'OpenMindAudio'], 'rise-again': ['Rise Again', 'OpenMindAudio'], 'moonbeam-rendezvous': ['Moonbeam Rendezvous', 'OpenMindAudio'],
   'dawn-still-knows-your-name': ['Dawn Still Knows Your Name', 'OpenMindAudio'], 'breathe-and-hold-on': ['Breathe and Hold On', 'OpenMindAudio'], 'after-the-rain-we-feast': ['After the Rain We Feast', 'OpenMindAudio'],
-  'slow-kisses-warm-nights': ['Slow Kisses, Warm Nights', 'OpenMindAudio'] };
+  'slow-kisses-warm-nights': ['Slow Kisses, Warm Nights', 'OpenMindAudio'], 'relaxed-summer-groove': ['Relaxed Summer Groove', 'OpenMindAudio'],
+  'moonlit-mermaids': ['Moonlit Mermaids', 'OpenMindAudio'], 'sun-kiss-sip': ['Sun Kiss Sip', 'OpenMindAudio'],
+  'break-of-day': ['Break of Day', 'OpenMindAudio'], 'old-friends': ['Old Friends', 'OpenMindAudio'], 'sunset-cup': ['Sunset Cup', 'OpenMindAudio'] };
 const songOf = (src) => SONGS[(src || '').split('/').pop().replace('.mp3', '')] || ['Island radio', ''];
 // the Now playing box: tap it and back / next buttons open under the song (they fold away again after a few seconds)
 { const box = document.getElementById('vSong'); let shut = null; const later = () => { clearTimeout(shut); shut = setTimeout(() => box.classList.remove('open'), 6000); };
@@ -1733,7 +1735,7 @@ const songOf = (src) => SONGS[(src || '').split('/').pop().replace('.mp3', '')] 
   for (const [id, f] of [['mPrev', () => audio.musicPrev()], ['mNext', () => audio.musicNext()]]) { const b = document.getElementById(id), go = (e) => { e.preventDefault(); e.stopPropagation(); f(); audio.musicKick(); later(); };
     b.addEventListener('click', go); b.addEventListener('touchstart', go, { passive: false }); } }
 audio.onTrack = (src) => { const [t, a] = songOf(src); if (villaW) villaW.setSong(t, a); document.getElementById('vSongT').textContent = t; document.getElementById('vSongA').textContent = a ? 'by ' + a : ''; };
-const MUSIC = ['stand-firm-like-a-tree', 'barefoot-in-the-breeze', 'streets-still-singing', 'drop-of-peace', 'generational-stew', 'shelter-in-the-storm', 'yardman-sing-along', 'rise-again', 'moonbeam-rendezvous', 'dawn-still-knows-your-name', 'breathe-and-hold-on', 'after-the-rain-we-feast', 'slow-kisses-warm-nights'].map((n) => 'music/' + n + '.mp3');
+const MUSIC = ['stand-firm-like-a-tree', 'barefoot-in-the-breeze', 'streets-still-singing', 'drop-of-peace', 'generational-stew', 'shelter-in-the-storm', 'yardman-sing-along', 'rise-again', 'moonbeam-rendezvous', 'dawn-still-knows-your-name', 'breathe-and-hold-on', 'after-the-rain-we-feast', 'slow-kisses-warm-nights', 'relaxed-summer-groove', 'moonlit-mermaids', 'sun-kiss-sip', 'break-of-day', 'old-friends', 'sunset-cup'].map((n) => 'music/' + n + '.mp3');
 let radioOn = true;   // (the villa's speakers, all together)
 let earOn = false; try { earOn = localStorage.getItem('sumbasurf.ear') === '1'; } catch (e) {}   // an earpiece while you surf: your call, remembered
 { const eb = document.getElementById('ear'), show = () => { eb.classList.toggle('on', earOn); eb.querySelector('span').textContent = earOn ? 'EARPIECE ON' : 'EARPIECE'; };
