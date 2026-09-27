@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=157';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=126';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=128';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=15';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
@@ -13,8 +13,8 @@ import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=20';
-import { wildlife } from './wildlife.js?v=24';
+import { crew } from './crew.js?v=22';
+import { wildlife } from './wildlife.js?v=26';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
@@ -436,7 +436,7 @@ function readInput(dt) {
   const kx = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
   // thumb feel: a small dead zone (a resting thumb wobbles), fine control near the centre, full lean at the edge,
   // and a light filter so the board answers smoothly instead of twitching with every pixel
-  const shape = (v) => { const a = Math.abs(v); return a < 0.08 ? 0 : Math.sign(v) * Math.pow((a - 0.08) / 0.92, 1.35); };
+  const shape = (v) => { const a = Math.abs(v); return a < 0.08 ? 0 : Math.sign(v) * Math.pow((a - 0.08) / 0.92, 1.15); };   // (a gentler curve: half the pad asks for a real, gentle turn)
   const ky = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0);
   const sx = input.stick ? input.stick.x : (kx || shape(padX)) * (MIRROR ? -1 : 1), sy = input.stick ? input.stick.y : ky || shape(padY);   // (a mirrored spot: your thumb steers what you see)
   steerF += (sx - steerF) * Math.min(1, dt * 14);

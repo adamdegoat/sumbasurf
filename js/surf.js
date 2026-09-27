@@ -16,7 +16,7 @@ export const RIDE = {
   drag: 0.09, drag2: 0.013,            // planing drag along the board
   // carving works like a skier or a leaning bike: you tip the board onto its rail and the lean makes the turn,
   // turn rate = g * tan(lean) / speed. The fins hold up to gripMax sideways; lean past that and the tail drifts out.
-  leanMax: 1.25, leanRate: 7.0, leanEase: 7, yawLag: 0.15, railBite: 0.3, tailLet: 0.35, tailBack: 0.3,        // full thumb = ~66 deg on the rail (a ~2.3 g carve); how fast you can roll the board over (rad/s)
+  leanMax: 1.25, leanRate: 9.0, leanEase: 14, yawLag: 0.08, railBite: 0.3, tailLet: 0.35, tailBack: 0.3,        // full thumb = ~66 deg on the rail (a ~2.3 g carve); how fast you can roll the board over (rad/s)   (answers like a real shortboard: turning within ~0.2 s, a full turn in under half a second; the long boards keep their slow, heavy response)
   finGrip: 4.2, gripMax: 24,            // sideways: fins kill sliding at this rate, up to this much force (m/s^2): a buried rail holds ~2 g
   skidLoss: 0.16,                      // share of the excess sideways force lost as speed while the tail drifts
   glide: 0.7,                          // share of the fins' braking given back in a carve (0 = raw physics, 1 = no loss)
@@ -37,9 +37,9 @@ export const RIDE = {
 const BASE = { ...RIDE };
 export const BOARDS = {
   short: {},
-  fish: { paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.25, leanRate: 8.0, yawLag: 0.1, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85 },
-  long: { paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.5, catchK: 0.65, air: false, turnMin: 0.55 },
-  gun: { paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.42, catchK: 0.75, turnMin: 0.75 },
+  fish: { paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.25, leanRate: 10.0, yawLag: 0.06, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85 },
+  long: { paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.5, catchK: 0.65, air: false, turnMin: 0.55 },
+  gun: { paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.42, catchK: 0.75, turnMin: 0.75 },
 };
 export function setBoard(name) { Object.assign(RIDE, BASE, BOARDS[name] || {}); }
 
@@ -227,7 +227,10 @@ export class Rider {
       const pop = this.state === 'POP' ? 0.4 : 1;
       const speed = Math.hypot(this.vx, this.vz);
       // roll the board toward the lean your thumb asks for (weight shifts take a moment), then the lean carves the turn
-      const wantLean = inp.steer * P.leanMax * pop, dl = wantLean - this.lean;
+      // your thumb asks for a share of the full turn, not of the full lean: the lean a turn needs grows steeply (tan), so a
+      // straight thumb-to-lean map left half a thumb turning a quarter as hard. Half the thumb now leans the board over
+      // as far as half the turn really takes (the physics of the carve itself is unchanged)
+      const wantLean = Math.sign(inp.steer) * Math.atan(Math.abs(inp.steer) * Math.tan(P.leanMax)) * pop, dl = wantLean - this.lean;
       // backside (your back to the wave), rolling onto the heel rail to turn up into it is slower and blinder than
       // frontside's toe rail: the board answers a little later (the wave is on your right when you head toward -x)
       const intoWave = Math.cos(this.th) < 0 ? 1 : -1, maxRoll = P.leanRate * h * (this.backside && Math.sign(dl) === intoWave ? 0.82 : 1);
