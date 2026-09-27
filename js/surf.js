@@ -25,6 +25,8 @@ export const RIDE = {
   popTime: 0.35,                       // seconds from lying to standing
   waterPush: 1.0,                      // how much the wave's moving water carries you
   catchK: 1,                           // how much speed and slope a board needs to catch a wave (bigger boards: less)
+  catchPaddle: 0.9,                    // seconds you must already be paddling when the wave lifts you (bigger boards: less)
+  catchLate: 1.7,                      // seconds after the wave first lifts you that it can still take you (bigger boards: longer)
   turnMin: 1,                          // share of the shortboard's turn rate that counts as a real turn
   air: true,                           // can this board launch an air
 };
@@ -37,9 +39,9 @@ export const RIDE = {
 const BASE = { ...RIDE };
 export const BOARDS = {
   short: {},
-  fish: { paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.25, leanRate: 10.0, yawLag: 0.06, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85 },
-  long: { paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.5, catchK: 0.65, air: false, turnMin: 0.55 },
-  gun: { paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.42, catchK: 0.75, turnMin: 0.75 },
+  fish: { paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.25, leanRate: 10.0, yawLag: 0.06, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85, catchPaddle: 0.6, catchLate: 1.9 },
+  long: { paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.5, catchK: 0.65, catchPaddle: 0.35, catchLate: 2.5, air: false, turnMin: 0.55 },
+  gun: { paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.42, catchK: 0.75, catchPaddle: 0.5, catchLate: 2.0, turnMin: 0.75 },
 };
 export function setBoard(name) { Object.assign(RIDE, BASE, BOARDS[name] || {}); }
 
@@ -144,7 +146,7 @@ export class Rider {
   reset(x, z, th) {
     this.x = x; this.z = z; this.y = 0; this.vx = 0; this.vz = 0; this.th = th;
     this.state = 'LIE'; this.stateT = 0; this.why = ''; this.washed = false;
-    this.paddling = false; this.paddleT = 0; this.catchT = 0;
+    this.paddling = false; this.paddleT = 0; this.padUp = 0; this.liftT = 0; this.catchT = 0;
     this.turn = 0; this.lean = 0; this.skid = 0; this.relS = 1; this.v = 0; this.hx = 0; this.hz = 0; this.gAlong = 0;
     this.wave = null; this.s = 99; this.zl = 99; this.inBarrel = false; this.onFace = false; this.lowT = 0;
     this.air = null; this.vyS = 0; this.hitV = 0; this.vyPk = 0; this.prevY = undefined;
@@ -219,6 +221,7 @@ export class Rider {
       // lying: slow hull, sitting up is a brake, arms push you along
       this.paddling = inp.paddle;
       this.paddleT = inp.paddle ? this.paddleT + h : 0;
+      this.padUp = inp.paddle ? Math.min(2, (this.padUp || 0) + h) : Math.max(0, (this.padUp || 0) - 2 * h);   // how long you've been stroking (lets go fast when you stop)
       this.recentPaddle = inp.paddle ? 0.6 : Math.max(0, (this.recentPaddle || 0) - h);   // you only get into a wave by paddling for it
       const k = (P.lieDrag + P.lieDrag2 * Math.abs(along)) * (inp.paddle ? 1 : 1.8);
       ax += -k * along * dx - P.lieLat * lx; az += -k * along * dz - P.lieLat * lz;
@@ -331,12 +334,17 @@ export class Rider {
       // caught inside: the whitewater rolls you toward the beach (you hang on to the board)
       if (sl.broken > 0.35 && onFront && y > 0.1 * H) this.washed = true;
       // pulled over the falls: lying at the top of a wave that's pitching
-      if (onFront && y > 0.8 * sl.top && s < 0.6 * H && s > -2 * H && zl < sl.topZ + 0.4) return this.wipe('Too late: it pulled you over the falls');
+      if (onFront && y > 0.8 * sl.top && s < 0.6 * H && s > -2 * H && zl < sl.topZ + 0.4) return this.wipe(this.paddleT > 2 ? 'Too far in: the peak pitched right over you' : 'Too late: it pulled you over the falls');
       // the catch: on the face, heading for the beach, and going as fast as the wave
       // (once you're sliding down a steep enough face at a good share of its speed, it has you: you pop up and gravity does the rest)
       // (on a huge wave you get in earlier, lower on the face, like a big-wave gun: the speed you need is capped)
+      // how long the wave has been lifting you: it only carries you for a moment, then passes under you
+      this.liftT = this.onFace ? (this.liftT || 0) + h : Math.max(0, (this.liftT || 0) - 3 * h);
+      // and you have to be paddling already, up to speed, when it lifts you: a few strokes as it arrives are too late on a
+      // shortboard (catchPaddle, seconds of paddling), less so on the floaty boards; and it has to take you within catchLate
+      // seconds of first lifting you, or it's gone
       const catchV = Math.min(C.speed * 0.5, 3.2 + 0.1 * C.speed) * P.catchK;   // (a longer, floatier board gets in with less)
-      if (this.onFace && this.recentPaddle > 0 && Math.sin(this.th) > 0.2 && this.vz > catchV && slope > 0.4 * P.catchK) { this.catchT += h; if (this.catchT > 0.1) { this.set('POP'); this.catchT = 0; } }
+      if (this.onFace && this.recentPaddle > 0 && this.padUp >= P.catchPaddle && this.liftT <= P.catchLate && Math.sin(this.th) > 0.2 && this.vz > catchV && slope > 0.4 * P.catchK) { this.catchT += h; if (this.catchT > 0.1) { this.set('POP'); this.catchT = 0; } }
       else this.catchT = 0;
       return;
     }
