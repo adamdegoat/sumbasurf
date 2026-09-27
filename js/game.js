@@ -630,7 +630,7 @@ const _wT = new THREE.Vector3(), _lT = new THREE.Vector3();
 // A real surfer's head is steady: the eye point is smoothed, the horizon stays level with only a slight lean into turns,
 // and the view swings smoothly (never snaps) as you turn. Your own head is hidden so the camera never sees inside it.
 const POVCAM = { fwd: 0.1, up: 0.14, pitch: -0.5, drop: 0.08 };   // eye point ahead of/above the head bone, head pitch riding, extra pitch at the take-off
-const _pq2 = new THREE.Quaternion(); let tubeLook = 0, roofOff = 0, curtOff = 0, wallOff = 0;
+const _pq2 = new THREE.Quaternion(), popEye0 = new THREE.Vector3(), lastEye = new THREE.Vector3(), eyeCarry = new THREE.Vector3(); let lastEyeSt = ''; let tubeLook = 0, roofOff = 0, curtOff = 0, wallOff = 0;
 const pov = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0, pitch: -0.2, roll: 0, ready: false }, _eye = new THREE.Vector3(), _pe = new THREE.Euler(0, 0, 0, 'YXZ');
 function povCamera(dt) {
   if (!bones.head && surfer) surfer.traverse((o) => { if (o.isBone) bones[o.name] = o; });
@@ -645,7 +645,8 @@ function povCamera(dt) {
   const travel = moving ? Math.atan2(rider.vz - waveRun, rider.vx) : rider.th;
   // look mostly where you're travelling, partly where the board points (you see the nose swing in a turn/drift)
   const dh = Math.atan2(Math.sin(rider.th - travel), Math.cos(rider.th - travel));
-  let yawT = travel + dh * (standing ? 0.4 : 0.8);   // (a little toward where the board points: you see the nose swing in a turn)
+  const popIn = st === 'POP' ? smooth01(rider.stateT / 0.2) : 1;   // (the catch: the view eases into the pop over 0.2 s; it used to lurch and tip in the first frame)
+  let yawT = travel + dh * (standing ? 0.8 - 0.4 * popIn : 0.8);   // (a little toward where the board points: you see the nose swing in a turn)
   // in the barrel look down the tube toward the exit (along the line), not out through the open side at the beach
   tubeLook += ((rider.inBarrel && standing ? 1 : 0) - tubeLook) * Math.min(1, dt * 1.5);
   // (no automatic turn in the barrel: the view swinging on its own as you went in felt like losing control; your view
@@ -663,21 +664,28 @@ function povCamera(dt) {
   // pop-up: the clip throws the head out over the rail; a real pop keeps your head over the stringer, eyes on the
   // board between your hands, so the camera stays over the middle of the board while you come up
   if (st === 'POP' || (st === 'RIDE' && rider.stateT < 0.4)) {
-    const k = st === 'POP' ? 0.8 : 0.8 * (1 - rider.stateT / 0.4);
+    const k = st === 'POP' ? 0.8 * popIn : 0.8 * (1 - rider.stateT / 0.4);
     _pq2.copy(rig.quaternion).invert(); _eye.applyQuaternion(_pq2); _eye.x *= 1 - k; _eye.applyQuaternion(rig.quaternion);
   }
+  // the pop swaps the lying pose for the crouch in one frame (the head jumps ~20 cm): the eye goes from where it was
+  // lying to the new head over the same 0.2 s instead
+  if (st === 'POP' && popIn < 1) _eye.lerpVectors(popEye0, _eye, popIn); else if (!standing) popEye0.copy(_eye);
+  // and as you finish standing (pop -> ride) the body's pose hands over and the head steps ~5 cm: carry that step away over ~0.2 s
+  if (st === 'RIDE' && lastEyeSt === 'POP') eyeCarry.subVectors(lastEye, _eye);
+  if (st === 'RIDE' && rider.stateT < 0.4) _eye.addScaledVector(eyeCarry, Math.exp(-rider.stateT * 14)); else eyeCarry.set(0, 0, 0);
+  lastEye.copy(_eye); lastEyeSt = st;
   if (!pov.ready || snapCam) { pov.pos.copy(_eye); pov.vel.set(0, 0, 0); pov.yaw = yawT; pov.ready = true; }
   else {
     // (a plain exponential follow: stays glued to your head through the pop-up, just takes the jitter off; the old
     // spring was so over-damped it closed only ~2% of the gap a frame and left the camera inside your chest)
-    const k = st === 'POP' ? 8 + 50 * Math.min(1, rider.stateT / 0.35) : st === 'RIDE' && rider.stateT < 0.5 ? 30 : 16;   // (eases into the pop instead of snapping to the new eye height in one frame)
+    const k = st === 'POP' ? 8 + 50 * Math.min(1, rider.stateT / 0.35) : st === 'RIDE' && rider.stateT < 0.5 ? 16 + 42 * (1 - rider.stateT / 0.5) : 16;   // (eases into the pop instead of snapping to the new eye height in one frame)
     pov.pos.lerp(_eye, 1 - Math.exp(-k * dt));
     const dy = Math.atan2(Math.sin(yawT - pov.yaw), Math.cos(yawT - pov.yaw)), maxY = 3.2 * dt;
     pov.yaw += Math.max(-maxY, Math.min(maxY, dy * Math.min(1, dt * 7)));
   }
   snapCam = false;
   // head pitch: riding, look down the line and at the nose; lying, look ahead over the nose; at the drop, look down the face
-  const dropK = st === 'POP' ? 4 : st === 'RIDE' ? 4 * Math.max(0, 1 - rider.stateT / 0.5) : 0;   // the pop: eyes down on the board between your hands, then back up to the line
+  const dropK = st === 'POP' ? 4 * popIn : st === 'RIDE' ? 4 * Math.max(0, 1 - rider.stateT / 0.5) : 0;   // the pop: eyes down on the board between your hands, then back up to the line
   let pitchLook = -9, pitchT = standing ? POVCAM.pitch - POVCAM.drop * dropK : sitting ? -0.53 : -0.4;   // sitting: tipped down enough to see your knees and hands on the board   // take-off: look down at the board and the face; lying: down enough to see your arms paddling
   // sitting or lying facing out to sea: look up at a wave that's coming (a 15 m wave's crest is well above the horizon)
   if (!standing) {
@@ -690,7 +698,7 @@ function povCamera(dt) {
   if (pitchLook > pitchT) pitchT = pitchLook;
   if (!standing && isRanch()) pitchT = Math.max(pitchT, -0.2);   // at the Surf Ranch, eyes up on the machine wall where your wave comes from
   pitchT += 0.05 * tubeLook;   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
-  pov.pitch += (pitchT - pov.pitch) * Math.min(1, dt * (st === 'POP' ? 4 + 20 * Math.min(1, rider.stateT / 0.3) : 5));   // (the pop: eyes snap down to the board between your hands)
+  pov.pitch += (pitchT - pov.pitch) * Math.min(1, dt * (st === 'POP' ? 4 + 20 * Math.min(1, rider.stateT / 0.3) : st === 'RIDE' ? 5 + 19 * Math.max(0, 1 - rider.stateT / 0.4) : 5));   // (and out of it without a kink: the rates hand over gradually when you're up)   // (the pop: eyes snap down to the board between your hands)
   pov.roll += ((standing ? -rider.lean * 0.2 : 0) - pov.roll) * Math.min(1, dt * 6);   // you feel the lean: the horizon tips as you lay into a carve (less than the board: people hold their head nearer level)
   // three.js cameras look down -z: turn our heading (angle in x/z) into a yaw about y
   _pe.set(pov.pitch - (rider.standing ? 0.055 * pumpA : 0), -pov.yaw - Math.PI / 2, pov.roll);   // (each pump stroke: the head nods down ~3 deg as you compress, like real POV footage)
@@ -701,7 +709,7 @@ function povCamera(dt) {
   if (standing && st === 'RIDE') {
     const chop = ENV.weather ? ENV.weather.chop : 1, sp = Math.min(1, rider.v / 9), rattle = Math.min(1, (rider.slide || 0) * 2.5 + rider.skid);
     const t = T, n1 = Math.sin(t * 11.3) * 0.6 + Math.sin(t * 17.9 + 1.3) * 0.4, n2 = Math.sin(t * 23.7 + 0.7) * 0.5 + Math.sin(t * 31.1 + 2.1) * 0.5;
-    const amp = (0.006 + 0.006 * chop) * sp + 0.008 * rattle;
+    const amp = ((0.006 + 0.006 * chop) * sp + 0.008 * rattle) * Math.min(1, rider.stateT / 0.5);   // (faded in as you get up: switched on at full it kicked the view the moment the pop finished)
     camera.position.y += n1 * amp; camera.rotateX(n2 * amp * 0.6); camera.rotateZ(n1 * amp * 0.4);
   }
   // inside a barrel your eyes stay under its roof (the lip's underside), never poking out through the top of the tube
@@ -844,9 +852,15 @@ function updateCamera(dt) {
   // the lens is left out then, only forearm and hand show, as they already do lying on the board
   { const slip = Math.abs(Math.atan2(Math.sin(rider.th - Math.atan2(rider.vz, rider.vx)), Math.cos(rider.th - Math.atan2(rider.vz, rider.vx))));
     const want = rider.standing && (rider.air || (rider.v > 3 && slip > 0.35)) ? 1 : 0;
-    armCutK += (want - armCutK) * Math.min(1, dt * (want ? 12 : 3)); ARMCUT.value = 0.34 * armCutK; }
+    armCutK += (want - armCutK) * Math.min(1, dt * (want ? 12 : 3));
+    // the pop-up: your eyes are down between your shoulders and the arms fold up past the lens (a big blurry arm flashed
+    // across the view, and cutting only the upper arm left stumps): the arms go out of view while you push up, the
+    // way your hands on the rails are below the frame, and rise back into view from below as you stand
+    popCutK += ((rider.state === 'POP' ? 1 : 0) - popCutK) * Math.min(1, dt * (rider.state === 'POP' ? 40 : 20));
+    ARMCUT.value = armCutNow(); }
 }
-let armCutK = 0;
+let armCutK = 0, popCutK = 0;
+const armCutNow = () => Math.max(0.34 * armCutK, 0.9 * popCutK);
 
 // ---------- surfer pose on the board
 const WORLD_UP = new THREE.Vector3(0, 1, 0), INTO_WAVE = new THREE.Vector3(0, 0, -1), tmpM = new THREE.Matrix4(), xAxis = new THREE.Vector3(), bodyUp = new THREE.Vector3(), bodyFwd = new THREE.Vector3(), bodyX = new THREE.Vector3();
@@ -861,6 +875,7 @@ function glideTo(x, y, z, dt) {
   _gp.set(x, y, z);
   if (snapCam || surfer.position.distanceTo(_gp) > 1.5) surfer.position.copy(_gp); else surfer.position.lerp(_gp, 1 - Math.exp(-dt * 18));
 }
+let bobK = 1;
 function updateRig(dt, t) {
   if (rider.state === 'WIPE' && W.on) { wipeout(dt); return; }
   rider.pose(pose);
@@ -886,7 +901,7 @@ function updateRig(dt, t) {
   sitTilt += (sitK - sitTilt) * Math.min(1, dt * 4);
   _tq.multiply(_yq.setFromAxisAngle(_xAxis, -0.4 * sitTilt));   // ~23 deg: your weight on the tail lifts the nose clear of the water
   if (snapCam) rigQ.copy(_tq);
-  else { const ang = rigQ.angleTo(_tq); rigQ.rotateTowards(_tq, Math.min(ang * Math.min(1, dt * (rider.state === 'POP' ? 9 : 16)), 6 * dt)); }   // eased, and never faster than ~340 deg/s
+  else { const ang = rigQ.angleTo(_tq); rigQ.rotateTowards(_tq, Math.min(ang * Math.min(1, dt * (rider.state === 'POP' ? 9 : rider.state === 'RIDE' && rider.stateT < 0.4 ? 9 + 17.5 * rider.stateT : 16)), 6 * dt)); }   // eased, and never faster than ~340 deg/s
   rig.quaternion.copy(rigQ);
   rig.position.copy(pose.pos);
   rig.position.y += 0.1 * sitTilt;                                     // the rider's weight sinks the tail
@@ -904,7 +919,8 @@ function updateRig(dt, t) {
     bodyQ.setFromRotationMatrix(tmpM);
   }
   // bob on the water while lying
-  if (!standing) rig.position.y += Math.sin(t * 1.6) * 0.04;
+  bobK += ((standing ? 0 : 1) - bobK) * Math.min(1, dt * 6);   // (the bob dies away as you stand: cut in one frame it jolted the view at the catch)
+  rig.position.y += Math.sin(t * 1.6) * 0.04 * bobK;
   if (!surfer) return;
   const st = rider.state;
   sitting = false;
@@ -2037,7 +2053,7 @@ renderer.setAnimationLoop(() => {
   if (camera.layers.isEnabled(1)) renderer.render(scene, camera);
   else {
     if (foamK && !(rider && rider.state === 'WIPE' && W.on)) setFoam(0);   // (never left on screen: back to the menu mid-wipeout, the villa)
-    ARMCUT.value = rider && rider.standing ? 0.34 * armCutK : 0; WATERY.value = rider && rider.state === 'LIE' && !W.on ? rig.position.y + 0.01 : -99;
+    ARMCUT.value = rider && rider.standing ? armCutNow() : 0; WATERY.value = rider && rider.state === 'LIE' && !W.on ? rig.position.y + 0.01 : -99;
     armK += ((rider && rider.standing && !(W.on) ? 1 : 0) - armK) * Math.min(1, dt * 4);
     armCam.position.copy(camera.position); armCam.quaternion.copy(camera.quaternion);
     armCam.aspect = camera.aspect; armCam.fov = camera.fov + (62 - camera.fov) * armK; armCam.updateProjectionMatrix(); if (mir) flipProj(armCam);

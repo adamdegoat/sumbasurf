@@ -430,13 +430,17 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260927-2059</small>
+    <small id="build">build 260927-2144</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-27-catch', date: '27 Sep 2026', time: '9:44 pm', title: 'Smoother take-off', items: [
+      'Standing up on a wave is smooth now: no more jolt the moment you catch it.',
+      'Fixed your arm flashing across the screen as you pop up.',
+    ] },
     { id: '2026-09-27-spray', date: '27 Sep 2026', time: '8:59 pm', title: 'Real spray on your turns', items: [
       'Carve and a sheet of water flies off your rail to the outside of the turn.',
       'Snaps and cutbacks throw a big splash, with a few drops on the screen.',
@@ -522,6 +526,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=741"></script>
+<script type="module" src="js/game.js?v=746"></script>
 </body>
 </html>
