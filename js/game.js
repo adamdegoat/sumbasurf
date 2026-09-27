@@ -747,6 +747,13 @@ document.body.appendChild(underEl);
   for (let i = 0; i < 46; i++) { const b = document.createElement('div'); b.className = 'bub'; const sz = 4 + Math.random() * Math.random() * 26;
     b.style.cssText = `left:${Math.random() * 100}%;width:${sz}px;height:${sz}px;--dx:${(Math.random() - .5) * 120}px;animation-duration:${0.9 + Math.random() * 1.6}s;animation-delay:${-Math.random() * 2.5}s`;
     underEl.appendChild(b); } }
+// the moment you're pounded: churning white water over everything, which gives way to the underwater murk (drawn over it)
+const foamEl = document.createElement('div');
+foamEl.style.cssText = 'position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:5;opacity:0;display:none;background:radial-gradient(ellipse at 50% 40%,rgba(250,253,252,.97),rgba(222,240,240,.94) 55%,rgba(170,212,214,.92))';
+{ for (const [dur, rot, op] of [[1.1, -17, 0.8], [0.8, 23, 0.65]]) { const c = document.createElement('div'); c.className = 'churn'; c.style.cssText = `animation-duration:${dur}s;transform:rotate(${rot}deg) scale(1.6);opacity:${op};filter:blur(3px) brightness(1.4)`; foamEl.appendChild(c); } }
+document.body.appendChild(foamEl);
+let foamK = 0;
+function setFoam(k) { foamK = k; foamEl.style.opacity = k.toFixed(3); foamEl.style.display = k > 0.01 ? '' : 'none'; }
 let underK = 0, underWas = false;
 function setUnder(k, dt) { underK += (k - underK) * Math.min(1, dt * (k > underK ? 14 : 5)); underEl.style.opacity = underK.toFixed(3); underEl.style.display = underK > 0.01 ? '' : 'none';   // (hidden = the bubbles stop animating)
   if (k > 0.5) { underWas = true; clearLens(); } else if (k === 0 && underWas) { underWas = false; splashLens(12, 1.3); } }   // (coming up: water streaming off the lens)
@@ -811,8 +818,13 @@ function povWipe(dt) {
   }
   camera.position.copy(W.cam); camera.quaternion.copy(W.q);
   const depth = water - W.cam.y;
-  setUnder(depth > 0.02 ? Math.min(1, 0.55 + depth * 0.6) : 0, dt);
-  if (depth <= 0.02 && W.t > 1.2 && !W.up) { W.up = true; audio.burst(0.22, 700, 0.35); audio.splash(0.4); }   // the gasp as you break the surface
+  // what it looks like to get pounded: white water fills everything as you go over, then you're held down in the murk
+  // until you come up (the murk stays fully on while you tumble: at half strength, or flicking on and off as your eye
+  // crossed the water line, you saw the wave's shape from underneath and behind, which looked like the game breaking)
+  setFoam(W.t < 0.08 ? W.t / 0.08 * 0.95 : W.t < 0.5 ? 0.95 : Math.max(0, 0.95 * (1 - (W.t - 0.5) / 0.35)));
+  const held = W.t > 0.25 && !W.up && (W.t < 1.35 || depth > 0.02);
+  setUnder(held ? 0.97 : depth > 0.02 ? Math.min(1, 0.55 + depth * 0.6) : 0, dt);
+  if (depth <= 0.02 && W.t > 1.35 && !W.up) { W.up = true; audio.burst(0.22, 700, 0.35); audio.splash(0.4); }   // the gasp as you break the surface
 }
 
 function updateCamera(dt) {
@@ -821,6 +833,7 @@ function updateCamera(dt) {
   setHfov(55);
   tubeK = 0;
   if (st === 'WIPE' && W.on && surfer) { povWipe(dt); return; }
+  if (foamK) setFoam(0);
   setUnder(0, dt);
   povCamera(dt);
   // flying, or sliding sideways up the face into the lip, the body turns away from where you look and your front
@@ -1967,6 +1980,7 @@ renderer.setAnimationLoop(() => {
   ARMTH.value = rider && rider.standing ? 0.02 : 0.12;   // standing, shoulder skin is kept whole (no holes up the arm); sitting or lying your shoulder is right at the lens, so it's cut away   // (outside views, e.g. tests and replays, show the whole body)
   if (camera.layers.isEnabled(1)) renderer.render(scene, camera);
   else {
+    if (foamK && !(rider && rider.state === 'WIPE' && W.on)) setFoam(0);   // (never left on screen: back to the menu mid-wipeout, the villa)
     ARMCUT.value = rider && rider.standing ? 0.34 * armCutK : 0; WATERY.value = rider && rider.state === 'LIE' && !W.on ? rig.position.y + 0.01 : -99;
     armK += ((rider && rider.standing && !(W.on) ? 1 : 0) - armK) * Math.min(1, dt * 4);
     armCam.position.copy(camera.position); armCam.quaternion.copy(camera.quaternion);
