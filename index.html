@@ -62,13 +62,13 @@
   #score b { font: 700 20px/1 var(--disp); font-variant-numeric: tabular-nums; display: inline-block; transform-origin: right center; }
   #score.bump b { animation: sbump .45s ease-out; }
   @keyframes sbump { 0% { transform: scale(1.3); color: #ffcf8a; } 100% { transform: scale(1); color: #fff; } }
-  #tube { top: 17%; left: 0; right: 0; text-align: center; opacity: 0; transition: opacity .22s, transform .22s; text-shadow: none; --c: #ffcf8a; --ink: #15110c; }
+  #tube { top: 13%; left: 0; right: 0; text-align: center; opacity: 0; transition: opacity .22s, transform .22s; text-shadow: none; --c: #ffcf8a; --ink: #15110c; }
   #tube.on { opacity: 1; }
   #tube.out { opacity: 0; transform: translateY(-12px); }
-  #tube .cbig { display: block; font: 800 clamp(16px, 6vh, 24px)/1 var(--disp); letter-spacing: .14em; color: #fff; -webkit-text-stroke: 1.2px var(--ink); paint-order: stroke fill; text-shadow: 2px 2px 0 var(--ink); margin-bottom: 1px; }
+  #tube .cbig { display: block; font: 800 clamp(12px, 4.2vh, 17px)/1 var(--disp); letter-spacing: .14em; color: #fff; -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; text-shadow: 1.5px 1.5px 0 var(--ink); margin-bottom: 1px; }
   #tube .cbig:empty { display: none; }
-  #tube .cword { display: inline-block; font: 800 clamp(34px, 13vh, 56px)/.95 var(--disp); letter-spacing: .01em; color: var(--c); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 4px 4px 0 var(--ink); transform: rotate(-4deg); font-variant-numeric: tabular-nums; }
-  #tube .cpts { display: block; margin-top: 6px; font: 700 clamp(16px, 5.5vh, 22px)/1 var(--disp); color: #fff; -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; text-shadow: 2px 2px 0 var(--ink); transform: rotate(-4deg); }
+  #tube .cword { display: inline-block; font: 800 clamp(24px, 9vh, 38px)/.95 var(--disp); letter-spacing: .01em; color: var(--c); -webkit-text-stroke: 1.6px var(--ink); paint-order: stroke fill; text-shadow: 3px 3px 0 var(--ink); transform: rotate(-4deg); font-variant-numeric: tabular-nums; }
+  #tube .cpts { display: block; margin-top: 4px; font: 700 clamp(12px, 4vh, 16px)/1 var(--disp); color: #fff; -webkit-text-stroke: .8px var(--ink); paint-order: stroke fill; text-shadow: 1.5px 1.5px 0 var(--ink); transform: rotate(-4deg); }
   #tube .cpts:empty { display: none; }
   #tube.slam .cword { animation: cslam .34s cubic-bezier(.2,.9,.3,1.2) both; }
   #tube.slam.big .cword { animation: cslamBig .46s cubic-bezier(.2,.9,.3,1.2) both; }
@@ -430,13 +430,18 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260927-2046</small>
+    <small id="build">build 260927-2059</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-27-spray', date: '27 Sep 2026', time: '9:00 pm', title: 'Real spray on your turns', items: [
+      'Carve and a sheet of water flies off your rail to the outside of the turn.',
+      'Snaps and cutbacks throw a big splash, with a few drops on the screen.',
+      'Move words are smaller so they cover less of the wave.',
+    ] },
     { id: '2026-09-27-hud', date: '27 Sep 2026', time: '8:46 pm', title: 'New look for your moves', items: [
       'Moves slam onto the screen in colour with their points: gold for turns, green for barrels, coral for airs.',
       'The barrel clock counts up live while you are inside.',
@@ -517,6 +522,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=740"></script>
+<script type="module" src="js/game.js?v=741"></script>
 </body>
 </html>

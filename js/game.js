@@ -944,7 +944,7 @@ function updateRig(dt, t) {
 }
 
 // ---------- rail spray: water thrown off the board's edge when you carve, skid or pop up; a big burst when you wipe out
-const SPRAY_N = 1600;
+const SPRAY_N = 2200;
 const railSpray = (() => {
   const pos = new Float32Array(SPRAY_N * 3), vel = new Float32Array(SPRAY_N * 3), life = new Float32Array(SPRAY_N).fill(-1);
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -953,9 +953,9 @@ const railSpray = (() => {
   gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
   cx.fillStyle = gr; cx.fillRect(0, 0, 32, 32);
   const tex = new THREE.CanvasTexture(cv);
-  const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xf6f1ea, size: 0.075, map: tex, transparent: true, opacity: 0.85, depthWrite: false }));
+  const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xf6f1ea, size: 0.11, map: tex, transparent: true, opacity: 0.8, depthWrite: false }));   // (bigger, soft drops: at 7 cm they read as specks)
   pts.frustumCulled = false; scene.add(pts);
-  let next = 0, acc = 0, fanAcc = 0;
+  let next = 0, acc = 0, fanAcc = 0, fanHit = false;
   const emit = (p, v, n, spread) => {
     for (let k = 0; k < n; k++) {
       const i = next; next = (next + 1) % SPRAY_N;
@@ -969,31 +969,40 @@ const railSpray = (() => {
     burst(p, n = 120, up = 3) { emit(p, _v.set(0, up, 0), n, 3.5); },
     update(dt) {
       // how much water the rail is throwing: carving load, skidding, and a little at speed
+      // (spray keeps much of the board's own speed: thrown from a standstill, or backwards, it was left behind the instant
+      // it appeared and you never saw it; now it flies out beside you and falls away over a second)
       if (rider && rider.standing) {
         const load = Math.min(1.3, Math.abs(rider.turn) * rider.v / 14 + rider.skid * 1.2 + (rider.state === 'POP' ? 0.5 : 0) + Math.max(0, rider.v - 6) * 0.03);
+        const out = Math.sign(rider.lean) || 1, sideX = Math.sin(rider.th) * out, sideZ = -Math.cos(rider.th) * out;   // toward the outside of the turn
         acc += load * 1150 * dt;
         if (acc >= 1) {
           const n = Math.floor(acc); acc -= n;
-          // from the tail, thrown out of the face and back
-          _p.copy(rig.position).addScaledVector(pose.fwd, -0.55).addScaledVector(pose.up, 0.05);
-          // a fan: along the rail from mid-board to tail, thrown out of the face, up, and back
+          // a curtain off the rail from mid-board to the tail: out to the side of the turn, up, carried along with you
+          const curtain = Math.min(1, Math.abs(rider.turn) * rider.v / 10 + rider.skid);   // (a straight glide throws a little off the tail; a carve throws a sheet sideways)
           for (let k = 0; k < n; k++) {
-            _p.copy(rig.position).addScaledVector(pose.fwd, -0.15 - Math.random() * 0.6).addScaledVector(pose.up, 0.04);
-            _v.copy(pose.up).multiplyScalar(0.8 + load * 1.6 + Math.random() * 0.6).addScaledVector(pose.fwd, -rider.v * (0.25 + Math.random() * 0.3)).add(_cv.set(0, 0.4 + Math.random() * 0.8, 0));   // a fan off the tail, a metre or two, not a fountain
+            _p.copy(rig.position).addScaledVector(pose.fwd, 0.1 - Math.random() * 0.85).addScaledVector(pose.up, 0.04);
+            const keep = 0.55 + Math.random() * 0.3;
+            _v.set(rider.vx * keep, 0, rider.vz * keep)
+              .add(_cv.set(sideX, 0, sideZ).multiplyScalar(curtain * (1.5 + Math.random() * 3)))
+              .addScaledVector(pose.up, 0.8 + load * 1.6 + Math.random() * 0.6).add(_cv.set(0, 0.5 + curtain * (1 + Math.random() * 1.8), 0));
             emit(_p, _v, 1, 0.6);
           }
         }
-        // drifting: the tail sprays a big fan to the outside of the slide
-        const snapK = rider.trick && rider.trick.name.endsWith('SNAP') && rider.trick.t < 0.3 ? 1 : 0;   // a snap throws a sheet of spray off the lip
+        // drifting: the tail sprays a big fan to the outside of the slide; a snap or cutback throws a sheet of spray up
+        const snapK = rider.trick && rider.trick.name.endsWith('SNAP') && rider.trick.t < 0.3 ? 1 : 0;
+        const cutK = rider.trick && rider.trick.name.endsWith('CUTBACK') && rider.trick.t < 0.3 ? 1 : 0;
+        const hitK = Math.max(snapK, cutK);
+        if (hitK && !fanHit) { fanHit = true; splashLens(5, 0.8); }   // (you ride through your own spray: a few drops on the lens)
+        if (!hitK) fanHit = false;
         const slideK = Math.max(rider.skid, Math.min(1, ((rider.slide || 0) - 0.12) * 2.2));   // tail hanging out ~7 deg+ starts to spray
-        if (slideK > 0.05 || snapK) {
-          fanAcc += (Math.max(slideK, 0.3 * snapK) + 1.5 * snapK) * rider.v * 55 * dt;
-          const side = Math.sign(rider.lean) || 1;                     // spray goes to the outside of the turn
+        if (slideK > 0.05 || hitK) {
+          fanAcc += (Math.max(slideK, 0.3 * hitK) + 2.2 * hitK) * rider.v * 55 * dt;
           while (fanAcc >= 1) {
             fanAcc--;
-            _p.copy(rig.position).addScaledVector(pose.fwd, -0.7 + Math.random() * 0.25);
-            _v.set(Math.sin(rider.th) * side, 0, -Math.cos(rider.th) * side).multiplyScalar(2.5 + Math.random() * 3.5 * rider.skid)
-              .addScaledVector(pose.fwd, -rider.v * 0.25).add(_cv.set(0, 1.4 + Math.random() * 2.2, 0));
+            _p.copy(rig.position).addScaledVector(pose.fwd, -0.7 + Math.random() * 0.5);
+            const keep = 0.6 + Math.random() * 0.3;
+            _v.set(rider.vx * keep, 0, rider.vz * keep).add(_cv.set(sideX, 0, sideZ).multiplyScalar(2.5 + Math.random() * 3.5 * Math.max(rider.skid, hitK)))
+              .add(_cv.set(0, 1.6 + Math.random() * 2.4 + 1.5 * hitK, 0));
             emit(_p, _v, 1, 0.9);
           }
         } else fanAcc = 0;
