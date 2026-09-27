@@ -244,7 +244,7 @@ export class Wave {
     const H = this.cond.H, P = this.mp, V = this.mv;
     for (let i = 0; i < this.mistN; i++) {
       if (this.ml[i] <= 0) {
-        if (Math.random() > 0.2) { P[i * 3 + 1] = -99; continue; }
+        if (Math.random() > 0.2 * this._rate) { P[i * 3 + 1] = -99; continue; }
         // born along the top of the whitewater and where the lip hits the water
         let s = -(4 + Math.random() * 10) * H;
         // closing out: a wall of spray and mist goes up where the lip is coming down along the line
@@ -314,7 +314,7 @@ export class Wave {
     const H = this.cond.H, P = this.vp, V = this.vv, wind = ENV.weather && ENV.weather.wind !== undefined ? ENV.weather.wind : 1;   // (each spot's own wind: a glassy morning barely lifts any, a strong offshore blows it back in plumes)
     for (let i = 0; i < this.veilN; i++) {
       if (this.vl[i] <= 0) {
-        if (Math.random() > 0.75 * Math.min(1, wind)) { P[i * 3 + 1] = -99; continue; }
+        if (Math.random() > Math.min(1, 0.75 * Math.min(1, wind) * this._rate)) { P[i * 3 + 1] = -99; continue; }
         // along the crest of the standing face, from the curl out onto the shoulder, where the wave is tall and steep
         const s = -H + Math.pow(Math.random(), 1.8) * 13 * H;   // thickest near the curl, where the face is steepest
         const sh = this.shapeAt(s), crest = sh.P[9];
@@ -382,7 +382,7 @@ export class Wave {
     const H = this.cond.H;
     for (let i = 0; i < this.sprayN; i++) {
       if (this.sl[i] <= 0) {
-        if (Math.random() > 0.16) continue;   // (plenty of droplets along the lip: they break up its edge)
+        if (Math.random() > 0.16 * this._rate) continue;   // (plenty of droplets along the lip: they break up its edge)
         // born along the throwing lip and the top of the tube behind it
         const s = -Math.random() * 4 * H;
         const [x, y, z] = this.lipAt(s);
@@ -402,16 +402,20 @@ export class Wave {
     this.spray.geometry.attributes.position.needsUpdate = true;
   }
 
-  update(dt) {
+  update(dt, lite = false) {
     this.t += dt;
     if (!this.placed) this.peelX += this.cond.peel * dt;   // test page: just peel; the game places waves itself
     this.mesh.position.set(this.peelX, 0, this.zW);   // same shape, slid along the reef as it peels and toward the beach as it comes in
     this.mesh.scale.y = this.fade;
     this.mesh.material.uniforms.uH.value = this.cond.H;
-    this.updateSpray(dt);
-    this.updateMist(dt);
-    this.updateVeil(dt);
-    this.updateSpit(dt);
+    // the particles: every frame, or (far away: lite) every other frame with the time saved up
+    this._pdt = (this._pdt || 0) + dt;
+    if (lite && this._pdt < 1 / 40) return;
+    const pdt = this._pdt; this._pdt = 0; this._rate = Math.min(2.5, pdt * 60);   // (as many born per second either way)
+    this.updateSpray(pdt);
+    this.updateMist(pdt);
+    this.updateVeil(pdt);
+    this.updateSpit(pdt);
   }
 }
 

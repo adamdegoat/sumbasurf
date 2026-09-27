@@ -2,13 +2,13 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=163';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=164';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=150';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=15';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=88';
-import { villa, VILLA } from './villa.js?v=125';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=89';
+import { villa, VILLA } from './villa.js?v=126';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
@@ -25,6 +25,22 @@ renderer.setPixelRatio(pr); renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
 document.getElementById('view').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
+// (performance) three.js works out every object's place in the world before each draw, hidden ones included, and the
+// arms pass did it all a second time. Here: hidden areas (the villa, the pool, props not in use) are skipped until
+// they're shown (their place is worked out the moment they are, and getWorldPosition always works it out on the spot),
+// and the arms pass reuses the first pass's answers.
+const BASE_UMW = THREE.Object3D.prototype.updateMatrixWorld;
+{ const upd = (o, force) => {
+    if (o.matrixAutoUpdate) o.updateMatrix();
+    if (o.matrixWorldNeedsUpdate || force) { if (o.parent === null) o.matrixWorld.copy(o.matrix); else o.matrixWorld.multiplyMatrices(o.parent.matrixWorld, o.matrix); o.matrixWorldNeedsUpdate = false; force = true; }
+    const ch = o.children;
+    for (let i = 0; i < ch.length; i++) { const c = ch[i];
+      if (!(c.visible || o !== scene || c.isLight || c.isCamera)) { c.matrixWorldNeedsUpdate = true; continue; }
+      if (c.updateMatrixWorld !== BASE_UMW) c.updateMatrixWorld(force); else upd(c, force); }   // (skinned bodies and cameras do their own extra work here: let them)   // (only whole hidden areas hanging off the scene itself: a character can keep its skeleton under a hidden node, and skipping that bent the body out of shape)
+  };
+  const orig = scene.updateMatrixWorld.bind(scene);
+  scene.updateMatrixWorld = (force) => (globalThis.__slowMat ? orig(force) : upd(scene, true));   // (everything visible is still worked out every frame: some bodies are posed by hand and count on it)
+}
 const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.08, 2000);
 // POV: a wide, GoPro-like view (about 100 degrees across); the outside wipeout shot uses a normal ~80
 let hfovHalf = 50;
@@ -345,7 +361,9 @@ function updateWaves(dt) {
     if (w.endK < 0.88 && !w.spat) { w.spat = true; if (w.spitT !== undefined) w.spitT = 0.3; if (rider && rider.wave === w && rider.inBarrel) rider.spitOut = 1.8; }   // (the spit: see the rider's judge)
     w.fade = (w.size || 1) * (w.closing ? 1 - 0.97 * smooth01((w.closeT - 1.5) / 5.5) : reefK) * Math.min(1, Math.max(0.15, 1 + (w.zW + 160) / 60));   // (closed out, it keeps its height while it breaks, then the whitewater shrinks as it rolls on into the shallows)
     if (isRanch()) w.fade = Math.min(1, Math.max(0.02, (w.zW - POOL.z0) / 22)) * w.endK;   // the pool wave rises out of the machine wall   // far out it's a small swell; past the end of the reef it backs off
-    w.update(dt);
+    // (performance) a wave far from you (not yours, 120 m+ off) moves its spray and mist 30 times a second instead of 60:
+    // at that distance nobody can tell, and it was the biggest single cost left in a frame
+    w.update(dt, !globalThis.__slowMat && !(rider && rider.wave === w) && Math.hypot(w.peelX - camera.position.x, w.zW - camera.position.z) > 120);
     if (w.zW > REEF.zBeach + 40 || w.peelX > REEF.xEnd + 45 || w.closeT > 7.5) { w.dispose(scene); waves.splice(i, 1); }
   }
 }
@@ -758,13 +776,29 @@ const underEl = document.createElement('div');
 underEl.style.cssText = 'position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:5;opacity:0;background:radial-gradient(ellipse at 50% 0%,rgba(150,225,220,.75),rgba(30,110,125,.9) 45%,rgba(6,40,55,.985))';
 document.body.appendChild(underEl);
 // under the whitewater: swirling churned foam and bubbles racing up past you (plain CSS: cheap, and drawn over the tint)
+// (the churn is one soft, seamless picture of foam made once here and slid across the screen: sliding is done by the
+// graphics chip for free. It used to be blurred gradients re-painted every frame at full phone resolution, which froze
+// wipeouts for up to 2 s on a phone-speed test)
+function churnTile(bright) {
+  const c = document.createElement('canvas'), N = 256; c.width = c.height = N; const x = c.getContext('2d');
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 16; i++) {
+    const cx = rnd() * N, cy = rnd() * N, rx = 34 + rnd() * 70, ry = 22 + rnd() * 50, a = Math.min(0.9, (0.14 + rnd() * 0.2) * bright);   // (big and faint: reads as churned water, not clouds)
+    for (const ox of [-N, 0, N]) for (const oy of [-N, 0, N]) {   // (drawn wrapped round the edges: the tile repeats without seams)
+      x.save(); x.translate(cx + ox, cy + oy); x.scale(1, ry / rx);
+      const gr = x.createRadialGradient(0, 0, 0, 0, 0, rx); gr.addColorStop(0, `rgba(238,250,250,${a})`); gr.addColorStop(0.45, `rgba(232,246,246,${a * 0.55})`); gr.addColorStop(1, 'rgba(230,245,245,0)');
+      x.fillStyle = gr; x.beginPath(); x.arc(0, 0, rx, 0, Math.PI * 2); x.fill(); x.restore();
+    }
+  }
+  return c.toDataURL('image/png');
+}
 { const st = document.createElement('style');
   st.textContent = `@keyframes bub{0%{transform:translate(0,0) scale(.6);opacity:0}15%{opacity:.9}100%{transform:translate(var(--dx),-115vh) scale(1.15);opacity:.2}}
-  @keyframes churn{0%{background-position:0 0,0 0,0 0}100%{background-position:-240px -900px,180px -600px,-90px -760px}}
+  @keyframes churn{from{transform:translate3d(0,0,0)}to{transform:translate3d(-256px,-256px,0)}}
   .bub{position:absolute;bottom:-6vh;border-radius:50%;border:1.5px solid rgba(235,250,250,.75);background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.7),rgba(255,255,255,.08) 55%,transparent 70%);animation:bub linear infinite}
-  .churn{position:absolute;inset:-20%;opacity:.55;animation:churn 2.6s linear infinite;
-    background-image:radial-gradient(ellipse 60px 34px at 30% 40%,rgba(240,250,250,.5),transparent 70%),radial-gradient(ellipse 120px 60px at 70% 20%,rgba(220,240,240,.32),transparent 70%),radial-gradient(ellipse 90px 140px at 15% 80%,rgba(230,245,245,.28),transparent 70%);
-    background-size:173px 211px,263px 337px,389px 293px;transform:rotate(-17deg);filter:blur(5px)}`;
+  .churn{position:absolute;left:0;top:0;right:-256px;bottom:-256px;opacity:.55;animation:churn 2.6s linear infinite;will-change:transform;
+    background-image:url(${churnTile(1)});background-size:256px 256px}
+  .churn.bright{background-image:url(${churnTile(1.5)})}`;
   document.head.appendChild(st);
   const ch = document.createElement('div'); ch.className = 'churn'; underEl.appendChild(ch);
   for (let i = 0; i < 46; i++) { const b = document.createElement('div'); b.className = 'bub'; const sz = 4 + Math.random() * Math.random() * 26;
@@ -773,7 +807,7 @@ document.body.appendChild(underEl);
 // the moment you're pounded: churning white water over everything, which gives way to the underwater murk (drawn over it)
 const foamEl = document.createElement('div');
 foamEl.style.cssText = 'position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:5;opacity:0;display:none;background:radial-gradient(ellipse at 50% 40%,rgba(250,253,252,.97),rgba(222,240,240,.94) 55%,rgba(170,212,214,.92))';
-{ for (const [dur, rot, op] of [[1.1, -17, 0.8], [0.8, 23, 0.65]]) { const c = document.createElement('div'); c.className = 'churn'; c.style.cssText = `animation-duration:${dur}s;transform:rotate(${rot}deg) scale(1.6);opacity:${op};filter:blur(3px) brightness(1.4)`; foamEl.appendChild(c); } }
+{ for (const [dur, op, rev] of [[1.1, 0.8, false], [0.8, 0.65, true]]) { const c = document.createElement('div'); c.className = 'churn bright'; c.style.cssText = `animation-duration:${dur}s;opacity:${op}${rev ? ';animation-direction:reverse' : ''}`; foamEl.appendChild(c); } }   // (two layers drifting opposite ways: churning, not sliding)
 document.body.appendChild(foamEl);
 let foamK = 0, foamIn = 0, foamWas = false;
 function setFoam(k) { foamK = k; foamEl.style.opacity = k.toFixed(3); foamEl.style.display = k > 0.01 ? '' : 'none'; }
@@ -2093,7 +2127,7 @@ renderer.setAnimationLoop(() => {
     armK += ((rider && rider.standing && !(W.on) ? 1 : 0) - armK) * Math.min(1, dt * 4);
     armCam.position.copy(camera.position); armCam.quaternion.copy(camera.quaternion);
     armCam.aspect = camera.aspect; armCam.fov = camera.fov + (62 - camera.fov) * armK; armCam.updateProjectionMatrix(); if (mir) flipProj(armCam);
-    renderer.autoClear = false; renderer.clear(); renderer.render(scene, camera); renderer.clearDepth(); renderer.render(scene, armCam); renderer.autoClear = true;
+    renderer.autoClear = false; renderer.clear(); renderer.render(scene, camera); renderer.clearDepth(); scene.matrixWorldAutoUpdate = !!globalThis.__slowMat; renderer.render(scene, armCam); scene.matrixWorldAutoUpdate = true; renderer.autoClear = true;   // (the arms pass draws the same scene a moment later: nothing has moved, so don't work everything out again)
   }
   if (mir) { flipProj(camera); if (!camera.layers.isEnabled(1)) flipProj(armCam); }   // (both lenses back to normal between frames)
   autoQuality(dt); musicTick();
