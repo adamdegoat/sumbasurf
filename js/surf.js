@@ -154,7 +154,7 @@ export class Rider {
     this.turn = 0; this.lean = 0; this.skid = 0; this.relS = 1; this.v = 0; this.hx = 0; this.hz = 0; this.gAlong = 0;
     this.wave = null; this.s = 99; this.zl = 99; this.inBarrel = false; this.onFace = false; this.lowT = 0;
     this.air = null; this.vyS = 0; this.hitV = 0; this.vyPk = 0; this.prevY = undefined;
-    this.pumpWas = false; this.pumpN = 0; this.pumpGap = 9; this.pumpT = 9; this.pumpQ = 0; this.weave = 0; this.pumping = false; this.foamT = 0; this.wwFloatT = 0; this.tubeOut = 0; this.turnHold = 0; this.recentPaddle = 0; this.slide = 0; this.stalling = 0;
+    this.pumpWas = false; this.pumpN = 0; this.pumpGap = 9; this.pumpT = 9; this.pumpQ = 0; this.weave = 0; this.pumping = false; this.foamT = 0; this.backT = 0; this.wwFloatT = 0; this.tubeOut = 0; this.turnHold = 0; this.recentPaddle = 0; this.slide = 0; this.stalling = 0;
     this.ride = { t: 0, top: 0, barrel: 0, pocket: 0, turns: 0, cutbacks: 0, snaps: 0, speed: 0, end: 0, score: 0, moves: [], tubeT: 0, leanPk: 0 }; this.turnSign = 0; this.tyMin = this.tyMax = undefined; this.cbArmed = false; this.snapArm = 0; this.trick = null;
   }
   set(state) { this.state = state; this.stateT = 0; }
@@ -393,6 +393,10 @@ export class Rider {
     const deepAt = (this.backside ? -1.9 : -2.0) * (C.deep || 1), foamMax = (this.backside ? 2.0 : 2.5) * (C.foamK || 1);   // (a spot can keep its foam ball closer and less patient: C.deep, C.foamK)   // (backside you can't see the curl behind you: the foam ball catches you a little sooner)
     if (this.inBarrel && s < deepAt * H) { this.foamT = (this.foamT || 0) + h; if (this.foamT > foamMax || s < -3.6 * H) return this.wipe('Too deep: the foam ball swallowed you'); }   // (the instant line is well behind: a section surge alone can't drop you past it without warning) }
     else this.foamT = Math.max(0, (this.foamT || 0) - h);
+    // turning round inside the tube heads you back into the foam ball (why nobody does a cutback in a barrel): pointed back
+    // toward the curl for more than half a second in there and it catches you
+    if (this.inBarrel && Math.cos(this.th) < -0.2) { this.backT = (this.backT || 0) + h; if (this.backT > 0.6) return this.wipe('Too deep: you turned back into the foam ball'); }
+    else this.backT = Math.max(0, (this.backT || 0) - 2 * h);
     // over the back
     if (!onFront && y < 0.4 * Math.max(sl.top, 0.3)) { if (w.closing && this.state === 'RIDE') { this.ride.end = 1; return this.out('Kicked out as it closed out'); } return this.out('Kicked out over the back'); }
     const kmh = this.v * 3.6; this.ride.top = Math.max(this.ride.top, kmh);

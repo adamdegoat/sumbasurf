@@ -430,13 +430,17 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260927-2226</small>
+    <small id="build">build 260927-2247</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-27-barrel', date: '27 Sep 2026', time: '10:47 pm', title: 'Better barrels', items: [
+      'Inside the barrel your view lifts a little so you see more of the tube over you.',
+      'Turning back inside the barrel now sends you into the foam ball, like real surfing.',
+    ] },
     { id: '2026-09-27-endings', date: '27 Sep 2026', time: '10:26 pm', title: 'Real wave endings', items: [
       'Near the beach the barrel now shuts: the lip comes down along the whole wave and it turns to whitewater.',
       'The whitewater rolls on to the sand and washes you in, instead of the wave melting away.',
@@ -531,6 +535,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=752"></script>
+<script type="module" src="js/game.js?v=754"></script>
 </body>
 </html>
