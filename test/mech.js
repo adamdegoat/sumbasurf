@@ -292,3 +292,29 @@ export async function airSurvey() {
   for (const m of ['easy', 'medium', 'hard', 'kanan', 'hiu']) for (const k of ['carve', 'barrel']) { const s = await C.ride(m, k, 7); out[`bot_${m}_${k}`] = s.replace(/^.*?: /, '').slice(0, 140); }
   return out;
 }
+
+// position when catching: a surfer who waits where it spawned (no repositioning) or one who paddles along the reef to
+// sit just down the line of each incoming wave's peak; how many waves each catches, and where along the wave it caught
+export function lineup(mode = 'medium', board = 'short', move = false, waves = 8, seed = 7) {
+  const g = G(), rnd0 = Math.random; let st = seed >>> 0; Math.random = () => ((st = (st * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const out = { caught: 0, tries: 0, at: [], why: {} }; g.useBoard(board);
+  try {
+    g.paused = true; g.setMode(mode); document.getElementById('start').style.display = 'none'; g.spawnRider();
+    let target = null, t = 0, goT = -1, guard = 0;
+    while (out.tries < waves && guard++ < 60 * 60 * 10) {
+      const r = g.rider, inc = g.incoming();
+      if (r.state === 'POP') { out.caught++; out.tries++; out.at.push(+(r.s / r.wave.cond.H).toFixed(2)); g.spawnRider(); target = null; goT = -1; continue; }
+      if (r.state === 'WIPE' || r.state === 'OUT') { out.tries++; out.why[r.why.split(':')[0]] = (out.why[r.why.split(':')[0]] || 0) + 1; g.spawnRider(); target = null; goT = -1; continue; }
+      if (target && inc.w !== target && !r.onFace && t - goT > 3) { out.tries++; out.why.missed = (out.why.missed || 0) + 1; target = null; goT = -1; }
+      if (!target && inc.w && inc.t < 9) target = inc.w;
+      let steer = 0, paddle = false;
+      if (target) {
+        const peakX = target.pkX + (target.px || 0) + 3, dx = peakX - r.x;   // a little down the line of where it will break
+        if (move && inc.t > 3 && Math.abs(dx) > 1.5) { const want = dx > 0 ? 0 : Math.PI, d = wrap(want - r.th); steer = Math.max(-1, Math.min(1, d * 2)); paddle = Math.abs(d) < 0.6; }
+        else { const d = wrap(Math.PI / 2 - r.th); steer = Math.max(-1, Math.min(1, d * 2)); if (goT < 0 && inc.t < 2.5) goT = t; paddle = goT >= 0 && Math.abs(d) < 0.5; }
+      } else { const d = wrap(-Math.PI / 2 - r.th); steer = Math.max(-1, Math.min(1, d * 2)); }
+      g.input.test = steer; g.input.paddleBtn = paddle; g.step(1 / 60, 1 / 60, false); t += 1 / 60;
+    }
+  } finally { Math.random = rnd0; g.input.test = null; g.input.paddleBtn = false; g.useBoard('short'); }
+  return `${out.caught}/${out.tries} caught | s/H at catch ${out.at.join(' ')} | ${JSON.stringify(out.why)}`;
+}

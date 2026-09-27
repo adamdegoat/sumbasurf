@@ -341,11 +341,10 @@ export class Rider {
       // (on a huge wave you get in earlier, lower on the face, like a big-wave gun: the speed you need is capped)
       // how long the wave has been lifting you: it only carries you for a moment, then passes under you
       this.liftT = this.onFace ? (this.liftT || 0) + h : Math.max(0, (this.liftT || 0) - 3 * h);
-      // and you have to be paddling already, up to speed, when it lifts you: a few strokes as it arrives are too late on a
-      // shortboard (catchPaddle, seconds of paddling), less so on the floaty boards; and it has to take you within catchLate
-      // seconds of first lifting you, or it's gone
+      // (tried 27 Sep and taken back out the same day: requiring you to be paddling before the wave lifts you, and a short
+      // window after it lifts you, made the game's own "Paddle now!" tip too late; padUp and liftT are still tracked)
       const catchV = Math.min(C.speed * 0.5, 3.2 + 0.1 * C.speed) * P.catchK;   // (a longer, floatier board gets in with less)
-      if (this.onFace && this.recentPaddle > 0 && this.padUp >= P.catchPaddle && this.liftT <= P.catchLate && Math.sin(this.th) > 0.2 && this.vz > catchV && slope > 0.4 * P.catchK) { this.catchT += h; if (this.catchT > 0.1) { this.set('POP'); this.catchT = 0; } }
+      if (this.onFace && this.recentPaddle > 0 && Math.sin(this.th) > 0.2 && this.vz > catchV && slope > 0.4 * P.catchK) { this.catchT += h; if (this.catchT > 0.1) { this.set('POP'); this.catchT = 0; } }
       else this.catchT = 0;
       return;
     }

@@ -21,6 +21,7 @@ export function run(mode, level = 'decent', waves = 8, seed = 7, kind = 'medium'
   const rnd0 = Math.random; let st = seed >>> 0; const rnd = () => ((st = (st * 1664525 + 1013904223) >>> 0) / 4294967296);
   Math.random = rnd;
   const gauss = () => { let u = 0; for (let i = 0; i < 6; i++) u += rnd(); return u - 3; };
+  const posErr = new WeakMap();
   const cb = carveBrain({ hi: L.hi || 0.8, lo: 0.18, gain: 3.4 }), out = [], buf = []; let curSize = 0, maxTube = 0, shake = 0, lead = 2.5, attempt = null, paddled = false, guard = 0, t = 0, lastRanch = -99;
   try {
     g.paused = true; window.RANCH_KIND = kind; g.setMode(mode);
@@ -43,6 +44,13 @@ export function run(mode, level = 'decent', waves = 8, seed = 7, kind = 'medium'
         if (inc.w && inc.w !== attempt && inc.t < 6) { attempt = inc.w; lead = 2.5 + (rnd() * 2 - 1) * L.timing; paddled = false; }
         paddle = !!(inc.w && inc.t < lead && Math.abs(d) < 0.6);
         if (paddle) paddled = true;
+        // like a player reading the set (and following the tip): paddle along the reef to where this wave will break,
+        // a little down the line of it; a beginner reads it less well (a few metres off)
+        if (inc.w && mode !== 'ranch' && inc.t >= 6 && inc.t < 12) {
+          if (!posErr.has(inc.w)) posErr.set(inc.w, (rnd() * 2 - 1) * L.timing * 6);
+          const dxT = inc.w.peelX + inc.w.cond.peel * inc.t + 0.3 * inc.w.cond.H + posErr.get(inc.w) - r.x;
+          if (Math.abs(dxT) > 2.5) { const want = dxT > 0 ? 0 : Math.PI, dd = wrap(want - r.th); steer = Math.max(-1, Math.min(1, dd * 2)); paddle = Math.abs(dd) < 0.6; }
+        }
         // a wave that went by after we paddled for it: missed
         if (attempt && paddled && (!inc.w || inc.w !== attempt) && r.state === 'LIE') { out.push({ caught: false, why: 'missed the wave' }); attempt = null; paddled = false; }
       } else {
