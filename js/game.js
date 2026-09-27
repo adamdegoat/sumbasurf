@@ -497,6 +497,11 @@ function surfSteer(sx, stall) {
   return { steer: sx, stall: stall ? 1 : 0 };
 }
 
+// ---------- score levels: what a wave's score makes you, the same at every spot (they replaced the challenges, his call
+// 28 Sep 2026). Your best wave at a spot sets your level there; the menu shows it, arriving shows all three, the score
+// screen says which one each wave reached and how far the next is
+const LEVELS = [['Amateur', 5, '5.0 to 6.9'], ['Advanced', 7, '7.0 to 8.4'], ['Pro Surfer', 8.5, '8.5 and up']];
+const levelOf = (v) => { let k = -1; LEVELS.forEach(([, t], i) => { if (v >= t) k = i; }); return k; };
 // your best ride per level, kept on this phone (quietly does nothing if storage is blocked)
 // (best5: the stricter judge of 28 Sep 2026 started everyone's bests afresh; the old best4 scores aren't comparable)
 const bestFor = (m) => { try { return +localStorage.getItem('balisurf.best5.' + m) || 0; } catch (e) { return 0; } };
@@ -505,63 +510,37 @@ function showBests() {
   for (const b of document.querySelectorAll('[data-mode]')) {
     let el = b.querySelector('.best'); const v = bestFor(b.dataset.mode);
     if (!el) { el = document.createElement('em'); el.className = 'best'; b.appendChild(el); }
-    el.innerHTML = v ? `<b>${v.toFixed(1)}</b>best wave` : '';
+    const lv = levelOf(v); el.innerHTML = v ? `<b>${v.toFixed(1)}</b>${lv >= 0 ? LEVELS[lv][0] : 'best wave'}` : '';
   }
 }
 showBests();
-// ---------- challenges: three per spot, each suited to that wave. Nothing unlocks: they're just there to try hard at.
-// Kept on this phone. On the menu each spot shows three dots (lit when done); arriving at a spot the three show for a few
-// seconds; finishing one shows a banner where the move callouts go; the score screen says how many of the three are done
-const CHAL = {
-  easy: [['Ride one wave for 20 seconds', (c) => c.t >= 20], ['Land 3 snaps on one wave', (c) => c.snaps >= 3], ['Ride one all the way to the end', (c) => c.end]],
-  medium: [['Get barrelled for 8 seconds', (c) => c.tube >= 8], ['2 cutbacks on one wave', (c) => c.cutbacks >= 2], ['Score 7.5 or more on a wave', (c) => c.final && c.score >= 7.5]],
-  hard: [['Make the drop and ride 15 seconds', (c) => c.t >= 15], ['Hit 65 km/h', (c) => c.top >= 65], ['Come out of a 5 second barrel', (c) => c.out && c.tube >= 5]],
-  extreme: [['Ride the giant for 20 seconds', (c) => c.t >= 20], ['An 8 second barrel inside the giant', (c) => c.tube >= 8], ['Hit 90 km/h', (c) => c.top >= 90]],
-  kanan: [['Get barrelled for 10 seconds', (c) => c.tube >= 10], ['Snap, cutback and barrel on one wave', (c) => c.snaps >= 1 && c.cutbacks >= 1 && c.out], ['A heat score of 13', (c) => c.final && c.heat >= 13]],
-  hiu: [['Hit 65 km/h', (c) => c.top >= 65], ['Ride one wave for 20 seconds', (c) => c.t >= 20], ['A 5 second barrel on the longboard', (c) => c.board === 'long' && c.tube >= 5]],
-  ranch: [['6 turns on one wave', (c) => c.turns >= 6], ['Get barrelled for 10 seconds', (c) => c.tube >= 10], ['Ride all three wave settings in one visit', (c) => c.kinds >= 3]],
-};
-const chalDone = (() => { try { return JSON.parse(localStorage.getItem('sumbasurf.chal') || '{}') || {}; } catch (e) { return {}; } })();
-const chalHas = (m, i) => !!(chalDone[m] && chalDone[m][i]);
-const chalCount = (m) => (CHAL[m] || []).filter((_, i) => chalHas(m, i)).length;
-function chalDots() {
+// the menu: each spot's three dots light up to the level your best wave there reached
+function levelDots() {
   for (const b of document.querySelectorAll('[data-mode]')) {
-    const m = b.dataset.mode; if (!CHAL[m]) continue;
+    const m = b.dataset.mode;
     let el = b.querySelector('.chd'); if (!el) { el = document.createElement('i'); el.className = 'chd'; el.setAttribute('aria-hidden', 'true'); el.innerHTML = '<b></b><b></b><b></b>'; b.appendChild(el); }
-    [...el.children].forEach((d, i) => d.classList.toggle('on', chalHas(m, i)));
+    const lv = levelOf(bestFor(m)); [...el.children].forEach((d, i) => d.classList.toggle('on', i <= lv));
   }
 }
-chalDots();
+levelDots();
 const chalBox = document.getElementById('chal'), chalBan = document.getElementById('chalDone');
 const TICK = '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4.8 8.3l2.2 2.2 4.2-4.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const RING = '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
 let chalHideT = null;
-// arriving at a spot: its three challenges, for a few seconds, then out of the way
-function chalIntro(m) {
-  const L = CHAL[m]; if (!L || !chalBox) return;
-  chalBox.innerHTML = `<b>${modeName(m)} challenges</b>` + L.map(([t], i) => `<div class="${chalHas(m, i) ? 'ok' : ''}">${chalHas(m, i) ? TICK : RING}<span>${t}</span></div>`).join('');
-  chalBox.classList.add('on'); clearTimeout(chalHideT); chalHideT = setTimeout(() => chalBox.classList.remove('on'), 4500);   // (was 6.5 s: it sat over the surf too long)
+// arriving at a spot: the three levels and the scores they need, ticked where you've already made it, then out of the way
+function levelIntro(m) {
+  if (!chalBox) return; const lv = levelOf(bestFor(m));
+  chalBox.innerHTML = `<b>Score levels</b>` + LEVELS.map(([name, , range], i) => `<div class="${i <= lv ? 'ok' : ''}">${i <= lv ? TICK : RING}<span>${name}</span><em>${range}</em></div>`).join('');
+  chalBox.classList.add('on'); clearTimeout(chalHideT); chalHideT = setTimeout(() => chalBox.classList.remove('on'), 4500);
 }
 function chalHide() { if (chalBox) chalBox.classList.remove('on'); clearTimeout(chalHideT); }
 let chalBanT = null;
-function chalWin(text) {
+function levelWin(name) {
   if (!chalBan) return;
-  chalBan.innerHTML = `<small>Challenge done</small>${text}`; chalBan.classList.remove('on'); void chalBan.offsetWidth; chalBan.classList.add('on');
+  chalBan.innerHTML = `<small>New level at ${modeName(mode)}</small>${name}`; chalBan.classList.remove('on'); void chalBan.offsetWidth; chalBan.classList.add('on');
   clearTimeout(chalBanT); chalBanT = setTimeout(() => chalBan.classList.remove('on'), 2600);
-  audio.tone(784, 0.07, 0.35); audio.tone(1047, 0.07, 0.5, { delay: 0.12 });   // (a small two-note chime)
 }
-// the ride so far (and, at the end, its score and your heat), checked against the spot's three
-let chalRide = null, chalTube = 0, chalKinds = new Set();
-function chalCheck(final, heat = 0) {
-  const L = CHAL[mode]; if (!L || !rider) return;
-  if (chalRide !== rider.ride) { chalRide = rider.ride; chalTube = 0; }
-  const r = rider.ride; if (rider.inBarrel) chalTube = Math.max(chalTube, r.tubeT);
-  const names = r.moves.map((x) => x.name);
-  const c = { final, t: r.t, top: r.top, snaps: r.snaps, cutbacks: r.cutbacks, turns: r.turns, tube: chalTube, out: names.includes('BARREL'), end: !!r.end, score: r.score || 0, heat, board: boardType, kinds: chalKinds.size };
-  L.forEach(([text, ok], i) => { if (chalHas(mode, i) || !ok(c)) return;
-    (chalDone[mode] ||= [])[i] = 1; try { localStorage.setItem('sumbasurf.chal', JSON.stringify(chalDone)); } catch (e) {}
-    chalWin(text); chalDots(); });
-}
+
 // the spots only select (the one you'll surf lights up and is remembered); START SURFING takes you there
 let spotSel = 'easy'; try { const v = localStorage.getItem('sumbasurf.spot'); if (v && document.querySelector(`[data-mode="${v}"]`)) spotSel = v; } catch (e) {}
 const spotLabel = (m) => m === 'ranch' ? 'Surf Ranch' : (SPOTS[m] && SPOTS[m].name) || m;
@@ -619,7 +598,7 @@ async function start(m) {
   ui.load.textContent = ''; document.getElementById('goSurf').classList.remove('wait');
   ui.start.style.display = 'none'; document.body.classList.add('playing');
   session = { waves: 0, total: 0, best: 0, scores: [], barrels: 0 };
-  chalKinds = new Set(); chalIntro(m);   // (this spot's three challenges, shown for a few seconds as you arrive)
+  levelIntro(m);   // (the three score levels, shown for a few seconds as you arrive)
   setLeft = 0; setPos = 0;
   for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15;   // a calm start: time to look around and find the set
   updateWaves(0); spawnRider(); warmShaders();
@@ -1713,7 +1692,6 @@ function updateHUD(dt) {
   // the callout: BARREL while you're in it, or the move you just landed
   tubeShowT = rider.inBarrel ? 0.4 : Math.max(0, tubeShowT - dt);   // (held a moment: a wobble at the tube's edge doesn't flicker the word)
   hudCall(st, dt);
-  if (st === 'RIDE') { if (isRanch() && ranchKind && rider.stateT > 1.5) chalKinds.add(ranchKind); chalCheck(false); }   // (challenges done mid-ride show the moment they happen)
   hudScore(st === 'RIDE' ? rider.liveScore() : -1, dt);
   if ((st === 'WIPE' || st === 'OUT') && endT < 0) {
     endT = 0;
@@ -1731,7 +1709,11 @@ function updateHUD(dt) {
     { const J = r.t > 0 ? rider.liveScore(st === 'WIPE', true) : null, NM = { TURN: 'Turn', SNAP: 'Snap', CUTBACK: 'Cutback', FLOATER: 'Floater', AIR: 'Air', 'AIR 360': 'Air 360', BARREL: 'Barrel', VARIETY: 'Variety of moves', 'SPEED + CLEAN FINISH': 'Speed and a clean finish', SPEED: 'Speed' };
       ui.msgJ.innerHTML = J && J.lines.length ? J.lines.slice(0, 6).map((l) => `<div><span><b>${NM[l.name] || l.name}${l.name === 'BARREL' ? ` ${l.dur.toFixed(1)}s` : ''}</b>${l.notes.length ? `<i>${l.notes.join(', ')}</i>` : ''}</span><em>${l.pts.toFixed(1)}</em></div>`).join('') + (J.fell ? '<div><span><i>fell at the end: moves in the last moment don\'t count</i></span><em></em></div>' : '') : ''; }
     ui.sess.textContent = session.waves ? `Heat ${heat.toFixed(2)} / 20 ${session.waves > 1 ? `(your best two of ${session.waves} waves)` : '(your best two waves count)'}  ·  best wave ever ${Math.max(bestFor(mode), r.score).toFixed(1)}` : '';
-    chalCheck(true, heat); if (CHAL[mode]) ui.sess.textContent += `${ui.sess.textContent ? '  ·  ' : ''}Challenges ${chalCount(mode)}/3`;   // (the ones that need the finished ride: its score, your heat)
+    // which level this wave reached, and how far the next one is; a new best level at this spot gets a banner
+    if (r.t > 0) { const lv = levelOf(r.score), nx = LEVELS[lv + 1], parts = [];
+      if (lv >= 0) parts.push(`${LEVELS[lv][0]} wave`); if (nx) parts.push(`${(nx[1] - r.score).toFixed(1)} more for ${nx[0]}`);
+      if (parts.length) ui.sess.textContent += `${ui.sess.textContent ? '  ·  ' : ''}${parts.join('  ·  ')}`;
+      if (lv > levelOf(prevBest)) { levelWin(LEVELS[lv][0]); levelDots(); } }
   }
   // a wipeout plays out first (you see yourself go over), then the summary fades in
   if (endT >= 0) {
