@@ -512,7 +512,7 @@ let chalHideT = null;
 function chalIntro(m) {
   const L = CHAL[m]; if (!L || !chalBox) return;
   chalBox.innerHTML = `<b>${modeName(m)} challenges</b>` + L.map(([t], i) => `<div class="${chalHas(m, i) ? 'ok' : ''}">${chalHas(m, i) ? TICK : RING}<span>${t}</span></div>`).join('');
-  chalBox.classList.add('on'); clearTimeout(chalHideT); chalHideT = setTimeout(() => chalBox.classList.remove('on'), 6500);
+  chalBox.classList.add('on'); clearTimeout(chalHideT); chalHideT = setTimeout(() => chalBox.classList.remove('on'), 4500);   // (was 6.5 s: it sat over the surf too long)
 }
 function chalHide() { if (chalBox) chalBox.classList.remove('on'); clearTimeout(chalHideT); }
 let chalBanT = null;
@@ -560,7 +560,7 @@ function toMenu() {
   if (surfer) endWipe(); rider = null; rig.visible = false; endT = -1;
   for (const w of waves) w.dispose(scene); waves = [];
   setWeather('medium'); setSpot('medium'); ui.cond.textContent = '';
-  underK = 0; underWas = false; clearLens(); underEl.style.opacity = 0; underEl.style.display = 'none'; setText(ui.speed, ''); setText(ui.score, ''); setText(ui.hint, ''); ui.tube.style.opacity = 0;
+  underK = 0; underWas = false; clearLens(); underEl.style.opacity = 0; underEl.style.display = 'none'; hudSpeed(-1); hudScore(-1, 0); hudCallOff(true); setText(ui.hint, '');
   input.paddleBtn = false; input.stallBtn = false; input.stick = null; padTouch = null; padX = padY = 0;
   keys.clear(); steerF = stickY = 0; ui.paddle.classList.remove('down'); ui.stall.classList.remove('down');
   document.body.classList.remove('playing', 'riding', 'ranch-wait', 'villa', 'reef'); ui.msg.style.display = 'none'; walker = null; vPick(null); setHfov(50);
@@ -1466,9 +1466,50 @@ let dtArm = 1 / 60;
 // ---------- HUD + end of ride
 const setText = (el, t) => { if (el && el._t !== t) { el._t = t; el.textContent = t; if (el === ui.hint) document.body.classList.toggle('hinting', !!t); } };   // (a tip up top: the spot name beside it steps aside, on a small phone the two ran into each other)   // only touch the page when the text changes
 let endT = -1, snapCam = true, tubeShowT = 0, lastAir = false;
+// ---- the HUD's speed, score and move callouts (look: index.html #speed, #score, #tube)
+const hudSpdB = ui.speed.querySelector('b'), hudBar = ui.speed.querySelector('.sbar i'), hudScB = ui.score.querySelector('b');
+const cBig = ui.tube.querySelector('.cbig'), cWord = ui.tube.querySelector('.cword'), cPts = ui.tube.querySelector('.cpts');
+let hudKmh = -2, scShown = -1, callKey = null, callOn = false, callSlamT = 0;
+ui.score.addEventListener('animationend', () => ui.score.classList.remove('bump'));
+function hudSpeed(kmh) {
+  if (kmh === hudKmh) return; const on = kmh >= 0; ui.speed.classList.toggle('on', on); hudKmh = kmh; if (!on) return;
+  hudSpdB.textContent = kmh; hudBar.style.width = (Math.min(1, kmh / 70) * 100).toFixed(1) + '%';   // (full at 70 km/h; the gold end fills in as you go faster)
+}
+function hudScore(v, dt) {
+  const on = v >= 0; if (ui.score.classList.contains('on') !== on) ui.score.classList.toggle('on', on);
+  if (!on) { scShown = -1; return; }
+  if (scShown < 0 || v < scShown) scShown = v;
+  else if (v > scShown + 0.05) { if (!ui.score.classList.contains('bump') || v - scShown > 0.3) { ui.score.classList.remove('bump'); void ui.score.offsetWidth; ui.score.classList.add('bump'); } scShown += (v - scShown) * Math.min(1, dt * 9); }   // (counts up, with a bump)
+  else scShown = v;
+  const t = scShown.toFixed(1); if (hudScB.textContent !== t) hudScB.textContent = t;
+}
+const CALL_COL = { gold: '#ffcf8a', sea: '#8fe6d6', coral: '#ff8e6e' };
+function hudCallOff(now) { if (!callOn && !now) return; callOn = false; callKey = null; ui.tube.classList.remove('on', 'slam', 'big', 'live'); if (!now) ui.tube.classList.add('out'); else ui.tube.classList.remove('out'); }
+function hudCallShow(key, big, word, pts, col, slam) {
+  if (cWord.textContent !== word) cWord.textContent = word;
+  if (key === callKey) return;
+  callKey = key; callOn = true; cBig.textContent = big; cPts.textContent = pts; ui.tube.style.setProperty('--c', CALL_COL[col]);
+  ui.tube.classList.remove('out', 'slam', 'big', 'live'); void ui.tube.offsetWidth; ui.tube.classList.add('on');
+  if (slam) { ui.tube.classList.add('slam'); if (big) ui.tube.classList.add('big'); callSlamT = big ? 0.46 : 0.34; }
+}
+// the callout: the barrel's own clock while you're in it (counting up, pulsing), or the move you just landed with its points
+function hudCall(st, dt) {
+  callSlamT = Math.max(0, callSlamT - dt);
+  if (st === 'RIDE' && tubeShowT > 0) {
+    hudCallShow('tube', '', `BARREL ${Math.max(0, rider.ride.tubeT).toFixed(1)}s`, '', 'sea', true);
+    if (!callSlamT && !ui.tube.classList.contains('live')) { ui.tube.classList.remove('slam', 'big'); ui.tube.classList.add('live'); }
+    return;
+  }
+  const tr = st === 'RIDE' ? rider.trick : null;
+  if (!tr) { hudCallOff(false); return; }
+  if (tr !== callKey) {
+    const m = /^(BIG |DEEP )?(.*)$/.exec(tr.name), word = m[2], mv = rider.ride.moves[rider.ride.moves.length - 1];
+    hudCallShow(tr, (m[1] || '').trim(), word, mv ? `+${mv.pts.toFixed(1)}` : '', /^BARREL/.test(word) ? 'sea' : /^AIR/.test(word) ? 'coral' : 'gold', true);
+  }
+}
 function updateHUD(dt) {
   const st = rider.state;
-  setText(ui.speed, rider.standing ? `${Math.round(rider.v * 3.6)} km/h` : '');
+  hudSpeed(rider.standing ? Math.round(rider.v * 3.6) : -1);
   if (mode === 'random') setText(ui.cond, rider.wave && rider.standing ? `Random: ${rider.wave.cond.name.toLowerCase()} wave` : 'Random');
   ui.paddle.style.visibility = st === 'WIPE' || st === 'OUT' ? 'hidden' : 'visible';
   const lbl = rider.standing ? 'PUMP' : 'PADDLE'; if (ui.paddle.dataset.l !== lbl) { ui.paddle.dataset.l = lbl; ui.paddle.innerHTML = DESK ? `${lbl}<small>SPACE</small>` : lbl; }
@@ -1498,11 +1539,9 @@ function updateHUD(dt) {
   setText(ui.hint, session.waves < 5 || st === 'POP' ? (DESK ? deskHint(hint) : hint) : '');
   // the callout: BARREL while you're in it, or the move you just landed
   tubeShowT = rider.inBarrel ? 0.4 : Math.max(0, tubeShowT - dt);   // (held a moment: a wobble at the tube's edge doesn't flicker the word)
-  const call = st !== 'RIDE' ? '' : tubeShowT > 0 ? 'BARREL' : rider.trick ? rider.trick.name : '';
-  if (call) setText(ui.tube, call);
-  ui.tube.style.opacity = call ? 1 : 0;
+  hudCall(st, dt);
   if (st === 'RIDE') { if (isRanch() && ranchKind && rider.stateT > 1.5) chalKinds.add(ranchKind); chalCheck(false); }   // (challenges done mid-ride show the moment they happen)
-  setText(ui.score, st === 'RIDE' ? rider.liveScore().toFixed(1) : '');
+  hudScore(st === 'RIDE' ? rider.liveScore() : -1, dt);
   if ((st === 'WIPE' || st === 'OUT') && endT < 0) {
     endT = 0;
     const r = rider.ride;

@@ -47,10 +47,38 @@
   #ear svg { width: 14px; height: 14px; } #ear.on { color: #ffcf8a; border-color: #ffcf8a; background: rgba(255,207,138,.12); }
   body:not(.reef) #ear { display: none !important; }
   #cond { top: max(10px, env(safe-area-inset-top)); left: max(100px, calc(env(safe-area-inset-left) + 90px)); line-height: 26px; color: var(--dim); font-size: 12px; letter-spacing: .04em; }
-  #speed { top: max(10px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  #speed { transition: color .3s, transform .3s; transform-origin: right top; } #speed.up { color: #ffcf8a; transform: scale(1.12); transition: color .08s, transform .08s; }   /* each pump stroke: the speed lights up */
-  #score { top: max(36px, calc(env(safe-area-inset-top) + 26px)); right: max(16px, env(safe-area-inset-right)); color: var(--dim); font-variant-numeric: tabular-nums; }
-  #tube { top: 22%; left: 0; right: 0; text-align: center; font-size: 22px; font-weight: 700; letter-spacing: .3em; opacity: 0; transition: opacity .25s; }
+  /* speed and score, top right: a bold number with a thin bar that fills and warms to gold with speed; the score bumps
+     up when it rises. Move callouts (#tube): a sticker, the move's colour with a hard dark edge, slammed in */
+  #speed { top: max(8px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); text-align: right; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.35); display: none; }
+  #speed.on { display: block; }
+  #speed b { font: 800 30px/1 var(--disp); font-variant-numeric: tabular-nums; display: inline-block; transition: color .3s, transform .3s; transform-origin: right bottom; }
+  #speed small { font: 700 13px/1 var(--disp); letter-spacing: .12em; margin-left: 3px; opacity: .85; }
+  #speed.up b { color: #ffcf8a; transform: scale(1.12); transition: color .08s, transform .08s; }   /* each pump stroke: the speed lights up */
+  #speed .sbar { display: block; width: 92px; height: 5px; margin: 5px 0 0 auto; background: rgba(255,255,255,.25); border-radius: 3px; overflow: hidden; box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+  #speed .sbar i { display: block; height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, #fff, #ffcf8a 70%, #ffb45c); background-size: 92px 100%; transition: width .15s linear; }
+  #score { top: calc(max(8px, env(safe-area-inset-top)) + 46px); right: max(16px, env(safe-area-inset-right)); text-align: right; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.35); display: none; }
+  #score.on { display: block; }
+  #score small { font: 600 11px/1 var(--disp); letter-spacing: .14em; opacity: .8; margin-right: 5px; }
+  #score b { font: 700 20px/1 var(--disp); font-variant-numeric: tabular-nums; display: inline-block; transform-origin: right center; }
+  #score.bump b { animation: sbump .45s ease-out; }
+  @keyframes sbump { 0% { transform: scale(1.3); color: #ffcf8a; } 100% { transform: scale(1); color: #fff; } }
+  #tube { top: 17%; left: 0; right: 0; text-align: center; opacity: 0; transition: opacity .22s, transform .22s; text-shadow: none; --c: #ffcf8a; --ink: #15110c; }
+  #tube.on { opacity: 1; }
+  #tube.out { opacity: 0; transform: translateY(-12px); }
+  #tube .cbig { display: block; font: 800 clamp(16px, 6vh, 24px)/1 var(--disp); letter-spacing: .14em; color: #fff; -webkit-text-stroke: 1.2px var(--ink); paint-order: stroke fill; text-shadow: 2px 2px 0 var(--ink); margin-bottom: 1px; }
+  #tube .cbig:empty { display: none; }
+  #tube .cword { display: inline-block; font: 800 clamp(34px, 13vh, 56px)/.95 var(--disp); letter-spacing: .01em; color: var(--c); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 4px 4px 0 var(--ink); transform: rotate(-4deg); font-variant-numeric: tabular-nums; }
+  #tube .cpts { display: block; margin-top: 6px; font: 700 clamp(16px, 5.5vh, 22px)/1 var(--disp); color: #fff; -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; text-shadow: 2px 2px 0 var(--ink); transform: rotate(-4deg); }
+  #tube .cpts:empty { display: none; }
+  #tube.slam .cword { animation: cslam .34s cubic-bezier(.2,.9,.3,1.2) both; }
+  #tube.slam.big .cword { animation: cslamBig .46s cubic-bezier(.2,.9,.3,1.2) both; }
+  #tube.slam .cbig, #tube.slam .cpts { animation: cfade .3s .08s both; }
+  #tube.live .cword { animation: cpulse .9s ease-in-out infinite; }
+  @keyframes cslam { 0% { opacity: 0; transform: rotate(-4deg) scale(1.5); } 50% { opacity: 1; transform: rotate(-4deg) scale(.93); } 75% { transform: rotate(-4deg) scale(1.04); } 100% { transform: rotate(-4deg) scale(1); } }
+  @keyframes cslamBig { 0% { opacity: 0; transform: rotate(-4deg) scale(1.8); } 40% { opacity: 1; transform: rotate(-4deg) scale(.9); } 55% { transform: rotate(-6deg) scale(1.05) translateX(-4px); } 70% { transform: rotate(-2deg) scale(1) translateX(4px); } 85% { transform: rotate(-4deg) translateX(-2px); } 100% { transform: rotate(-4deg) scale(1); } }
+  @keyframes cfade { 0% { opacity: 0; } 100% { opacity: 1; } }
+  @keyframes cpulse { 0%, 100% { transform: rotate(-4deg) scale(1); } 50% { transform: rotate(-4deg) scale(1.05); } }
+  @media (prefers-reduced-motion: reduce) { #tube.slam .cword, #tube.slam.big .cword, #tube.live .cword { animation: none; } }
   body.hinting #cond { opacity: 0; } #cond { transition: opacity .3s; }
   #hint { top: max(12px, env(safe-area-inset-top)); left: 22%; right: 22%; text-align: center; font-size: 14px; font-weight: 600; }
   /* patch notes: a quiet link in the menu corner (inside the phone's safe area, clear of the rounded corner and the home
@@ -341,7 +369,7 @@
     border: 2px solid rgba(246,236,220,.55) !important; background: radial-gradient(circle at 50% 35%, rgba(60,42,26,.55), rgba(24,17,11,.62)) !important; box-shadow: inset 0 1px 0 rgba(255,236,200,.15), 0 2px 12px rgba(0,0,0,.2); }
   #paddle.down, #stall.down { border-color: var(--amber) !important; color: #2a1a0c !important; background: radial-gradient(circle at 50% 35%, #ffd694, #f2ad52) !important; }
   #touch { border-color: rgba(246,236,220,.5) !important; } #touch b { background: rgba(255,214,148,.85) !important; }
-  #speed { font-family: var(--disp); font-size: 24px !important; font-weight: 700 !important; } #score { font-family: var(--disp); font-size: 15px; } #cond { font-family: var(--disp); font-size: 14px !important; }
+  #cond { font-family: var(--disp); font-size: 14px !important; }
   #msg-t { font: 600 17px var(--disp) !important; letter-spacing: .02em; } #msg-n { font-family: var(--disp) !important; font-size: 68px !important; }
   #msg-n small { font: 700 14px var(--disp) !important; letter-spacing: .06em !important; color: var(--amber) !important; } #msg-s div { font-family: var(--disp); font-size: 20px !important; } #msg-s span { font-family: var(--body); }
   #sess { font: 500 13px var(--body) !important; }
@@ -353,9 +381,9 @@
 <body>
 <div id="view"></div>
 <div class="hud" id="cond"></div>
-<div class="hud" id="speed"></div>
-<div class="hud" id="score"></div>
-<div class="hud" id="tube">BARREL</div>
+<div class="hud" id="speed"><b>0</b><small>KM/H</small><span class="sbar"><i></i></span></div>
+<div class="hud" id="score"><small>SCORE</small><b>0.0</b></div>
+<div class="hud" id="tube"><span class="cbig"></span><span class="cword"></span><span class="cpts"></span></div>
 <div class="hud" id="hint"></div>
 <div class="hud" id="fps"></div>
 <div class="ctl" id="menu"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 4h12M2 8h12M2 12h12"/></svg>MENU</div>
@@ -402,21 +430,26 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260927-2029</small>
+    <small id="build">build 260927-2046</small>
   </div>
 </div>
 <script>
-// the patch notes: newest first; the dot shows until the player has opened the latest one (remembered on this device only)
+// the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
-    { id: '2026-09-27-lineup', date: '27 Sep 2026', title: 'Read the lineup', items: [
+    { id: '2026-09-27-hud', date: '27 Sep 2026', time: '8:46 pm', title: 'New look for your moves', items: [
+      'Moves slam onto the screen in colour with their points: gold for turns, green for barrels, coral for airs.',
+      'The barrel clock counts up live while you are inside.',
+      'A speed bar that fills as you go faster, and a score that counts up.',
+      'The spot challenges get out of your way sooner.' ] },
+    { id: '2026-09-27-lineup', date: '27 Sep 2026', time: '8:29 pm', title: 'Read the lineup', items: [
       'Waves now break in slightly different spots, like a real reef. Watch the set and move to where it will break.',
       'Out on the shoulder a shortboard cannot get in. Longboards, guns and the fish catch waves further out.',
       'Your first waves tell you which way to paddle.' ] },
-    { id: '2026-09-27-fixes', date: '27 Sep 2026', title: 'Fixes', items: [
+    { id: '2026-09-27-fixes', date: '27 Sep 2026', time: '8:19 pm', title: 'Fixes', items: [
       'Catching waves by tapping PADDLE works again.',
       'Wipeouts look like wipeouts: white water, held under, then you come up.' ] },
-    { id: '2026-09-27-surf', date: '27 Sep 2026', title: 'Surfing feel update', items: [
+    { id: '2026-09-27-surf', date: '27 Sep 2026', time: '6:26 pm', title: 'Surfing feel update', items: [
       'Hold PUMP and your surfer pumps in a steady rhythm. It works best carving gently down the face.',
       'Steering answers like a real board. Half your thumb now gives a real turn.',
       'Airs: race up the face and hit the lip fast to fly.',
@@ -425,17 +458,17 @@
       'The fish is looser than the shortboard.',
       'Gunung Laut is a proper challenge again.',
       'Storm lightning is now a single natural flash.' ] },
-    { id: '2026-09-27-surfer', date: '27 Sep 2026', title: 'Your surfer', items: [
+    { id: '2026-09-27-surfer', date: '27 Sep 2026', time: '1:10 pm', title: 'Your surfer', items: [
       'Feet stay planted on the board, knees bent in a real stance.',
       'Relaxed, natural hands in first person.',
       'A smoother paddling stroke.' ] },
-    { id: '2026-09-26-life', date: '26 Sep 2026', title: 'Life in Sumba', items: [
+    { id: '2026-09-26-life', date: '26 Sep 2026', time: '11:45 pm', title: 'Life in Sumba', items: [
       'Real surfers out in the lineup and friends at your villa who breathe, look around and chat.',
       'Shows in front of the villa: whales breaching, dolphins, manta rays, a sea eagle and flying fish.',
       'Pantai Kuda has a Sumba village and horses on the beach; Gunung Laut has a huge island peak.' ] },
   ].slice(0, 5);
   const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
-  document.getElementById('pnList').innerHTML = PATCH.map((p) => `<div class="pnEntry"><div class="pnDate">${esc(p.date)}</div><div class="pnTitle">${esc(p.title)}</div><ul>${p.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('');
+  document.getElementById('pnList').innerHTML = PATCH.map((p) => `<div class="pnEntry"><div class="pnDate">${esc(p.date)}${p.time ? ` · ${esc(p.time)}` : ''}</div><div class="pnTitle">${esc(p.title)}</div><ul>${p.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('');
   const btn = document.getElementById('pnBtn'), dot = document.getElementById('pnDot'), pn = document.getElementById('pn'), KEY = 'sumbasurf.patchSeen';
   let seen = null; try { seen = localStorage.getItem(KEY); } catch (e) {}
   dot.hidden = seen === PATCH[0].id;
@@ -484,6 +517,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=737"></script>
+<script type="module" src="js/game.js?v=740"></script>
 </body>
 </html>
