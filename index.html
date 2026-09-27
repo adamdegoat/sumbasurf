@@ -53,8 +53,26 @@
   #tube { top: 22%; left: 0; right: 0; text-align: center; font-size: 22px; font-weight: 700; letter-spacing: .3em; opacity: 0; transition: opacity .25s; }
   body.hinting #cond { opacity: 0; } #cond { transition: opacity .3s; }
   #hint { top: max(12px, env(safe-area-inset-top)); left: 22%; right: 22%; text-align: center; font-size: 14px; font-weight: 600; }
-  #build { position: fixed; right: 8px; bottom: 4px; color: rgba(253,247,238,.45); font-size: 9px; pointer-events: none; }
-  body.playing #build { display: none; }
+  /* patch notes: a quiet link in the menu corner (inside the phone's safe area, clear of the rounded corner and the home
+     bar in full screen) and a panel of the recent updates; the build stamp lives at the foot of the panel */
+  #pnBtn { position: fixed; z-index: 9; right: max(14px, calc(env(safe-area-inset-right) + 10px)); bottom: max(12px, calc(env(safe-area-inset-bottom) + 8px));
+    font: 600 12px/1 var(--disp); letter-spacing: .08em; text-transform: uppercase; color: rgba(253,247,238,.78); background: rgba(10,20,26,.38);
+    border: 1px solid rgba(253,247,238,.24); border-radius: 13px; padding: 7px 12px 6px; cursor: pointer; touch-action: manipulation; }
+  #pnDot { position: absolute; top: -3px; right: -3px; width: 9px; height: 9px; border-radius: 50%; background: #ffcf8a; box-shadow: 0 0 0 2px rgba(10,20,26,.6); }
+  body.playing #pnBtn, body.playing #pn { display: none !important; }
+  #pn { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgba(5,10,14,.6);
+    padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  #pn[hidden] { display: none; }
+  .pnBox { width: min(540px, 100%); max-height: 100%; overflow-y: auto; background: rgba(15,22,26,.95); border: 1px solid rgba(253,247,238,.16); border-radius: 14px;
+    padding: 14px 18px 12px; color: var(--sand); font-family: var(--body); -webkit-overflow-scrolling: touch; }
+  .pnHead { display: flex; justify-content: space-between; align-items: center; }
+  .pnHead b { font: 700 24px/1 var(--disp); letter-spacing: .01em; }
+  #pnClose { width: 34px; height: 34px; margin: -6px -8px 0 0; display: grid; place-items: center; color: var(--sand); background: none; border: 0; cursor: pointer; }
+  .pnEntry { margin-top: 14px; } .pnEntry:first-of-type { margin-top: 8px; }
+  .pnDate { font: 700 13px/1 var(--disp); letter-spacing: .08em; text-transform: uppercase; color: #ffcf8a; }
+  .pnTitle { font: 600 16px/1.2 var(--disp); margin: 3px 0 4px; }
+  .pnEntry ul { margin: 0; padding-left: 18px; } .pnEntry li { font-size: 13px; line-height: 1.4; color: rgba(246,236,220,.86); margin: 2px 0; }
+  #build { display: block; margin-top: 14px; color: rgba(253,247,238,.38); font-size: 10px; }
   #fps { bottom: 4px; left: 50%; transform: translateX(-50%); color: var(--dim); font-size: 10px; }
   body:not(.playing) .ctl { display: none !important; }
   /* PADDLE sits where PUMP will be (the 'go' button, top); STALL only appears below it once you're riding */
@@ -234,7 +252,7 @@
   body.live #rotate::before { opacity: 0; }
   @media (orientation: portrait) and (max-width: 900px) {
     #rotate { display: flex; }
-    #start, .hud, .ctl, .vui, #msg, #fBubble, #soundTip, #build { visibility: hidden !important; }
+    #start, .hud, .ctl, .vui, #msg, #fBubble, #soundTip, #pnBtn, #pn { visibility: hidden !important; }
   }
   body.phoneonly #rotate { display: none !important; }
   #rotate .rtName { font: 800 46px/.9 var(--disp); letter-spacing: -.01em; text-shadow: 0 2px 16px rgba(0,0,0,.35); }
@@ -378,7 +396,50 @@
   <p id="soundTip"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 6h3l4-3v10l-4-3H2z"/><path d="M11.5 5.5a3.5 3.5 0 0 1 0 5M13.5 3.5a6 6 0 0 1 0 9"/></svg> Tap anywhere for music</p>
   <p id="homeTip" hidden>For full screen: tap <b>Share</b>, then <b>Add to Home Screen</b>, and play from the icon.</p>
 </div>
-<small id="build">build 260927-1826</small>
+<button id="pnBtn" type="button" aria-haspopup="dialog" aria-controls="pn">Patch notes<i id="pnDot" hidden></i></button>
+<div id="pn" role="dialog" aria-modal="true" aria-label="Patch notes" hidden>
+  <div class="pnBox">
+    <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
+    <div id="pnList"></div>
+    <small id="build">build 260927-1840</small>
+  </div>
+</div>
+<script>
+// the patch notes: newest first; the dot shows until the player has opened the latest one (remembered on this device only)
+(() => {
+  const PATCH = [
+    { id: '2026-09-27-surf', date: '27 Sep 2026', title: 'Surfing feel update', items: [
+      'Hold PUMP and your surfer pumps in a steady rhythm. It works best carving gently down the face.',
+      'Steering answers like a real board. Half your thumb now gives a real turn.',
+      'Airs: race up the face and hit the lip fast to fly.',
+      'Catching waves: be paddling before the wave lifts you. Start late on a shortboard and it passes you by.',
+      'Waves now close out at the end, like the real thing.',
+      'Real turns score. Lazy side to side weaving no longer does.',
+      'The fish is looser than the shortboard.',
+      'Gunung Laut is a proper challenge again.',
+      'Storm lightning is now a single natural flash.' ] },
+    { id: '2026-09-27-surfer', date: '27 Sep 2026', title: 'Your surfer', items: [
+      'Feet stay planted on the board, knees bent in a real stance.',
+      'Relaxed, natural hands in first person.',
+      'A smoother paddling stroke.' ] },
+    { id: '2026-09-26-life', date: '26 Sep 2026', title: 'Life in Sumba', items: [
+      'Real surfers out in the lineup and friends at your villa who breathe, look around and chat.',
+      'Shows in front of the villa: whales breaching, dolphins, manta rays, a sea eagle and flying fish.',
+      'Pantai Kuda has a Sumba village and horses on the beach; Gunung Laut has a huge island peak.' ] },
+  ].slice(0, 5);
+  const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+  document.getElementById('pnList').innerHTML = PATCH.map((p) => `<div class="pnEntry"><div class="pnDate">${esc(p.date)}</div><div class="pnTitle">${esc(p.title)}</div><ul>${p.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('');
+  const btn = document.getElementById('pnBtn'), dot = document.getElementById('pnDot'), pn = document.getElementById('pn'), KEY = 'sumbasurf.patchSeen';
+  let seen = null; try { seen = localStorage.getItem(KEY); } catch (e) {}
+  dot.hidden = seen === PATCH[0].id;
+  const open = () => { pn.hidden = false; dot.hidden = true; try { localStorage.setItem(KEY, PATCH[0].id); } catch (e) {} document.getElementById('pnClose').focus(); };
+  const close = () => { pn.hidden = true; btn.focus(); };
+  btn.addEventListener('click', open);
+  document.getElementById('pnClose').addEventListener('click', close);
+  pn.addEventListener('click', (e) => { if (e.target === pn) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pn.hidden) close(); });
+})();
+</script>
 <div id="rotate">
   <div class="menuOnly"><div class="rtName">SumbaSurf</div><div class="rtTag">Surf the barrels of Sumba</div></div>
   <div class="paused"><div class="rtName">Paused</div><div class="rtTag">Your wave is waiting</div></div>
