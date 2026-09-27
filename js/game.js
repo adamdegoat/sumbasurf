@@ -1125,8 +1125,7 @@ const railSpray = (() => {
 })();
 
 // ---------- first-person water: what you see around the board as you surf (all looks, none of it touches the ride).
-//  - flecks: foam specks sitting on the water ahead, so at speed they rush past under the nose, and a thin V of
-//    white water peeling off the nose either side
+//  (the foam specks rushing past on the water ahead were taken out: on a phone they read as white dots everywhere)
 //  - sheets: big soft clouds of spray thrown off the rail in a carve, and a burst that fills the view for a moment in
 //    a snap or cutback; fine spray blowing back off the lip over you when you're up near it
 //  - drops: water beading on the deck and running back toward the tail at speed; a spurt over the nose off the chop
@@ -1134,14 +1133,6 @@ const railSpray = (() => {
 const surfFx = (() => {
   const soft = (() => { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const x = cv.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
     gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(0.45, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(cv); })();
-  // flecks (flat foam on the water, same look as the wake)
-  const FN = 260, fp = new Float32Array(FN * 3), fa = new Float32Array(FN), fs = new Float32Array(FN), fl = new Float32Array(FN), f0 = new Float32Array(FN), fv = new Float32Array(FN * 2);
-  const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.BufferAttribute(fp, 3)); fg.setAttribute('aA', new THREE.BufferAttribute(fa, 1)); fg.setAttribute('aS', new THREE.BufferAttribute(fs, 1));
-  const fm = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { uScale: { value: 1 }, uMax: { value: 8 } },
-    vertexShader: 'attribute float aA; attribute float aS; varying float vA; uniform float uScale; uniform float uMax; void main(){ vA = aA; vec4 mv = modelViewMatrix * vec4(position, 1.); gl_PointSize = min(aS * uScale / -mv.z, uMax); gl_Position = projectionMatrix * mv; }',
-    fragmentShader: 'varying float vA; void main(){ vec2 d = gl_PointCoord - .5; d.y *= 3.2; float r = dot(d, d) * 4.; if (r > 1.) discard; gl_FragColor = vec4(vec3(.92, .95, .95), vA * (1. - r) * (1. - r) * .8); }' });   // (squashed flat and soft-edged: foam lying on the water, not dots floating over it)
-  const fpts = new THREE.Points(fg, fm); fpts.frustumCulled = false; scene.add(fpts);
-  for (let i = 0; i < FN; i++) fp[i * 3 + 1] = -99;
   // sheets (big soft spray)
   const SN = 280, sp = new Float32Array(SN * 3), sv = new Float32Array(SN * 3), sl = new Float32Array(SN).fill(-1);
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
@@ -1152,27 +1143,16 @@ const surfFx = (() => {
   const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(dp, 3));
   const dpts = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xf2fbff, size: 0.045, map: soft, transparent: true, opacity: 0.95, depthWrite: false }));
   dpts.frustumCulled = false; for (let i = 0; i < DN; i++) dp[i * 3 + 1] = -99;
-  let fNext = 0, fAcc = 0, vAcc = 0, sNext = 0, sAcc = 0, mAcc = 0, lastTrick = null, frame = 0, spurtT = 2;
+  let sNext = 0, sAcc = 0, mAcc = 0, lastTrick = null, frame = 0, spurtT = 2;
   const _a = new THREE.Vector3(), _b = new THREE.Vector3();
-  const fleck = (x, z, vx, vz, life, size, y) => { const i = fNext; fNext = (fNext + 1) % FN; fp[i * 3] = x; fp[i * 3 + 1] = y ?? heightAt(waves, x, z) + 0.03; fp[i * 3 + 2] = z; fv[i * 2] = vx; fv[i * 2 + 1] = vz; fl[i] = f0[i] = life; fs[i] = size; };
   const sheet = (p, v, spread) => { const i = sNext; sNext = (sNext + 1) % SN; sp[i * 3] = p.x; sp[i * 3 + 1] = p.y; sp[i * 3 + 2] = p.z; sv[i * 3] = v.x + (Math.random() - .5) * spread; sv[i * 3 + 1] = v.y + Math.random() * spread; sv[i * 3 + 2] = v.z + (Math.random() - .5) * spread; sl[i] = 0.55 + Math.random() * 0.5; };
   return {
     attach() { if (dpts.parent !== board) board.add(dpts); },
     update(dt) {
-      fm.uniforms.uScale.value = renderer.domElement.height * 0.9; fm.uniforms.uMax.value = 20 * renderer.getPixelRatio(); frame++;   // (up close under the nose they're allowed to be big: that's what reads as speed)
+      frame++;
       const on = !globalThis.__fxOff && rider && rider.standing && rider.y > -1 && rider.state === 'RIDE';
       if (on) {
         const v = rider.v, fx = Math.cos(rider.th), fz = Math.sin(rider.th), vx = rider.vx, vz = rider.vz;
-        // foam on the water ahead: it stays where it is, so the faster you go the faster it rushes past under you
-        fAcc += Math.max(0, v - 3) * 17 * dt;
-        while (fAcc >= 1) { fAcc--; const d = 1.5 + Math.pow(Math.random(), 0.8) * 16, side = (Math.random() - 0.5) * (1.6 + d * 0.5);
-          fleck(rig.position.x + fx * d - fz * side, rig.position.z + fz * d + fx * side, 0, 0, 1.2 + Math.random(), 0.09 + Math.random() * 0.13); }
-        // the V off the nose: white water peeling away either side, spreading as you pass
-        const L = board.position.z + BOARD_LENGTH(boardType) / 2 - 0.15;
-        vAcc += Math.max(0, v - 4) * 18 * dt;
-        while (vAcc >= 1) { vAcc--; const sd = Math.random() < 0.5 ? -1 : 1, ox = -fz * sd, oz = fx * sd, out = 0.9 + Math.random() * 0.8;
-          _a.copy(rig.position).addScaledVector(pose.fwd, L + 0.2 + Math.random() * 1.0);   // (just ahead of the nose, where you can see it: it sweeps back past you either side)
-          fleck(_a.x + ox * 0.18, _a.z + oz * 0.18, ox * out - fx * 0.4, oz * out - fz * 0.4, 0.7 + Math.random() * 0.5, 0.07 + Math.random() * 0.05); }
         // spray sheets off the rail in a carve (to the outside of the turn, up and carried along with you)
         const curtain = Math.min(1, Math.abs(rider.turn) * v / 10 + rider.skid), out = Math.sign(rider.lean) || 1, sx = Math.sin(rider.th) * out, sz = -Math.cos(rider.th) * out;
         if (v > 5) sAcc += curtain * curtain * 80 * dt;
@@ -1197,11 +1177,6 @@ const surfFx = (() => {
         if (v > 8 && (spurtT -= dt) <= 0) { spurtT = 1 + Math.random() * 2.5; _a.copy(rig.position).addScaledVector(pose.fwd, nose); _b.set(vx * 0.9, 2.2, vz * 0.9); railSpray.stream(_a, _b, 12, 1.2); if (Math.random() < 0.25) splashLens(2, 0.5); }
       } else if (dpts.visible) { for (let i = 0; i < DN; i++) dp[i * 3 + 1] = -99; dg.attributes.position.needsUpdate = true; }
       // age everything
-      for (let i = 0; i < FN; i++) { if (fl[i] <= 0) continue; fl[i] -= dt; if (fl[i] <= 0) { fp[i * 3 + 1] = -99; fa[i] = 0; continue; }
-        const age = f0[i] - fl[i]; fa[i] = Math.min(1, age / 0.2) * Math.min(1, fl[i] / 0.5);
-        fp[i * 3] += fv[i * 2] * dt; fp[i * 3 + 2] += (fv[i * 2 + 1] + 1.2) * dt; fv[i * 2] *= 1 - dt * 1.5; fv[i * 2 + 1] *= 1 - dt * 1.5;
-        if ((i + frame) % 3 === 0) fp[i * 3 + 1] = heightAt(waves, fp[i * 3], fp[i * 3 + 2]) + 0.03; }
-      fg.attributes.position.needsUpdate = true; fg.attributes.aA.needsUpdate = true; fg.attributes.aS.needsUpdate = true;
       for (let i = 0; i < SN; i++) { if (sl[i] <= 0) { if (sl[i] > -1) { sp[i * 3 + 1] = -99; sl[i] = -1; } continue; } sl[i] -= dt; sv[i * 3 + 1] -= 9.8 * dt; const k = Math.exp(-dt * 1.6); sv[i * 3] *= k; sv[i * 3 + 2] *= k;
         sp[i * 3] += sv[i * 3] * dt; sp[i * 3 + 1] += sv[i * 3 + 1] * dt; sp[i * 3 + 2] += sv[i * 3 + 2] * dt; }
       sg.attributes.position.needsUpdate = true;
