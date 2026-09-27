@@ -51,7 +51,7 @@ const fit = () => { const w = innerWidth, h = innerHeight; if (!w || !h || (w ==
 addEventListener('resize', fit); addEventListener('orientationchange', () => setTimeout(fit, 250)); visualViewport?.addEventListener('resize', fit);
 // iPhone Safari ignores user-scalable=no: stop pinch-zoom, double-tap zoom and the rubber-band page drag ourselves
 for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
-document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+document.addEventListener('touchmove', (e) => { if (!(e.target.closest && e.target.closest('.pnBox'))) e.preventDefault(); }, { passive: false });   // (except inside the patch notes, which scroll)
 document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
 // in the Safari browser (not opened from the home screen icon), tell them how to get full screen
 // on a computer (a mouse, no touch screen): the menu shows a QR code to play on the phone instead, and the keys

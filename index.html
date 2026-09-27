@@ -64,10 +64,11 @@
     padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
   #pn[hidden] { display: none; }
   .pnBox { width: min(540px, 100%); max-height: 100%; overflow-y: auto; background: rgba(15,22,26,.95); border: 1px solid rgba(253,247,238,.16); border-radius: 14px;
-    padding: 14px 18px 12px; color: var(--sand); font-family: var(--body); -webkit-overflow-scrolling: touch; }
+    padding: 14px 18px 12px; color: var(--sand); font-family: var(--body); -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
   .pnHead { display: flex; justify-content: space-between; align-items: center; }
   .pnHead b { font: 700 24px/1 var(--disp); letter-spacing: .01em; }
-  #pnClose { width: 34px; height: 34px; margin: -6px -8px 0 0; display: grid; place-items: center; color: var(--sand); background: none; border: 0; cursor: pointer; }
+  #pnClose { width: 48px; height: 48px; margin: -10px -12px -6px 0; display: grid; place-items: center; color: var(--sand); background: none; border: 0; cursor: pointer; touch-action: manipulation; }
+  #pnClose svg { width: 20px; height: 20px; }
   .pnEntry { margin-top: 14px; } .pnEntry:first-of-type { margin-top: 8px; }
   .pnDate { font: 700 13px/1 var(--disp); letter-spacing: .08em; text-transform: uppercase; color: #ffcf8a; }
   .pnTitle { font: 600 16px/1.2 var(--disp); margin: 3px 0 4px; }
@@ -399,9 +400,9 @@
 <button id="pnBtn" type="button" aria-haspopup="dialog" aria-controls="pn">Patch notes<i id="pnDot" hidden></i></button>
 <div id="pn" role="dialog" aria-modal="true" aria-label="Patch notes" hidden>
   <div class="pnBox">
-    <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
+    <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260927-1840</small>
+    <small id="build">build 260927-1911</small>
   </div>
 </div>
 <script>
@@ -434,9 +435,15 @@
   dot.hidden = seen === PATCH[0].id;
   const open = () => { pn.hidden = false; dot.hidden = true; try { localStorage.setItem(KEY, PATCH[0].id); } catch (e) {} document.getElementById('pnClose').focus(); };
   const close = () => { pn.hidden = true; btn.focus(); };
-  btn.addEventListener('click', open);
-  document.getElementById('pnClose').addEventListener('click', close);
-  pn.addEventListener('click', (e) => { if (e.target === pn) close(); });
+  // a tap that counts even if the finger slides a little, answered on the touch itself (the page blocks touch
+  // scrolling, and a plain click on a phone often never came: the same fix as the game's own buttons)
+  const onTap = (el, fn) => { let t0 = null;
+    el.addEventListener('touchstart', (e) => { const t = e.changedTouches[0]; t0 = { x: t.clientX, y: t.clientY }; }, { passive: true });
+    el.addEventListener('touchend', (e) => { const t = e.changedTouches[0]; if (t0 && Math.hypot(t.clientX - t0.x, t.clientY - t0.y) < 28) { e.preventDefault(); fn(e); } t0 = null; }, { passive: false });
+    el.addEventListener('click', fn); };
+  onTap(btn, open);
+  onTap(document.getElementById('pnClose'), close);
+  onTap(pn, (e) => { if (e.target === pn) close(); });   // (outside the box; a scroll inside it moves too far to count as a tap)
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pn.hidden) close(); });
 })();
 </script>
@@ -471,6 +478,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=729"></script>
+<script type="module" src="js/game.js?v=730"></script>
 </body>
 </html>
