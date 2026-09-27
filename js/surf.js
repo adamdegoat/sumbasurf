@@ -134,7 +134,9 @@ export function waterAt(waves, x, z, out) {
   for (const w of waves) {
     const sp = w.span(), s = x - w.peelX; if (s < sp.sLo || s > sp.sHi) continue;
     const zl = z - w.zW - w.bend(s); if (zl > sp.zHi || zl < sp.zLo) continue;   // same curved crest line as the drawn wave
-    const y = w.prof.height(s, zl) * w.fade;
+    let y = w.prof.height(s, zl);
+    if (w.closing && w.profW) { const m = w.closeMask(s); if (m > 0) y += (w.profW.height(s, zl) - y) * m; }   // (closing out: the same blend into whitewater as the drawn wave)
+    y *= w.fade;
     if (y > out.y || !out.w) { out.y = y; out.w = w; out.s = s; out.zl = zl; }
   }
   return out;
@@ -426,6 +428,9 @@ export class Rider {
       if (this.trick) { this.trick.t += h; if (this.trick.t > 1.4) this.trick = null; }
       // the end of the wave: it backs off and the barrel breathes out (the spit), shooting whoever's inside out onto the shoulder
       if (this.spitOut > 0) { this.spitOut -= h; if (this.inBarrel && this.v < 1.9 * C.speed) { const k = 1 + 1.4 * h; this.vx *= k; this.vz *= k; } }
+      // the close-out reaches you: the lip comes down on the section you're riding and it all turns to whitewater. The
+      // ride's over (you rode it right to the end: full credit)
+      if (w.closing && w.closeMask && w.closeMask(s) > 0.5) { this.ride.end = 1; return this.out('Closed out: you rode it right to the end'); }
       // the wave has backed off to a shoulder (the end of the reef, or the sand): the ride winds down, full credit
       if ((w.endK === undefined ? 1 : w.endK) < 0.4) { this.ride.end = 1; return this.out(w.closing ? 'It closed out behind you: you rode it to the end' : w.endBy === 'beach' ? 'Rode it all the way in' : 'Rode it to the end of the reef'); }
       if (w.endK === undefined && (w.peelX > w.xEnd || this.z > w.zBeach)) { this.ride.end = 1; return this.out('Rode it to the end'); }   // (a wave with no ending set up: the old hard stop)
@@ -434,7 +439,8 @@ export class Rider {
   }
   lostSpeed(h) {
     this.lowT = (this.v < 2.2 || (!this.onFace && this.v < 3.2)) ? this.lowT + h : 0;
-    if (this.lowT > 0.6) this.out(this.ride.t > 0 ? 'Lost speed: the wave left you' : 'Missed it');
+    if (this.lowT > 0.6) { if (this.ride.t > 0 && this.wave && (this.wave.closing || (this.wave.endBy === 'beach' && this.wave.endK < 0.8))) { this.ride.end = 1; return this.out('It closed out behind you: you rode it to the end'); }   // (out ahead of it on the flats in the last stretch before the sand, as it closes out: you did ride it to the end)
+      this.out(this.ride.t > 0 ? 'Lost speed: the wave left you' : 'Missed it'); }
   }
 
   // like a contest judge: turns, speed, time in the barrel and in the pocket; just riding along earns little

@@ -54,6 +54,7 @@ const K = {
 // per control point: how much it glows (thin water) and where spray/foam sits when curling
 const THIN = [0, 0, .05, .2, .45, .75, .95, 1, .8, .45, .1, 0];
 const SPRAY = [0, 0, 0, 0, 0, 0, .12, .7, .6, .15, 0, 0];   // foam only where the lip lands (the falling curtain itself is clear water)
+const WHITE_SH = { P: K.white, curl: 0, broken: 1 };   // a closed-out section: all of it a pile of whitewater
 const NU = 64;                                     // samples across the wave (Catmull-Rom through the 12 points)
 const AHEAD = 70, BEHIND = 55;                     // metres of wave drawn ahead of / behind the break
 const NX = 150;
@@ -87,7 +88,7 @@ export class Wave {
     const shared = SHARED.get(cond);
     if (shared) {
       this.geo = shared.geo; this.xs = shared.xs; this.shared = true;
-      this.mesh = new THREE.Mesh(shared.geo, shared.mat); this.mesh.frustumCulled = false; scene.add(this.mesh);
+      this.mesh = new THREE.Mesh(shared.geo, shared.mat); this.mesh.frustumCulled = false; scene.add(this.mesh); this.hookClose();
       this.initSpray(scene); this.initMist(scene); this.initVeil(scene); this.initSpit(scene);
       return;
     }
@@ -106,7 +107,7 @@ export class Wave {
     g.setIndex(idx);
     this.geo = g;
     this.mesh = new THREE.Mesh(g, waterMaterial({ wave: true }));
-    this.mesh.frustumCulled = false;
+    this.mesh.frustumCulled = false; this.hookClose();
     scene.add(this.mesh);
     this.initSpray(scene);
     this.initMist(scene); this.initVeil(scene); this.initSpit(scene);
@@ -115,6 +116,11 @@ export class Wave {
     SHARED.set(cond, { geo: this.geo, mat: this.mesh.material, xs: this.xs }); this.shared = true;
   }
 
+  hookClose() {
+    this.mesh.onBeforeRender = () => { const m = this.mesh.material, u = m.uniforms; if (!u.uClT) return;
+      const t = this.closing ? this.closeT : -1, f = this.closing ? this.closeFront() : 0;
+      if (u.uClT.value !== t || u.uClF.value !== f) { u.uClT.value = t; u.uClF.value = f; m.uniformsNeedUpdate = true; } };
+  }
   // the crest line wraps slightly toward the beach along the wave (in proportion to the swell). The physics uses the
   // same curve (surf.js waterAt), or on a big wave the drawn face and the ridden face drift apart.
   bend(s) { const Lx = this.cond.len || 1, sb = s / Lx; return (0.004 * sb * sb * Math.sign(sb) * -0.5 + 0.0015 * sb * sb) * Lx; }
@@ -148,9 +154,9 @@ export class Wave {
   }
 
   // cross-section at distance s ahead of the break: fills out[] with [z, y, foam, thin] per sample
-  section(s, out) {
+  section(s, out, sh = this.shapeAt(s)) {
     const { H } = this.cond;
-    const { P, curl, broken } = this.shapeAt(s);
+    const { P, curl, broken } = sh;
     const amp = this.amp(s), Wd = this.cond.width || 1, Fat = this.cond.fat || 1, L = this.cond.len || 1;
     let k = 0;
     for (let j = 0; j < NU; j++) {
@@ -166,7 +172,7 @@ export class Wave {
       const push = (0.45 + 0.3 * smooth(0, 30 * L, s)) * Fat * (1 - 0.8 * curl) * Math.pow(1 - smooth(0, 0.85, y), 1.3) * below;
       const back = i >= 9 ? 1.6 : i === 8 ? 1 + 0.6 * t : 1;
       out[k++] = (z * back + push) * H * Wd; out[k++] = Math.max(0, y) * H * amp;
-      const cave = s < 0 ? smooth(3.3 * H, 4.8 * H, -s) : 0;   // where the tube caves in: the lip smashing down turns the whole end of it white
+      const cave = sh === WHITE_SH ? 1 : s < 0 ? smooth(3.3 * H, 4.8 * H, -s) : 0;   // where the tube caves in: the lip smashing down turns the whole end of it white
       out[k++] = Math.min(1, broken * 1.15 + spray * curl * 0.5 + cave * 0.9) * smooth(-0.04, 0.22, y);   // (white where it's piled up; none out on the flat water, where it ended in a hard line at the mesh's edge)
       out[k++] = thin * (1 - broken * 0.7);
     }
@@ -211,6 +217,17 @@ export class Wave {
     this.geo.attributes.position.needsUpdate = true;
     this.geo.attributes.aFoamThin.needsUpdate = true;
     this.geo.computeVertexNormals();
+    // the closed-out version of every vertex (same slice, same place across it): the shader blends toward it as the
+    // wave closes out (see closeMask)
+    const wp = new Float32Array(NX * NU * 3), wa = new Float32Array(NX * NU * 2);
+    for (let i = 0; i < NX; i++) {
+      const s = this.xs[i]; this.section(s, tmp, WHITE_SH);
+      for (let j = 0; j < NU; j++) { const p = (i * NU + j) * 3, a = (i * NU + j) * 2;
+        wp[p] = s; wp[p + 1] = tmp[j * 4 + 1]; wp[p + 2] = tmp[j * 4] + this.bend(s);
+        wa[a] = tmp[j * 4 + 2]; wa[a + 1] = 0.3 * Math.sin(Math.PI * j / (NU - 1)) * smooth(-40, -10, -Math.abs(s)); }   // (churns across the pile, calming toward the far ends; gently: at full churn its lumps stood 2 m proud of the surface you ride and swallowed your eyes)
+    }
+    const gw = new THREE.BufferGeometry(); gw.setAttribute('position', new THREE.BufferAttribute(wp, 3)); gw.setIndex(this.geo.index); gw.computeVertexNormals();
+    this.geo.setAttribute('aWhite', new THREE.BufferAttribute(wp, 3)); this.geo.setAttribute('aWhiteN', gw.attributes.normal); this.geo.setAttribute('aWhiteF', new THREE.BufferAttribute(wa, 2));
   }
 
   // whitewater mist: big soft puffs boiling off the broken part of the wave and drifting back in the offshore wind
@@ -227,7 +244,9 @@ export class Wave {
       if (this.ml[i] <= 0) {
         if (Math.random() > 0.2) { P[i * 3 + 1] = -99; continue; }
         // born along the top of the whitewater and where the lip hits the water
-        const s = -(4 + Math.random() * 10) * H;
+        let s = -(4 + Math.random() * 10) * H;
+        // closing out: a wall of spray and mist goes up where the lip is coming down along the line
+        if (this.closing && Math.random() < 0.6) { const F = this.closeFront(); s = F - Math.random() * 2 * H; if (s > AHEAD * (this.cond.len || 1)) continue; }
         if (s < -50 * (this.cond.len || 1)) continue;
         const sh = this.shapeAt(s), crest = sh.P[9], amp = this.amp(s);
         const atLip = Math.random() < 0.4 && sh.broken < 0.5;
@@ -317,6 +336,18 @@ export class Wave {
     this.spray.frustumCulled = false; scene.add(this.spray);
     for (let i = 0; i < N; i++) this.sl[i] = -1;
   }
+  // the close-out at the end of a wave (near the sand): the whole section left throws at once. From the moment it starts
+  // (closing, closeT seconds ago) the lip comes down along the line ahead of the curl, a front racing away from it, and
+  // the open tube behind caves in; everything it passes turns into a pile of whitewater that rolls on to the beach.
+  // 0 = the wave as usual, 1 = whitewater. The drawn wave (shader) and the physics (surf.js) both use this.
+  closeFront() { return this.closeT * Math.max(15, 3.5 * this.cond.peel); }
+  closeMask(s) {
+    if (!this.closing) return 0;
+    if (s >= 0) { const F = this.closeFront(), H = this.cond.H; return 1 - smooth(F - 1.5 * H, F, s); }
+    return smooth(0.1, 0.8, this.closeT);
+  }
+  // the same wave all closed out, for the physics' own copy of the surface (see Profile)
+  whiteView() { return this._wv ||= { cond: this.cond, section: (s, o) => this.section(s, o, WHITE_SH), shapeAt: () => WHITE_SH, amp: (s) => this.amp(s) }; }
   // where the break is (peelX) and where the wave is on its way in (zW)
   place(peelX, zW) { this.placed = true; this.peelX = peelX; this.zW = zW; }
   dispose(scene) {
@@ -435,18 +466,21 @@ const SUNSET = /* glsl */`
 export function waterMaterial({ wave = false } = {}) {
   return new THREE.ShaderMaterial({
     side: wave ? THREE.DoubleSide : THREE.FrontSide,
-    uniforms: { ...ENV, uH: { value: 2 } },
+    uniforms: { ...ENV, uH: { value: 2 }, ...(wave ? { uClT: { value: -1 }, uClF: { value: 0 } } : {}) },
     vertexShader: /* glsl */`
-      attribute vec2 aFoamThin;${wave ? '\n      attribute float aBrk;' : ''}
+      attribute vec2 aFoamThin;${wave ? '\n      attribute float aBrk; attribute vec3 aWhite, aWhiteN; attribute vec2 aWhiteF; uniform float uClT, uClF;' : ''}
       uniform float uTime, uH;
       varying vec3 vW; varying vec3 vN; varying vec2 vFT; varying float vAge;
       void main(){
-        vec3 pp = position;
+        vec3 pp = position; vec3 nn = normal; vec2 ft = ${wave ? 'aFoamThin' : 'vec2(0.)'}; float brk = ${wave ? 'aBrk' : '0.'};
+        ${wave ? `// closing out: this bit of the wave collapses into whitewater (the same mask as Wave.closeMask)
+        float cm = uClT < 0. ? 0. : position.x >= 0. ? 1. - smoothstep(uClF - 1.5 * uH, uClF, position.x) : smoothstep(.1, .8, uClT);
+        if (cm > 0.) { pp = mix(position, aWhite, cm); nn = normalize(mix(normal, aWhiteN, cm)); ft = mix(ft, vec2(aWhiteF.x, .1), cm); brk = mix(brk, aWhiteF.y, cm); }` : ''}
         vAge = ${wave ? 'clamp((-position.x / max(uH, .5) - 6.) / 10., 0., 1.)' : '0.'};   // how long ago this bit broke (0 at the curl, 1 far behind)
-        ${wave ? 'pp.y += aBrk * uH * (sin(pp.x * 1.7 + pp.z * 2.3 + uTime * 3.) * .09 + sin(pp.x * .63 - uTime * 2.1 + pp.z * .9) * .12 + sin(pp.x * 4.1 + pp.z * 3.3 - uTime * 5.) * .045 + sin(pp.x * 2.9 - pp.z * 5.2 + uTime * 4.2) * .04); pp.z += aBrk * uH * sin(pp.x * 1.3 + uTime * 2.6) * .08;   // a churning, lumpy bore, not a smooth plateau' : ''}
+        ${wave ? 'pp.y += brk * uH * (sin(pp.x * 1.7 + pp.z * 2.3 + uTime * 3.) * .09 + sin(pp.x * .63 - uTime * 2.1 + pp.z * .9) * .12 + sin(pp.x * 4.1 + pp.z * 3.3 - uTime * 5.) * .045 + sin(pp.x * 2.9 - pp.z * 5.2 + uTime * 4.2) * .04); pp.z += brk * uH * sin(pp.x * 1.3 + uTime * 2.6) * .08;   // a churning, lumpy bore, not a smooth plateau' : ''}
         vec4 w = modelMatrix * vec4(pp,1.);
-        vW = w.xyz; vN = normalize(mat3(modelMatrix) * normal);
-        vFT = ${wave ? 'aFoamThin' : 'vec2(0.)'};
+        vW = w.xyz; vN = normalize(mat3(modelMatrix) * nn);
+        vFT = ft;
         gl_Position = projectionMatrix * viewMatrix * w;
       }`,
     fragmentShader: /* glsl */`

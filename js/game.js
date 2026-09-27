@@ -2,19 +2,19 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=160';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=142';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=162';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=146';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=15';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=85';
-import { villa, VILLA } from './villa.js?v=122';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=87';
+import { villa, VILLA } from './villa.js?v=124';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=36';
-import { wildlife } from './wildlife.js?v=40';
+import { crew } from './crew.js?v=40';
+import { wildlife } from './wildlife.js?v=44';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
@@ -258,7 +258,7 @@ function play(name, { fade = 0.25, once = false, speed = 1, weight = 1 } = {}) {
 // ---------- the surf: a reef with the peak at x=0, z=0. Waves come in from the sea one swell period apart.
 // Each wave breaks at the peak when it gets there and peels off to the right. You sit in the lineup and pick your own.
 let mode = null, rider = null, waves = [], session = { waves: 0, total: 0, best: 0, scores: [], barrels: 0 }, nextBreak = 0, setLeft = 0, setPos = 0;
-let REEF = { xEnd: 190, zBeach: 150 }; const PROFILES = new Map();   // room for the bigger swells to run (the sand starts ~185 m in)
+let REEF = { xEnd: 190, zBeach: 150 }; const PROFILES = new Map(), PROFILES_W = new Map();   // room for the bigger swells to run (the sand starts ~185 m in)
 const OCEAN_REEF = REEF, RANCH_REEF = { xEnd: POOL.x1 - 60, zBeach: POOL.z1 - 20 };
 const POOL_PLANES = [new THREE.Plane(new THREE.Vector3(1, 0, 0), -POOL.x0), new THREE.Plane(new THREE.Vector3(-1, 0, 0), POOL.x1), new THREE.Plane(new THREE.Vector3(0, 0, 1), -POOL.z0), new THREE.Plane(new THREE.Vector3(0, 0, -1), POOL.z1)];
 renderer.localClippingEnabled = true;
@@ -286,14 +286,15 @@ function condFor(m) { return m === 'villa' ? 'medium' : m === 'ranch' ? ranchKin
 function addWave(tBreak) {
   const cond = mode === 'ranch' ? RANCH_CONDITIONS[ranchKind] : CONDITIONS[condFor(mode)];   // (the pool has its own machine waves)
   const w = new Wave(scene, cond);
-  if (!PROFILES.has(cond)) PROFILES.set(cond, new Profile(w));      // the surface shape is the same for every wave of a size: share its cache
+  if (!PROFILES.has(cond)) { PROFILES.set(cond, new Profile(w)); PROFILES_W.set(cond, new Profile(w.whiteView())); }   // (and its closed-out copy)      // the surface shape is the same for every wave of a size: share its cache
   if (isRanch()) for (const k of ['mist', 'spit', 'veil', 'spray']) if (w[k]) { w[k].material.clippingPlanes = POOL_PLANES; w[k].material.needsUpdate = true; }   // (spray and mist stay inside the pool, not drifting over the deck)
-  w.tBreak = tBreak; w.prof = PROFILES.get(cond); w.xEnd = REEF.xEnd; w.zBeach = REEF.zBeach; w.seed = Math.random() * 100;
+  w.tBreak = tBreak; w.prof = PROFILES.get(cond); w.profW = PROFILES_W.get(cond); w.xEnd = REEF.xEnd; w.zBeach = REEF.zBeach; w.seed = Math.random() * 100;
   waves.push(w);
   return w;
 }
 function updateWaves(dt) {
   for (const pr of PROFILES.values()) pr.warm(24);
+  for (const pr of PROFILES_W.values()) pr.warm(12);
   // keep the next wave lined up out to sea; a swell period apart, give or take
   // swell arrives in sets: 3-4 waves one period apart, the bigger ones in the middle, then a lull (shortened for play)
   while (!isRanch() && nextBreak - T < 150 / 6) {   // (the Surf Ranch only makes a wave when you order one)
@@ -322,7 +323,7 @@ function updateWaves(dt) {
     }
     // the end near the sand: the rest of the wave closes out, the whole section left throws at once (the break races down
     // the line, faster and faster) and everything behind it is whitewater; you kick out before it or it takes you
-    if (w.closing) { w.closeT += dt; rate = Math.max(rate, C.peel) * (1 + 5 * Math.min(1, w.closeT / 0.8)); }
+    if (w.closing) w.closeT += dt;   // (see Wave.closeMask: the lip comes down along the whole section left, the break itself doesn't race off down the line)
     w.px = (w.px === undefined ? C.peel * t : w.px + rate * dt);
     w.peelRate = rate;   // the physics uses the peel speed right now (not the average), so the wave's push matches what you see
     // where this wave breaks: like a real reef, not every wave on the same spot. Each breaks a few metres up or down the
@@ -333,12 +334,12 @@ function updateWaves(dt) {
     // the shallows; either way it backs off and shrinks away (the barrel softening and closing) instead of stopping dead
     const reefK = Math.min(1, Math.max(0, (REEF.xEnd - w.peelX) / 38)), beachK = Math.min(1, Math.max(0, (REEF.zBeach - w.zW) / 45));
     w.endK = Math.min(reefK, beachK); w.endBy = beachK < reefK ? 'beach' : 'reef';
-    if (!w.closing && !isRanch() && w.endBy === 'beach' && beachK < 0.8) { w.closing = true; w.closeT = 0; }
+    if (!w.closing && !isRanch() && w.endBy === 'beach' && beachK < 0.55) { w.closing = true; w.closeT = 0; }   // (a little further in than the old racing break started: its lip reaches you sooner, so rides last as long as they did)
     if (w.endK < 0.88 && !w.spat) { w.spat = true; if (w.spitT !== undefined) w.spitT = 0.3; if (rider && rider.wave === w && rider.inBarrel) rider.spitOut = 1.8; }   // (the spit: see the rider's judge)
-    w.fade = (w.size || 1) * w.endK * Math.min(1, Math.max(0.15, 1 + (w.zW + 160) / 60));
+    w.fade = (w.size || 1) * (w.closing ? 1 - 0.97 * smooth01((w.closeT - 1.5) / 5.5) : reefK) * Math.min(1, Math.max(0.15, 1 + (w.zW + 160) / 60));   // (closed out, it keeps its height while it breaks, then the whitewater shrinks as it rolls on into the shallows)
     if (isRanch()) w.fade = Math.min(1, Math.max(0.02, (w.zW - POOL.z0) / 22)) * w.endK;   // the pool wave rises out of the machine wall   // far out it's a small swell; past the end of the reef it backs off
     w.update(dt);
-    if (w.zW > REEF.zBeach + 40 || w.peelX > REEF.xEnd + 45) { w.dispose(scene); waves.splice(i, 1); }
+    if (w.zW > REEF.zBeach + 40 || w.peelX > REEF.xEnd + 45 || w.closeT > 7.5) { w.dispose(scene); waves.splice(i, 1); }
   }
 }
 // the next wave that hasn't reached you yet, and how many seconds until its face gets to you
@@ -763,7 +764,7 @@ const foamEl = document.createElement('div');
 foamEl.style.cssText = 'position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:5;opacity:0;display:none;background:radial-gradient(ellipse at 50% 40%,rgba(250,253,252,.97),rgba(222,240,240,.94) 55%,rgba(170,212,214,.92))';
 { for (const [dur, rot, op] of [[1.1, -17, 0.8], [0.8, 23, 0.65]]) { const c = document.createElement('div'); c.className = 'churn'; c.style.cssText = `animation-duration:${dur}s;transform:rotate(${rot}deg) scale(1.6);opacity:${op};filter:blur(3px) brightness(1.4)`; foamEl.appendChild(c); } }
 document.body.appendChild(foamEl);
-let foamK = 0;
+let foamK = 0, foamIn = 0, foamWas = false;
 function setFoam(k) { foamK = k; foamEl.style.opacity = k.toFixed(3); foamEl.style.display = k > 0.01 ? '' : 'none'; }
 let underK = 0, underWas = false;
 function setUnder(k, dt) { underK += (k - underK) * Math.min(1, dt * (k > underK ? 14 : 5)); underEl.style.opacity = underK.toFixed(3); underEl.style.display = underK > 0.01 ? '' : 'none';   // (hidden = the bubbles stop animating)
@@ -844,9 +845,14 @@ function updateCamera(dt) {
   setHfov(55);
   tubeK = 0;
   if (st === 'WIPE' && W.on && surfer) { povWipe(dt); return; }
-  if (foamK) setFoam(0);
   setUnder(0, dt);
   povCamera(dt);
+  // whitewater rolling over you (a close-out washing through, a broken wave passing you in the lineup): your eyes are in
+  // the foam, so you see churning white, not the flat inside of the wave's surface
+  { const inW = heightAt(waves, camera.position.x, camera.position.z) - camera.position.y;
+    foamIn += ((inW > 0 ? Math.min(1, 0.45 + inW * 1.5) : 0) - foamIn) * Math.min(1, dt * (inW > 0 ? 25 : 5));
+    if (foamIn > 0.01 || foamK) setFoam(foamIn > 0.01 ? foamIn : 0);
+    if (inW > 0) foamWas = true; else if (foamWas && foamIn < 0.4) { foamWas = false; splashLens(8, 1); } }   // (out of it: water running off the lens)
   // flying, or sliding sideways up the face into the lip, the body turns away from where you look and your front
   // shoulder swings right up to the lens (you saw the inside of your own upper arm as a brown blob): the upper arm near
   // the lens is left out then, only forearm and hand show, as they already do lying on the board

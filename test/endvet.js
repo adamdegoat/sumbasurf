@@ -5,7 +5,7 @@
 import { moment } from './shots.js';
 const G = () => window.__g;
 export async function film(mode = 'medium', seed = 7) {
-  const g = G(), name = 'ev_' + mode;
+  const g = G(), name = 'ev_' + (window.__evTag || '') + mode;
   const ok = await moment(mode, 'trim', seed); if (!ok.includes(': ok')) return mode + ' no ride';
   const r = g.rider, rd = g.renderer, c = g.camera, ring = [], info = [], pov = []; let after = -1, w0 = r.wave, fix = null;
   for (let i = 0; i < 60 * 70; i++) {
@@ -28,7 +28,7 @@ export async function film(mode = 'medium', seed = 7) {
       if (g.mirror) g.flipProj(c); rd.render(g.scene, c); if (g.mirror) g.flipProj(c);
       ring.push(rd.domElement.toDataURL('image/jpeg', 0.75)); if (ring.length > 60 + 50) ring.shift();
       c.layers.disable(1); g.CUT.value = 0.21; g.surfer.traverse((o) => { if (o.name === 'head') o.scale.setScalar(0.001); }); c.aspect = asp; c.updateProjectionMatrix(); c.position.copy(p); c.quaternion.copy(q);
-      info.push({ t: +(i / 60).toFixed(1), after: after >= 0 ? +(after / 60).toFixed(1) : null, endK: +(w0.endK ?? 1).toFixed(2), fade: +(w0.fade ?? 1).toFixed(2), by: w0.endBy, closing: w0.closing ? +(w0.closeT).toFixed(1) : 0, peel: +(w0.peelRate || 0).toFixed(1), alive: g.waves ? g.waves.includes(w0) : null, st: r.state });
+      info.push({ t: +(i / 60).toFixed(1), after: after >= 0 ? +(after / 60).toFixed(1) : null, endK: +(w0.endK ?? 1).toFixed(2), fade: +(w0.fade ?? 1).toFixed(2), by: w0.endBy, closing: w0.closing ? +(w0.closeT).toFixed(1) : 0, peel: +(w0.peelRate || 0).toFixed(1), alive: g.waves ? g.waves.includes(w0) : null, st: r.state, foam: +(parseFloat(document.getElementById('foam')?.style.opacity || [...document.querySelectorAll('div')].find((d) => d.style.zIndex === '5')?.style.opacity || 0)).toFixed(2), score: g.rider.ride ? Math.round(g.rider.ride.score || 0) : 0 });
       if (info.length > 110) info.shift();
       rd.setPixelRatio(1); rd.setSize(640, 296, false); const aa = g.armCam; c.aspect = aa.aspect = 640 / 296; c.updateProjectionMatrix(); aa.updateProjectionMatrix();
       rd.autoClear = false; rd.clear(); if (g.mirror) g.flipProj(c); rd.render(g.scene, c); if (g.mirror) g.flipProj(c); aa.position.copy(c.position); aa.quaternion.copy(c.quaternion); rd.clearDepth(); if (g.mirror) g.flipProj(aa); rd.render(g.scene, aa); if (g.mirror) g.flipProj(aa); rd.autoClear = true;
