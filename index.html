@@ -405,7 +405,7 @@
 
   /* ---- the menu, list + panel (his call 28 Sep 2026): every spot one line on the left (room for ten, the last three
      'Coming soon'), the chosen spot big on the right with its wave drawn to scale, Start and the board/stance picks */
-  #start .mm { display: grid; grid-template-columns: minmax(250px, 34%) 1fr; gap: clamp(12px, 2vw, 28px); height: clamp(300px, calc(100vh - 190px), 680px); margin-top: clamp(8px, 1.8vh, 18px); }
+  #start .mm { display: grid; grid-template-columns: minmax(250px, 34%) 1fr; gap: clamp(12px, 2vw, 28px); height: clamp(300px, calc(100vh - 190px), 680px); height: clamp(300px, calc(100dvh - 190px), 680px); margin-top: clamp(8px, 1.8vh, 18px); }
   #start .spotList { display: flex; flex-direction: column; gap: clamp(4px, .7vh, 7px); min-height: 0; overflow-y: auto; padding-right: 3px; }
   #start .spotList > button { position: relative; display: grid; grid-template-columns: clamp(28px, 3vw, 40px) 1fr auto; grid-template-rows: auto auto; column-gap: 12px; align-items: center; flex: 1 1 0; min-height: clamp(34px, 5.4vh, 54px); max-height: 60px;
     padding: 0 12px 0 8px; border-radius: 12px; border: 1px solid var(--line); background: linear-gradient(180deg, rgba(40,28,18,.62), rgba(24,17,11,.72)); box-shadow: inset 0 1px 0 rgba(255,236,200,.1);
@@ -445,7 +445,7 @@
   #start .mmPicks .boardrow, #start .mmPicks .stancerow { display: flex; align-items: center; gap: 8px; margin: 0; }
   #start .mmPicks .stl { margin-left: 0 !important; }
   @media (max-height: 460px) {
-    #start .mm { height: calc(100vh - 58px); margin-top: 6px; gap: 12px; } #start h1 { font-size: 22px !important; } #start .intro { display: none; }
+    #start .mm { height: calc(100vh - 58px); height: calc(100dvh - 58px); margin-top: 6px; gap: 12px; }   /* (dvh: the height you can see; on a phone 100vh counts the space under Safari's bar too) */ #start h1 { font-size: 22px !important; } #start .intro { display: none; }
     #start .spotList { gap: 3px; } #start .spotList > button { min-height: 26px; max-height: 30px; padding: 0 10px 0 6px; column-gap: 8px; border-radius: 9px; grid-template-columns: 26px 1fr auto; }
     #start .spotList small, #start .spotList .chd, #start .spotList #goVilla small { display: none !important; } #start .spotList .nm, #start .spotList #goVilla span { grid-row: 1 / span 2; align-self: center; font-size: 15px; }
     #start .spotList .best { grid-row: 1 / span 2; align-self: center; } #start .spotList .best b { font-size: 14px; } #start .spotList .wg { height: 13px; } #start .spotList #goVilla svg { width: 17px; height: 17px; }
@@ -516,13 +516,19 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-1709</small>
+    <small id="build">build 260928-1750</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-28-phonefit', date: '28 Sep 2026', time: '5:50 pm', title: 'Menu fits your phone again', items: [
+      'Fixed: with the phone turned sideways, the bottom of the menu could be cut off behind the browser bar.',
+    ] },
+    { id: '2026-09-28-iphonewd', wd: true, date: '28 Sep 2026', time: '5:50 pm', title: 'SumbaSurf now plays on iPhone', items: [
+      'Fixed: on iPhones the game only showed the menu words. It now starts properly. For the biggest screen, turn on Portrait Orientation Lock, press Fullscreen and hold your phone sideways.',
+    ] },
     { id: '2026-09-28-droneshow', date: '28 Sep 2026', time: '5:08 pm', title: 'A new drone show', items: [
       'The villa drone show is all new: a sea turtle, a manta ray, leaping dolphins, a humpback whale, a galloping Sumba horse and a sea eagle, then SUMBA in lights.',
       'Smoother from start to finish: each animal flows into the next, and the lights never jump.',
@@ -708,6 +714,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=828"></script>
+<script type="module" src="js/game.js?v=829"></script>
 </body>
 </html>

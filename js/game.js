@@ -85,7 +85,7 @@ if (DESK) {
   document.querySelector('#start .intro').textContent = 'Pick a spot and press START SURFING. Sit in the lineup, turn and paddle for a wave with Space, and ride it with the left and right arrows: tap for a small turn, hold for a hard carve. Hold Space for speed and Shift to stall and get barrelled.';
   document.getElementById('soundTip').lastChild.textContent = ' Click anywhere for music';
 }
-if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone && !matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) document.getElementById('homeTip').hidden = false;
+if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone && !matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches && document.getElementById('homeTip')) document.getElementById('homeTip').hidden = false;   // (the Wavedash copy has no tip: without the check, iPhones stopped right here, 28 Sep 2026)
 fit();
 
 // ---------- surfer on a board
