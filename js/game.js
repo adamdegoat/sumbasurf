@@ -15,7 +15,7 @@ import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
 import { crew } from './crew.js?v=48';
 import { wildlife } from './wildlife.js?v=52';
-import { droneShow } from './show.js?v=12';
+import { droneShow } from './show.js?v=13';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
