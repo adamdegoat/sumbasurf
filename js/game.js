@@ -73,8 +73,13 @@ document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: fals
 // in the Safari browser (not opened from the home screen icon), tell them how to get full screen
 // on a computer (a mouse, no touch screen): the menu shows a QR code to play on the phone instead, and the keys
 const DESK = matchMedia('(hover: hover) and (pointer: fine)').matches && !('ontouchstart' in window) && !navigator.maxTouchPoints;   // (a computer: keyboard and mouse)
-// computers play too (his call 28 Sep 2026): keyboard words in the tips, arrows steer, Space paddles, Down stalls.
-// (Until then a computer got a card with a QR code to open it on the phone; #phoneOnly is still in the page, unused.)
+// computers play too (his call 28 Sep 2026): keyboard words in the tips, arrows steer, Space paddles, Shift stalls.
+// On sumbasurf.app itself a computer is sent on (his call, same day): play on Wavedash (where computer play earns), or
+// scan the code to play on the phone. The game plays on a computer inside the Wavedash copy, on this Mac (localhost),
+// for the owner (?me=1), and with ?desk=1; ?po=1 shows the card anywhere, for checking it
+{ let own = /[?&]me=(1|claude)\b/.test(location.search); try { own = own || !!localStorage.getItem('sumbasurf.me'); } catch (e) {}
+  const force = /[?&]po=1\b/.test(location.search);
+  if (DESK && (force || (!own && !globalThis.Wavedash && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && !/[?&]desk=1\b/.test(location.search)))) document.body.classList.add('phoneonly'); }
 if (DESK) {
   document.body.classList.add('desk');
   document.querySelector('#start .intro').textContent = 'Pick a spot and press START SURFING. Sit in the lineup, turn and paddle for a wave with Space, and ride it with the left and right arrows: tap for a small turn, hold for a hard carve. Hold Space for speed and Shift to stall and get barrelled.';
