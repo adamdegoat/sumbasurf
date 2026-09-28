@@ -1759,7 +1759,7 @@ function autoQuality(dt) {
 }
 
 // ---------- loop
-const portrait = DESK ? { matches: false } : matchMedia('(orientation: portrait) and (max-width: 900px)');   // (a computer never waits for a turn) let lastPortrait = false;
+const portrait = DESK ? { matches: false } : matchMedia('(orientation: portrait) and (max-width: 900px)'); let lastPortrait = false;   // (a computer never waits for a turn)
 // the turn-your-phone screen: Android can be turned for you (full screen, locked sideways); its rotation lock has another name
 { const rtT = document.getElementById('rtTurn'), android = /Android/i.test(navigator.userAgent);
   if (android) document.querySelector('#rotate .rtLock span').innerHTML = '<b>Screen will not turn?</b> Auto rotate is off. Swipe down from the top of your screen and tap Auto rotate to switch it on.';
