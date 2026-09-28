@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta charset="utf-8"><title>phone check</title>
+<style>html,body{margin:0;background:#222;font:12px sans-serif;color:#ccc}#f{border:0;display:block;background:#000}#l{position:fixed;right:6px;bottom:4px}</style></head>
+<body><iframe id="f"></iframe><div id="l"></div><script>
+// The game as a phone sees it, at a real phone's visible size (Safari's bar already taken off): touch on, mouse off.
+//   phone.html?w=811&h=375   (then drive it from the console through P().__g)
+const q = new URLSearchParams(location.search), W = +q.get('w') || 811, H = +q.get('h') || 375, f = document.getElementById('f');
+f.style.width = W + 'px'; f.style.height = H + 'px'; document.getElementById('l').textContent = W + ' x ' + H + ' (phone, touch)';
+const shim = `<script>Object.defineProperty(Navigator.prototype,'maxTouchPoints',{get:()=>5});window.ontouchstart=null;const mm=window.matchMedia.bind(window);window.matchMedia=(s)=>/hover: hover|pointer: fine/.test(s)?{matches:false,addEventListener(){},removeEventListener(){},addListener(){},removeListener(){}}:mm(s);Object.defineProperty(Navigator.prototype,'userAgent',{get:()=>'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'});<\/script>`;
+fetch('../index.html?x=' + Date.now()).then((r) => r.text()).then((h) => { f.srcdoc = h.replace('<head>', '<head><base href="' + new URL('../', location.href).href + '">' + shim); });
+window.P = () => f.contentWindow;
+</script></body></html>

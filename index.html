@@ -453,6 +453,18 @@
     #start .mmPicks { margin-top: 8px; padding-top: 8px; } #start .mmPicks .blabel { display: none; }
     #pnBtn { top: max(7px, env(safe-area-inset-top)); bottom: auto; right: auto; left: calc(max(7vw, env(safe-area-inset-left)) + 118px); padding: 5px 10px 4px; font-size: 11px; }   /* (beside the title: bottom right sits on the panel) */
   }
+  /* a narrow phone on its side (iPhone SE and the like, 667 wide): the drawing and the long line go, the name stays on
+     one line, and boards and stance sit two to a row, so nothing piles up behind START SURFING */
+  @media (max-height: 460px) and (max-width: 760px) {
+    #start .mm { grid-template-columns: 200px 1fr; gap: 10px; } #start .mmPanel { padding: 9px 12px; }
+    #start .mmTop { grid-template-columns: 1fr; } #start .mmScale, #start .mmDesc { display: none; }
+    #start .mmKick { font-size: 11px; letter-spacing: .14em; } #start .mmBig { font-size: 30px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+    #start .mmLvl { margin-top: 5px; font-size: 12px; gap: 6px; } #start .mmLvl .chip { font-size: 13px; }
+    #start .mmActs { padding-top: 7px; } #start .mmActs #goSurf { min-height: 42px; } #start .mmActs #goSurf span { font-size: 20px; }
+    #start .mmPicks { flex-direction: column; align-items: stretch; gap: 5px; margin-top: 6px; padding-top: 6px; }
+    #start .mmPicks .boardrow, #start .mmPicks .stancerow { display: block; } #start .mmPicks .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+    #start .mmPicks .boards button { padding: 3px 8px 3px 6px !important; font-size: 13px; gap: 5px; } #start .mmPicks .boards svg { width: 24px; }
+  }
 </style>
 </head>
 <body>
@@ -516,13 +528,19 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-1750</small>
+    <small id="build">build 260928-1825</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-28-smallphone', date: '28 Sep 2026', time: '6:25 pm', title: 'Menu tidied for small phones', items: [
+      'On smaller phones like the iPhone SE, the menu panel no longer piles up: boards and stance now sit two to a row.',
+    ] },
+    { id: '2026-09-28-playbig', wd: true, date: '28 Sep 2026', time: '6:01 pm', title: 'Play it big on your phone', items: [
+      'On a phone, a card now shows how to get the biggest screen: turn on rotation lock, tap Go fullscreen, then hold your phone sideways.',
+    ] },
     { id: '2026-09-28-phonefit', date: '28 Sep 2026', time: '5:50 pm', title: 'Menu fits your phone again', items: [
       'Fixed: with the phone turned sideways, the bottom of the menu could be cut off behind the browser bar.',
     ] },
