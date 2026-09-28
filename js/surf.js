@@ -17,6 +17,7 @@ export const RIDE = {
   // carving works like a skier or a leaning bike: you tip the board onto its rail and the lean makes the turn,
   // turn rate = g * tan(lean) / speed. The fins hold up to gripMax sideways; lean past that and the tail drifts out.
   leanMax: 1.25, leanRate: 9.0, leanEase: 14, yawLag: 0.08, railBite: 0.3, tailLet: 0.35, tailBack: 0.3,        // full thumb = ~66 deg on the rail (a ~2.3 g carve); how fast you can roll the board over (rad/s)   (answers like a real shortboard: turning within ~0.2 s, a full turn in under half a second; the long boards keep their slow, heavy response)
+  snap: 1,   // how freely the tail lets go in a snap at the top of the face (a shortboard's full; big boards less)
   finGrip: 4.2, gripMax: 24, relFrom: 0.45,            // sideways: fins kill sliding at this rate, up to this much force (m/s^2): a buried rail holds ~2 g
   skidLoss: 0.16,                      // share of the excess sideways force lost as speed while the tail drifts
   glide: 0.7,                          // share of the fins' braking given back in a carve (0 = raw physics, 1 = no loss)
@@ -41,9 +42,9 @@ export const RIDE = {
 const BASE = { ...RIDE };
 export const BOARDS = {
   short: {},
-  fish: { paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.3, relFrom: 0.3, leanRate: 10.0, yawLag: 0.06, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85, catchPaddle: 0.6, catchLate: 1.9, catchReach: 1.4 },
-  long: { paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.85, catchK: 0.65, catchPaddle: 0.35, catchLate: 2.5, catchReach: 3.0, air: false, turnMin: 0.55 },
-  gun: { paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.72, catchK: 0.75, catchPaddle: 0.5, catchLate: 2.0, catchReach: 1.8, turnMin: 0.75 },
+  fish: { snap: 0.85, paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.3, relFrom: 0.3, leanRate: 10.0, yawLag: 0.06, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85, catchPaddle: 0.6, catchLate: 1.9, catchReach: 1.4 },
+  long: { snap: 0.3, paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.85, catchK: 0.65, catchPaddle: 0.35, catchLate: 2.5, catchReach: 3.0, air: false, turnMin: 0.55 },
+  gun: { snap: 0.45, paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.72, catchK: 0.75, catchPaddle: 0.5, catchLate: 2.0, catchReach: 1.8, turnMin: 0.75 },
 };
 export function setBoard(name) { Object.assign(RIDE, BASE, BOARDS[name] || {}); }
 
@@ -157,7 +158,7 @@ export class Rider {
     this.wave = null; this.s = 99; this.zl = 99; this.inBarrel = false; this.onFace = false; this.lowT = 0;
     this.air = null; this.vyS = 0; this.hitV = 0; this.vyPk = 0; this.prevY = undefined;
     this.pumpWas = false; this.pumpN = 0; this.pumpGap = 9; this.pumpT = 9; this.pumpQ = 0; this.weave = 0; this.pumping = false; this.foamT = 0; this.backT = 0; this.wwFloatT = 0; this.tubeOut = 0; this.turnHold = 0; this.recentPaddle = 0; this.slide = 0; this.stalling = 0;
-    this.ride = { t: 0, top: 0, barrel: 0, pocket: 0, turns: 0, cutbacks: 0, snaps: 0, speed: 0, end: 0, score: 0, moves: [], tubeT: 0, leanPk: 0, gPk: 0, tubeDeep: 0, combo: 0, lastMoveT: -9 }; this.turnSign = 0; this.tyMin = this.tyMax = undefined; this.cbArmed = false; this.snapArm = 0; this.trick = null;
+    this.ride = { t: 0, top: 0, barrel: 0, pocket: 0, turns: 0, cutbacks: 0, snaps: 0, speed: 0, end: 0, score: 0, moves: [], tubeT: 0, leanPk: 0, gPk: 0, tubeDeep: 0, combo: 0, lastMoveT: -9 }; this.turnSign = 0; this.tyMin = this.tyMax = undefined; this.cbArmed = false; this.snapArm = 0; this.snapK = 0; this.snapPk = 0; this.lipPush = 0; this.lipHit = false; this.trick = null;
   }
   set(state) { this.state = state; this.stateT = 0; }
   get standing() { return this.state === 'POP' || this.state === 'RIDE'; }
@@ -256,9 +257,20 @@ export class Rider {
       const railHold = 0.3 + 0.7 * smooth(2.5, 5.5, speed);
       // (and never harder than ~2.3 g sideways: measured carves are ~1.8-2 g; at full lean it went to 3 g, whipping round
       // tighter than any real surfer on the slower waves)
-      const turnCap = Math.min(5.2, 2.3 * P.g / Math.max(speed, 3.2));
-      const wantTurn = Math.max(-turnCap, Math.min(turnCap, bite * railHold * P.g * Math.tan(this.lean) / Math.max(speed, 3.2)));
-      this.turn += (wantTurn - this.turn) * Math.min(1, h / P.yawLag);
+      // the snap (his brief 28 Sep 2026: like the pros, and it has to feel natural): race up into the top of the face and
+      // turn hard back down, and up there the tail lets go: the board pivots much faster than any carve, throws its spray,
+      // loses some speed, then the fins bite again on the way down. Only high on the face, climbing, with speed, leaning
+      // hard back down the wave, so everywhere else the board rides exactly as before
+      const climb = sl ? -(this.vz - cw) : 0, backDown = Math.sign(this.lean) * Math.cos(this.th) > 0;
+      const zone = this.state === 'RIDE' && sl && backDown ? smooth(0.5, 0.72, hRel) * smooth(0.3, 1.6, climb) * smooth(0.55, 0.85, Math.abs(this.lean) / P.leanMax) * smooth(0.45 * C.speed, 0.8 * C.speed, speed) : 0;
+      this.snapK = zone > (this.snapK || 0) ? this.snapK + (zone - this.snapK) * Math.min(1, h * 14) : Math.max(0, (this.snapK || 0) - h * 3.2);   // (in quickly, out over about a third of a second)
+      const sk = this.snapK * (P.snap ?? 1);
+      if (sk > (this.snapPk || 0)) this.snapPk = sk;
+      if (this.lipPush > 0) { this.lipPush -= h; az += 14 * this.lipPush / 0.35; }   // (met the lip as it threw: it shoves you back down the face)
+      const turnCap = Math.min(5.2, 2.3 * P.g / Math.max(speed, 3.2)) * (1 + 1.7 * sk);
+      const pivot = Math.sign(this.lean) * sk * 5.5 * Math.min(1, Math.abs(this.lean) / P.leanMax);   // (the back foot swinging the tail round: up to ~300 deg/s on top of the carve)
+      const wantTurn = Math.max(-turnCap, Math.min(turnCap, bite * railHold * P.g * Math.tan(this.lean) / Math.max(speed, 3.2) + pivot));
+      this.turn += (wantTurn - this.turn) * Math.min(1, h / (P.yawLag * (1 - 0.45 * sk)));
       this.th += this.turn * h;
       // the tail can swing out, but the fins drag the nose back toward where the board is going through the water:
       // slip past ~17 deg is resisted, and it never passes ~35 deg (a drift, not a spin-out)
@@ -266,11 +278,11 @@ export class Rider {
       if (Math.hypot(rx, rz) > 1.5) {
         // measured against the water the board is sliding on, not the ground
         const vd = Math.atan2(rz, rx); let slip = this.th - vd; slip = Math.atan2(Math.sin(slip), Math.cos(slip));
-        const a = Math.abs(slip), soft = 0.3, hard = 0.62;
+        const a = Math.abs(slip), soft = 0.3 + 0.5 * sk, hard = 0.62 + 0.7 * sk;   // (in a snap the tail swings right out)
         this.slide = a;   // how far the tail is hanging out (rad): drives the spray fan and the hiss
         if (a > soft) { const na = a > hard ? hard : a - (a - soft) * Math.min(1, h * 6); this.th = vd + Math.sign(slip) * na; }
       }
-      const dr = P.drag * along + P.drag2 * along * Math.abs(along);
+      const dr = P.drag * along + P.drag2 * along * Math.abs(along) + 1.6 * sk * (this.slide || 0) * Math.sign(along);   // (a snap scrubs speed: the tail sliding across the water)
       ax += -dr * dx; az += -dr * dz;
       // stalling: weight on the tail and the trailing hand dragged in the face, a strong brake (you let the wave catch you)
       this.stalling = inp.stall || 0;
@@ -389,7 +401,10 @@ export class Rider {
     }
     // too high while it's throwing
     // (only a wave that pitches can throw you; a soft, crumbly one just breaks around you and the whitewater rule decides)
-    if (C.hollow > 0.5 && onFront && y > Math.min(0.97, 0.86 / Math.sqrt(C.forgive || 1)) * sl.top && s < 0.6 * H && s > -2.2 * H && zl < sl.topZ + 0.35 && this.hz > -0.05) return this.wipe('Too high: the lip threw you over the falls');
+    if (C.hollow > 0.5 && onFront && y > Math.min(0.97, 0.86 / Math.sqrt(C.forgive || 1)) * sl.top && s < 0.6 * H && s > -2.2 * H && zl < sl.topZ + 0.35 && this.hz > -0.05) {
+      if (this.snapK * (P.snap ?? 1) > 0.35 && Math.sign(this.turn) * Math.cos(this.th) > 0) { if (!(this.lipPush > 0)) { this.lipPush = 0.35; this.lipHit = true; } }   // (snapping off it, already turning back down: the lip hits you and sends you down with it)
+      else return this.wipe('Too high: the lip threw you over the falls');
+    }
     // ...and you can't get out through the roof: the only way out of a barrel is the open end
     const roofY = sl.U.length >= 3 && sl.curl > 0.3 && sl.lipY < 0.62 * H ? sl.F[sl.F.length - 1][1] : Infinity;
     if (C.hollow > 0.5 && onFront && s < -0.3 * H && s > -4.5 * H && zl < sl.lipZ && y > 0.97 * roofY) return this.wipe('Too high in the tube: the lip took you over the falls');
@@ -436,8 +451,9 @@ export class Rider {
       // a snap (top turn): climb hard up to the lip, then whip the board back down the face from up there
       const relVz = this.vz - C.speed, hTop = y / Math.max(sl.top, 0.3);
       if (relVz < -1.2 && hTop > 0.6) this.snapArm = 1.2; else this.snapArm = Math.max(0, this.snapArm - h);
+      if (!(this.snapArm > 0) && !(this.snapK > 0)) { this.snapPk = 0; this.lipHit = false; }   // (a snap that never came round to a scored one leaves nothing behind)
       if (this.snapArm > 0 && relVz > 0.8 && hTop > 0.5 && Math.abs(this.turn) > 1.3 && !(this.trick && this.trick.name.endsWith('SNAP'))) {
-        this.snapArm = 0; this.ride.snaps++; this.move('SNAP', crit);
+        this.snapArm = 0; this.ride.snaps++; this.move('SNAP', crit, 0, 1, { pivot: this.snapPk || 0, lip: !!this.lipHit }); this.snapPk = 0; this.lipHit = false;
       }
       if (this.trick) { this.trick.t += h; if (this.trick.t > 1.4) this.trick = null; }
       // the end of the wave: it backs off and the barrel breathes out (the spit), shooting whoever's inside out onto the shoulder
@@ -499,7 +515,7 @@ export class Rider {
   // close to the breaking part and high on the face). The same move out on the flat shoulder is worth a fraction of it
   // done in the pocket. Moves linked with no dead time between them build a combo. A barrel is worth more the longer
   // and the deeper you sat in it, and only counts once you're out.
-  move(name, crit, dur = 0, k = 1) {
+  move(name, crit, dur = 0, k = 1, snap = null) {
     const C = this.wave.cond, R = this.ride, spd = Math.min(1, this.v / (C.speed * 1.15));
     const pow = name === 'TURN' ? Math.min(1, R.gPk / 2.1) : R.leanPk;
     let q = Math.min(1, 0.35 * spd + 0.35 * pow + 0.3 * crit), base = { TURN: 0.9, SNAP: 2.2, CUTBACK: 2.4, FLOATER: 2.0, AIR: 3.0, 'AIR 360': 4.2 }[name] || 0;
@@ -509,7 +525,8 @@ export class Rider {
       const deep = R.tubeT > 0 ? R.tubeDeep / R.tubeT : 0.5, deepK = smooth(0.4, 1.6, deep);
       base = (1.2 + 0.9 * Math.min(dur, 6)) * (0.8 + 0.5 * deepK); q = crit; posK = 1;
       if (deepK > 0.6) notes.push('deep');
-    } else { if (crit > 0.7) notes.push('close to the curl'); if (pow > 0.8) notes.push('hard carve'); if (crit < 0.3) notes.push('far from the curl'); }
+    } else { if (snap) { base += 0.9 * smooth(0.3, 0.9, snap.pivot) + (snap.lip ? 0.8 : 0); if (snap.lip) notes.push('off the lip'); }   // (a real pivot at the top, and one that met the lip, is a bigger turn)
+      if (crit > 0.7) notes.push('close to the curl'); if (pow > 0.8) notes.push('hard carve'); if (crit < 0.3) notes.push('far from the curl'); }
     // linked moves: a different move within 1.6 s of the last one (a barrel links from its exit). The same move again
     // straight after isn't a combination (judges reward combining different manoeuvres), it just keeps the chain alive
     const linked = R.t - R.lastMoveT < 1.6; R.combo = !linked ? 1 : name !== R.lastMove ? Math.min(5, R.combo + 1) : R.combo; R.lastMoveT = R.t; R.lastMove = name;

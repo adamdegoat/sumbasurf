@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=165';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=154';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=161';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=16';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';

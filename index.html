@@ -528,18 +528,23 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-1825</small>
+    <small id="build">build 260928-1905</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-28-snap', date: '28 Sep 2026', time: '7:05 pm', title: 'Real snaps off the top', items: [
+      'Race up the face and turn hard at the top: the tail lets go, the board whips round with a burst of spray and you drive back down.',
+      'Time it as the lip throws and you come off the lip instead of going over the falls. A big snap off the lip scores more.',
+      'Shortboards snap the most, the fish nearly as much, longboards and guns less.',
+    ] },
+    { id: '2026-09-28-phonesapp', wd: true, date: '28 Sep 2026', time: '6:33 pm', title: 'On a phone? Play at sumbasurf.app', items: [
+      'SumbaSurf on Wavedash is made for computers. Phones now get a link to sumbasurf.app, where the full phone version is free.',
+    ] },
     { id: '2026-09-28-smallphone', date: '28 Sep 2026', time: '6:25 pm', title: 'Menu tidied for small phones', items: [
       'On smaller phones like the iPhone SE, the menu panel no longer piles up: boards and stance now sit two to a row.',
-    ] },
-    { id: '2026-09-28-playbig', wd: true, date: '28 Sep 2026', time: '6:01 pm', title: 'Play it big on your phone', items: [
-      'On a phone, a card now shows how to get the biggest screen: turn on rotation lock, tap Go fullscreen, then hold your phone sideways.',
     ] },
     { id: '2026-09-28-phonefit', date: '28 Sep 2026', time: '5:50 pm', title: 'Menu fits your phone again', items: [
       'Fixed: with the phone turned sideways, the bottom of the menu could be cut off behind the browser bar.',
@@ -732,6 +737,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=829"></script>
+<script type="module" src="js/game.js?v=836"></script>
 </body>
 </html>
