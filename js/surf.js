@@ -52,7 +52,11 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 
 // The surface of one wave, slice by slice (cached per 20 cm of s): the front (flat water in front, up the face to the top)
 // and the back (from behind the wave up to the crest). Heights in the wave's own frame: zl = z - wave.zW.
-const JUDGE_K = 8;   // how hard the top of the scale is (calibrated with test riders: see HANDOVER)
+// what each move is worth before how well and where you did it (28 Sep 2026: turns, snaps and cutbacks raised so a
+// wave of hard, committed turns in the pocket can score like a barrel, as real judges score it)
+export const MOVE_BASE = { TURN: 1.0, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0 };   // (airs kept above the turns: the hardest move scores most)
+export const MOVE_BASE_OLD = { TURN: 0.9, SNAP: 2.2, CUTBACK: 2.4, FLOATER: 2.0, AIR: 3.0, 'AIR 360': 4.2 };
+const JUDGE_K = 6;   // (28 Sep 2026: with quality over quantity below, 3 to 5 great moves reach the 8s; was 8)   // how hard the top of the scale is (calibrated with test riders: see HANDOVER)
 
 export class Profile {
   constructor(wave) { this.w = wave; this.cache = new Map(); this.buf = new Float32Array(256); }
@@ -148,6 +152,34 @@ export const PUMP_STROKE = 0.75, PUMP_PERIOD = 0.75;   // (a stroke fills the wh
 const _q = {}, _c = {}, IDLE = { paddle: false, pump: false, steer: 0 };
 export function heightAt(waves, x, z) { return waterAt(waves, x, z, _q).y; }
 
+// The wave's score, out of 10 like a contest judge: the best moves count most (each one after counts less), doing the
+// same move again is worth less and less, different kinds of big move earn a variety bonus, speed and a clean finish a
+// little. A move you fall on doesn't count. And the judges' rule for the excellent range (8 and up): it takes more than
+// one thing. Without two different strong moves (or three strong ones), a wave tops out just under 8, however long
+// the barrel. detail = the judges' sheet: what counted, each line's share of the score (they add up to it).
+// old = the scoring before 28 Sep 2026 (for comparing in tests only)
+export function scoreRide(r, fell = false, detail = false, old = false) {
+  const ms = (fell ? r.moves.filter((m) => m.t < r.t - 0.8) : r.moves).map((m) => (old && MOVE_BASE_OLD[m.name] && m.base ? { ...m, pts: m.pts * (m.base - MOVE_BASE[m.name] + MOVE_BASE_OLD[m.name]) / m.base } : m));
+  const seen = {}, items = [...ms].sort((a, b) => b.pts - a.pts).map((m) => { const n = (seen[m.name] = (seen[m.name] || 0) + 1); return { m, n, v: m.pts * Math.pow(m.name === 'TURN' ? 0.6 : 0.5, n - 1) }; }).sort((a, b) => b.v - a.v);   // (your best one of each move counts in full, the others less)
+  const W = [1, 0.85, 0.65, 0.1, 0.06, 0.035, 0.02, 0.01];   // (quality over quantity, like the judges: your best three moves decide the wave)
+  items.forEach((it, i) => (it.w = it.v * (W[i] || 0.005)));
+  let raw = items.reduce((a, it) => a + it.w, 0);
+  const kinds = new Set(ms.filter((m) => m.name !== 'TURN').map((m) => m.name.replace('AIR 360', 'AIR'))).size, variety = 0.4 * Math.max(0, kinds - 1);
+  const flow = Math.min(0.4, r.speed * 0.015), finish = r.end && !fell ? 0.4 : 0;
+  raw += variety + flow + finish;
+  if (fell) raw *= 0.85;
+  let score = 10 * (1 - Math.exp(-raw / JUDGE_K));
+  const strong = ms.filter((m) => m.strong && m.name !== 'TURN'), strongKinds = new Set(strong.map((m) => m.name.replace('AIR 360', 'AIR'))).size;
+  const excellentOk = old || strongKinds >= 2 || strong.length >= 3;
+  if (!excellentOk && score > 7.5) score = 7.5 + 0.4 * (1 - Math.exp(-(score - 7.5) / 0.4));   // (one thing alone: very good, never excellent)
+  score = Math.round(10 * score) / 10;
+  if (!detail) return score;
+  const share = (x) => (raw > 0 ? score * x * (fell ? 0.85 : 1) / raw : 0);
+  const lines = items.filter((it) => it.w > 0.05).slice(0, 6).map((it) => ({ name: it.m.name, dur: it.m.dur, notes: it.n > 1 ? [...it.m.notes, 'repeated'] : it.m.notes, pts: share(it.w) }));
+  if (variety) lines.push({ name: 'VARIETY', notes: [], pts: share(variety) });
+  if (flow + finish > 0.05) lines.push({ name: finish ? 'SPEED + CLEAN FINISH' : 'SPEED', notes: [], pts: share(flow + finish) });
+  return { score, lines, fell, excellentOk };
+}
 export class Rider {
   constructor() { this.reset(0, -6, -Math.PI / 2); }
   reset(x, z, th) {
@@ -518,7 +550,7 @@ export class Rider {
   move(name, crit, dur = 0, k = 1, snap = null) {
     const C = this.wave.cond, R = this.ride, spd = Math.min(1, this.v / (C.speed * 1.15));
     const pow = name === 'TURN' ? Math.min(1, R.gPk / 2.1) : R.leanPk;
-    let q = Math.min(1, 0.35 * spd + 0.35 * pow + 0.3 * crit), base = { TURN: 0.9, SNAP: 2.2, CUTBACK: 2.4, FLOATER: 2.0, AIR: 3.0, 'AIR 360': 4.2 }[name] || 0;
+    let q = Math.min(1, 0.35 * spd + 0.35 * pow + 0.3 * crit), base = MOVE_BASE[name] || 0;
     let posK = 0.25 + 0.75 * crit;   // (where you did it: the pocket counts, the flats barely)
     const notes = [];
     if (name === 'BARREL') {
@@ -532,7 +564,7 @@ export class Rider {
     const linked = R.t - R.lastMoveT < 1.6; R.combo = !linked ? 1 : name !== R.lastMove ? Math.min(5, R.combo + 1) : R.combo; R.lastMoveT = R.t; R.lastMove = name;
     const comboK = 1 + 0.1 * Math.min(R.combo - 1, 4); if (R.combo > 1) notes.push(`combo x${R.combo}`);
     const pts = k * base * posK * (0.2 + 0.8 * Math.pow(q, 1.3)) * comboK * (0.8 + 0.2 * Math.min(1.5, C.H / 3));   // bigger surf, bigger scores
-    this.ride.moves.push({ name, pts, t: this.ride.t, notes, dur });
+    this.ride.moves.push({ name, pts, t: this.ride.t, notes, dur, base, strong: name === 'BARREL' ? dur >= 1.5 : q >= 0.65 && crit >= 0.55 });   // (strong: a big, committed one: see the excellent rule in scoreRide)
     const big = q > 0.75 ? (name === 'BARREL' ? 'DEEP ' : 'BIG ') : '';
     this.trick = { name: big + name + (name === 'BARREL' ? ` ${dur.toFixed(1)}s` : name.startsWith('AIR') ? ` ${dur.toFixed(1)}m` : ''), t: 0 };
   }
@@ -543,24 +575,7 @@ export class Rider {
   // move again is worth less and less (the third turn of a kind is worth a quarter of the first), different kinds of
   // big move earn a variety bonus, a clean finish a little. 9s are rare, a 10 needs everything. detail = the judges'
   // sheet: what counted, each line's share of the score (they add up to it).
-  liveScore(fell = false, detail = false) {
-    const r = this.ride, ms = fell ? r.moves.filter((m) => m.t < r.t - 0.8) : r.moves;
-    const seen = {}, items = [...ms].sort((a, b) => b.pts - a.pts).map((m) => { const n = (seen[m.name] = (seen[m.name] || 0) + 1); return { m, n, v: m.pts * Math.pow(m.name === 'TURN' ? 0.7 : 0.6, n - 1) }; }).sort((a, b) => b.v - a.v);   // (your best one of each move counts in full, the others less)
-    const W = [1, 0.8, 0.6, 0.45, 0.35, 0.25, 0.18, 0.12];
-    items.forEach((it, i) => (it.w = it.v * (W[i] || 0.08)));
-    let raw = items.reduce((a, it) => a + it.w, 0);
-    const kinds = new Set(ms.filter((m) => m.name !== 'TURN').map((m) => m.name.replace('AIR 360', 'AIR'))).size, variety = 0.4 * Math.max(0, kinds - 1);
-    const flow = Math.min(0.4, r.speed * 0.015), finish = r.end && !fell ? 0.4 : 0;
-    raw += variety + flow + finish;
-    if (fell) raw *= 0.85;
-    const score = Math.round(100 * (1 - Math.exp(-raw / JUDGE_K))) / 10;
-    if (!detail) return score;
-    const share = (x) => (raw > 0 ? score * x * (fell ? 0.85 : 1) / raw : 0);
-    const lines = items.filter((it) => it.w > 0.05).slice(0, 6).map((it) => ({ name: it.m.name, dur: it.m.dur, notes: it.n > 1 ? [...it.m.notes, 'repeated'] : it.m.notes, pts: share(it.w) }));
-    if (variety) lines.push({ name: 'VARIETY', notes: [], pts: share(variety) });
-    if (flow + finish > 0.05) lines.push({ name: finish ? 'SPEED + CLEAN FINISH' : 'SPEED', notes: [], pts: share(flow + finish) });
-    return { score, lines, fell };
-  }
+  liveScore(fell = false, detail = false) { return scoreRide(this.ride, fell, detail); }
   wipe(why) {
     // taken by the closeout at the very end, still on your feet: that's riding the wave to its end, not a fall
     if (this.state === 'RIDE' && this.wave && this.wave.closing && /whitewater|foam ball|lip|tube/.test(why)) { this.ride.end = 1; return this.out('Closed out: you rode it right to the end'); }   // (once it closes out the whole section throws at once: whatever it does to you then is the wave ending, not a mistake)
