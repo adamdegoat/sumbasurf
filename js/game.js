@@ -73,11 +73,13 @@ document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: fals
 // in the Safari browser (not opened from the home screen icon), tell them how to get full screen
 // on a computer (a mouse, no touch screen): the menu shows a QR code to play on the phone instead, and the keys
 const DESK = matchMedia('(hover: hover) and (pointer: fine)').matches && !('ontouchstart' in window) && !navigator.maxTouchPoints;   // (a computer: keyboard and mouse)
-// SumbaSurf is a phone game: on a computer it shows a card with a QR code to open it on the phone instead. (Still
-// playable here for the owner's own Mac, marked with ?me=1, for testing on this machine, and with ?desk=1.)
-{ let own = /[?&]me=(1|claude)\b/.test(location.search); try { own = own || !!localStorage.getItem('sumbasurf.me'); } catch (e) {}
-  if (DESK && !own && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && !/[?&]desk=1\b/.test(location.search)) document.body.classList.add('phoneonly');
-  else if (DESK) document.body.classList.add('desk'); }
+// computers play too (his call 28 Sep 2026): keyboard words in the tips, arrows steer, Space paddles, Down stalls.
+// (Until then a computer got a card with a QR code to open it on the phone; #phoneOnly is still in the page, unused.)
+if (DESK) {
+  document.body.classList.add('desk');
+  document.querySelector('#start .intro').textContent = 'Pick a spot and press START SURFING. Sit in the lineup, turn and paddle for a wave with Space, and ride it with the left and right arrows: tap for a small turn, hold for a hard carve. Hold Space for speed and the Down arrow to stall and get barrelled.';
+  document.getElementById('soundTip').lastChild.textContent = ' Click anywhere for music';
+}
 if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone && !matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) document.getElementById('homeTip').hidden = false;
 fit();
 
@@ -440,7 +442,7 @@ const ui = {
   tube: document.getElementById('tube'), hint: document.getElementById('hint'), load: document.getElementById('load'), start: document.getElementById('start'), sess: document.getElementById('sess'),
 };
 // the same tips in keyboard words, on a computer
-const DESK_WORDS = [['Slide your thumb left and right to carve, like a steering wheel', 'Carve with the arrow keys (or A and D), like a steering wheel'], ['Let go and the board just glides straight', 'Let go of the keys and the board just glides straight'],
+const DESK_WORDS = [['Slide your thumb left and right to carve, like a steering wheel', 'Carve with the left and right arrows: tap for a small turn, hold for a hard one'], ['Let go and the board just glides straight', 'Let go of the keys and the board just glides straight'],
   ['PUMP and steer', 'Hold Space and steer'], ['hold PUMP', 'hold Space'], ['Hold PUMP', 'Hold Space'], ['tap PUMP', 'tap Space'], ['Tap PUMP', 'Tap Space'], ['STALL', 'Down'], ['Paddle now!', 'Paddle now! (Space)'], ['Paddle hard!', 'Paddle hard! (hold Space)'], ['Keep paddling!', 'Keep paddling! (Space)'],
   ['Wave coming: turn to face', 'Wave coming: use the arrow keys to face']];
 const deskHint = (h) => { for (const [a, b] of DESK_WORDS) if (h.includes(a)) h = h.replace(a, b); return h; };
@@ -455,6 +457,7 @@ hold(ui.paddle, () => { audio.wake(); input.paddleBtn = true; ui.paddle.classLis
 hold(ui.stall, () => { audio.wake(); input.stallBtn = true; ui.stall.classList.add('down'); }, () => { input.stallBtn = false; ui.stall.classList.remove('down'); });
 // thumb: touch anywhere on the right half and drag; the spot you first touch is the centre.
 // Left/right turns the board left/right, like leaning on a real board: lying, it points you where you paddle; standing, it carves.
+let keyLean = 0; const KEY_START = 0.3, KEY_FULL = 0.35;           // (arrow keys: the lean a press starts at, seconds held to a full lean)
 let padTouch = null, padX = 0, padY = 0, lastPadTouch = undefined, lastKnob = '', steerF = 0, stickY = 0, lastStickMode = null;
 const PAD_R = 80;                                                   // thumb travel (px) for a full lean
 const padMove = (x, y) => { if (!padTouch) return; padX = Math.max(-1, Math.min(1, (x - padTouch.x0) / PAD_R)); padY = Math.max(-1, Math.min(1, (y - padTouch.y0) / PAD_R)); };
@@ -467,7 +470,15 @@ addEventListener('mousemove', (e) => { if (padTouch && padTouch.id === 'm') padM
 addEventListener('mouseup', () => { if (padTouch && padTouch.id === 'm') padTouch = null; });
 function readInput(dt) {
   if (!padTouch) { padX *= Math.max(0, 1 - dt * 10); padY *= Math.max(0, 1 - dt * 10); }   // let go and the board runs straight
-  const kx = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+  const kraw = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+  // keys are on or off, a thumb isn't: standing, a press starts at a third of a lean (a quick tap trims ~7 deg on a
+  // shortboard) and holding builds to a full carve by ~0.35 s (0.4 s held ~ a full thumb for 0.4 s, ~42 deg); letting go
+  // straightens in ~0.3 s. Long and gun stay slow because the boards are (the keys match the thumb on them too).
+  // Lying down the keys still turn the board at once, as before
+  const kStand = !!(rider && rider.standing);
+  if (!kStand || !kraw) keyLean = kStand ? keyLean * Math.max(0, 1 - dt * 12) : kraw;
+  else { const k0 = KEY_START, kf = KEY_FULL; if (Math.sign(keyLean) !== kraw || Math.abs(keyLean) < k0) keyLean = kraw * k0; keyLean = Math.max(-1, Math.min(1, keyLean + kraw * dt * (1 - k0) / kf)); }
+  const kx = Math.abs(keyLean) < 0.02 ? 0 : keyLean;
   // thumb feel: a small dead zone (a resting thumb wobbles), fine control near the centre, full lean at the edge,
   // and a light filter so the board answers smoothly instead of twitching with every pixel
   const shape = (v) => { const a = Math.abs(v); return a < 0.08 ? 0 : Math.sign(v) * Math.pow((a - 0.08) / 0.92, 1.15); };   // (a gentler curve: half the pad asks for a real, gentle turn)
@@ -592,7 +603,7 @@ async function start(m) {
   hello(m === 'ranch' ? 'Surf Ranch' : (SPOTS[m] && SPOTS[m].name) || m);
   showOff(true); mode = m; setWeather(m); setSpot(m); audio.start(); audio.quiet(false); audio.musicStart(MUSIC); document.body.classList.toggle('reef', m !== 'ranch');
   // fullscreen + landscape lock must be asked for inside the tap, before any waiting (Android); iOS ignores both safely
-  try { document.documentElement.requestFullscreen?.({ navigationUI: 'hide' })?.then(() => screen.orientation?.lock?.('landscape')).catch(() => {}); } catch (e) {}
+  if (!DESK) try { document.documentElement.requestFullscreen?.({ navigationUI: 'hide' })?.then(() => screen.orientation?.lock?.('landscape')).catch(() => {}); } catch (e) {}
   ui.load.textContent = surfer ? '' : 'Loading...'; document.getElementById('goSurf').classList.toggle('wait', !surfer);
   try { await ready; } catch (e) { starting = false; return; }
   ui.load.textContent = ''; document.getElementById('goSurf').classList.remove('wait');
@@ -1748,7 +1759,7 @@ function autoQuality(dt) {
 }
 
 // ---------- loop
-const portrait = matchMedia('(orientation: portrait) and (max-width: 900px)'); let lastPortrait = false;
+const portrait = DESK ? { matches: false } : matchMedia('(orientation: portrait) and (max-width: 900px)');   // (a computer never waits for a turn) let lastPortrait = false;
 // the turn-your-phone screen: Android can be turned for you (full screen, locked sideways); its rotation lock has another name
 { const rtT = document.getElementById('rtTurn'), android = /Android/i.test(navigator.userAgent);
   if (android) document.querySelector('#rotate .rtLock span').innerHTML = '<b>Screen will not turn?</b> Auto rotate is off. Swipe down from the top of your screen and tap Auto rotate to switch it on.';
@@ -2146,7 +2157,7 @@ function tick(dt) {
   // (in the barrel view the camera looks back at you, so left/right are flipped to match the screen)
   if (rider && rider.standing && input.test == null) {
     // (scripted checks drive a virtual stick: y down = STALL held, y up = PUMP held)
-    const stallOn = !!input.stallBtn || keys.has('ArrowDown') || !!(input.stick && input.stick.y > 0.5);
+    const stallOn = !!input.stallBtn || keys.has('ArrowDown') || keys.has('KeyS') || keys.has('ShiftLeft') || keys.has('ShiftRight') || !!(input.stick && input.stick.y > 0.5);
     const pumpOn = inp.pump || !!(input.stick && input.stick.y < -0.3);
     const o = surfSteer(tubeK > 0.5 ? -inp.steer : inp.steer, stallOn);
     inp.steer = o.steer; inp.pump = pumpOn; inp.stall = o.stall;
@@ -2240,4 +2251,4 @@ renderer.setAnimationLoop(() => {
   if (mir) { flipProj(camera); if (!camera.layers.isEnabled(1)) flipProj(armCam); }   // (both lenses back to normal between frames)
   autoQuality(dt); musicTick();
 });
-window.__g = { get hfov() { return hfovHalf; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, want: () => _want };
+window.__g = { get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, want: () => _want };

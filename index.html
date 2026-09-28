@@ -15,11 +15,11 @@
 <link rel="manifest" href="manifest.json">
 <meta http-equiv="Cache-Control" content="no-cache">
 <title>SumbaSurf</title>
-<meta name="description" content="Surf the barrels of Sumba. Free, in your browser. Best on a phone held sideways.">
+<meta name="description" content="Surf the barrels of Sumba. Free, in your browser, on your phone or computer.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SumbaSurf">
 <meta property="og:title" content="SumbaSurf">
-<meta property="og:description" content="Surf the barrels of Sumba. Free, in your browser. Best on a phone held sideways.">
+<meta property="og:description" content="Surf the barrels of Sumba. Free, in your browser, on your phone or computer.">
 <meta property="og:url" content="https://sumbasurf.app/">
 <meta property="og:image" content="https://sumbasurf.app/og-image.jpg">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
@@ -289,8 +289,8 @@
   #rotate::before { content: ""; position: absolute; inset: 0; z-index: -1; background: #0d1720 url(rotate-bg.jpg) 50% 50% / cover; transition: opacity 1s; }
   body.live #rotate::before { opacity: 0; }
   @media (orientation: portrait) and (max-width: 900px) {
-    #rotate { display: flex; }
-    #start, .hud, .ctl, .vui, #msg, #fBubble, #soundTip, #pnBtn, #pn { visibility: hidden !important; }
+    body:not(.desk) #rotate { display: flex; }   /* (a computer's narrow window just plays) */
+    body:not(.desk) :is(#start, .hud, .ctl, .vui, #msg, #fBubble, #soundTip, #pnBtn, #pn) { visibility: hidden !important; }
   }
   body.phoneonly #rotate { display: none !important; }
   #rotate .rtName { font: 800 46px/.9 var(--disp); letter-spacing: -.01em; text-shadow: 0 2px 16px rgba(0,0,0,.35); }
@@ -441,13 +441,18 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-0244</small>
+    <small id="build">build 260928-0949</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-28-computer', date: '28 Sep 2026', time: '9:47 am', title: 'Play on a computer', items: [
+      'SumbaSurf now plays on a computer too. Steer with the left and right arrows: a quick tap for a small turn, hold for a hard carve.',
+      'Space paddles, pops you up and pumps. The Down arrow stalls. In the villa, walk with WASD or the arrows and drag the mouse to look.',
+      'On a phone nothing changes.',
+    ] },
     { id: '2026-09-28-pets', date: '28 Sep 2026', time: '2:44 am', title: 'New friends at the villa', items: [
       'Two more dogs join the garden, and two cats: a ginger tabby in the garden and a black and white one who naps on the balcony loungers.',
       'The radio now shows just the song name.',
@@ -590,6 +595,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=801"></script>
+<script type="module" src="js/game.js?v=807"></script>
 </body>
 </html>
