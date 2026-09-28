@@ -30,6 +30,7 @@ export const CONDITIONS = {
   // the two rights (drawn mirrored): their own waves, not copies of the lefts
   kanan:   { H: 7.0,  speed: 8.2,  peel: 5.6,  angle: 60, period: 13, hollow: 0.92, forgive: 0.95, len: 1.0, width: 1.05, fat: 1.0, tube: 0.8,  wobble: 0.18, burst: 1.3, softA: 0.35, name: 'Medium' },   // a racier, hollower mid-size right: more tube, a bit less wall
   hiu:     { H: 9.3,  speed: 10.0, peel: 8.1,  angle: 52, period: 15, hollow: 1.0,  forgive: 0.85, len: 1.35, width: 0.92, fat: 0.76, tube: 0, wobble: 0.3,  burst: 1.7, softA: 0.8,  name: 'Hard' },     // a fast, shallow, square right over coral: runs away from you: a racing barrel, keep your speed or the foam ball has you
+  bintang: { H: 6.4,  speed: 7.4,  peel: 4.4,  angle: 64, period: 13, hollow: 0.74, forgive: 0.9,  len: 1.4, width: 1.2,  fat: 1.3,  tube: 1.15, wobble: 0.28, burst: 1.7, softA: 0.35, name: 'Medium' },   // the night spot (his call 28 Sep 2026: its own character): the longest ride in the game, a soft open wall for carving and snaps, and surprise barrels (the peel surges: now and then a section races ahead and throws), forgiving once you're in
   extreme: { H: 15,   speed: 13.5, peel: 11,   angle: 45, period: 20, hollow: 1.0,  forgive: 0.85, len: 4,   width: 1.25, fat: 1.1, tube: 0.2,  wobble: 0.3,  burst: 2.1, softA: 0.8,  name: 'Extreme' },  // a 15 m mountain of water; a giant reef wave breaks in shallower water (H/d ~1.1) and runs ~13-14 m/s, like Jaws
 };
 
@@ -89,7 +90,7 @@ export class Wave {
     if (shared) {
       this.geo = shared.geo; this.xs = shared.xs; this.shared = true;
       this.mesh = new THREE.Mesh(shared.geo, shared.mat); this.mesh.frustumCulled = false; scene.add(this.mesh); this.hookClose();
-      this.initSpray(scene); this.initMist(scene); this.initVeil(scene); this.initSpit(scene);
+      this.initSpray(scene); this.initMist(scene); this.initVeil(scene); this.initSpit(scene); this.glowUp();
       return;
     }
     const g = new THREE.BufferGeometry();
@@ -110,7 +111,7 @@ export class Wave {
     this.mesh.frustumCulled = false; this.hookClose();
     scene.add(this.mesh);
     this.initSpray(scene);
-    this.initMist(scene); this.initVeil(scene); this.initSpit(scene);
+    this.initMist(scene); this.initVeil(scene); this.initSpit(scene); this.glowUp();
     this.xs = new Float32Array(NX);
     this.build();
     SHARED.set(cond, { geo: this.geo, mat: this.mesh.material, xs: this.xs }); this.shared = true;
@@ -358,6 +359,8 @@ export class Wave {
   whiteView() { return this._wv ||= { cond: this.cond, section: (s, o) => this.section(s, o, WHITE_SH), shapeAt: () => WHITE_SH, amp: (s) => this.amp(s) }; }
   // where the break is (peelX) and where the wave is on its way in (zW)
   place(peelX, zW) { this.placed = true; this.peelX = peelX; this.zW = zW; }
+  // at a night spot the spray, the mist and the lip's spit glow blue like the whitewater (added light, so they shine in the dark)
+  glowUp() { if (ENV.uBio.value > 0) for (const [k, b] of [['spray', .9], ['spit', .3], ['veil', .04], ['mist', .04]]) if (this[k]) glowMat(this[k].material, b); }
   dispose(scene) {
     scene.remove(this.mesh); scene.remove(this.spray);
     if (!this.shared) { this.geo.dispose(); this.mesh.material.dispose(); }   // shared shapes stay for the next wave
@@ -431,6 +434,7 @@ export const WEATHER = {
   kanan:   { sun: [-0.5, 0.24, -0.85], zen: 0x3462a8, hor: 0xe8dcc4, sunCol: 0xffb878, fog: 0xead6ba, deep: 0x0c4f5e, turq: 0x2aa89a, cloud: 0.3, chop: 0.9, fogFar: 320, rain: 0, sunVis: 1, light: 0xffd6b0, hemi: 0xf2dcc8, hemiGround: 0x4a3a30, wind: 0.9 },   // late sun low over the sea, warm teal water, the red cliffs lit up
   hiu:     { sun: [0.2, 0.92, -0.35], zen: 0x1858c2, hor: 0x9fd2ee, sunCol: 0xfffaf0, fog: 0xa8d6ee, deep: 0x0a6c9a, turq: 0x2cf0e0, cloud: 0.04, chop: 1.2, fogFar: 380, rain: 0, sunVis: 1, wind: 2 },   // crystal clear midday, electric aqua over the reef, a strong offshore blowing spray off every lip
   extreme: { sun: [0.1, 0.35, -1],    zen: 0x1a2124, hor: 0x56646a, sunCol: 0x8a9496, fog: 0x4a565b, deep: 0x07181b, turq: 0x2a6258, cloud: 0.92, chop: 2.4, fogFar: 150, rain: 1, sunVis: 0.08 },
+  bintang: { night: 1, bio: 1, sun: [0.26, 0.075, -1], zen: 0x060d24, hor: 0x1c3060, sunCol: 0xb8cbeb, fog: 0x16244a, deep: 0x06203a, turq: 0x063040, cloud: 0.0, chop: 0.8, fogFar: 320, rain: 0, sunVis: 0.4, light: 0x7d93c0, hemi: 0x2b3a5c, hemiGround: 0x06090e, wind: 0.5 },   // Pantai Bintang: always night, a low moon out to sea (its path on the water), glowing plankton wherever the water breaks
   villa:   { gold: 1, sun: [-0.35, 0.22, -0.9], zen: 0x3a64a8, hor: 0xf0c9a2, sunCol: 0xffc68a, fog: 0xf0c6a0, deep: 0x0a4a62, turq: 0x15a39a, cloud: 0.18, chop: 0.9, fogFar: 1100, rain: 0, sunVis: 1 },   // golden hour at the villa: the sun going down over the sea
   ranch:   { sun: [0.45, 0.72, -0.5], zen: 0x2a6cb8, hor: 0xcfe2ea, sunCol: 0xfff3dd, fog: 0xd4e5ec, deep: 0x1a8ea0, turq: 0x3fd6c8, cloud: 0.08, chop: 0.3, fogFar: 700, rain: 0, sunVis: 1 },   // dry, clear country sky; calm pool water
   random:  { sun: [0.3, 0.7, -0.6],  zen: 0x2766ae, hor: 0xabd3e7, sunCol: 0xfff3dc, fog: 0xb9d9e8, deep: 0x09547e, turq: 0x19bdb2, cloud: 0.32, chop: 1.1, fogFar: 310, rain: 0, sunVis: 1 },
@@ -443,15 +447,26 @@ export const ENV = {
   uPool: { value: new THREE.Vector4(-1e6, 1e6, -1e6, 1e6) },   // water only inside this box (x0, x1, z0, z1): the wave pool
   uReef: { value: 1 },
   uGold: { value: 0 },                                // golden hour (the villa's evening): 0 = plain day
-  uNight: { value: 0 },                               // night (the villa's drone show): clouds go dark instead of glowing grey
+  uNight: { value: 0 },
+  uStars: { value: 0 },                               // a night spot's own sky: the moon, the stars and the Milky Way (not the drone show's evening, which keeps its own)
+  uBio: { value: 0 },                                 // glowing plankton (Pantai Bintang): foam, spray and churned water light up blue                               // night (the villa's drone show): clouds go dark instead of glowing grey
   uReefK: { value: 0.38 },                            // how clearly the reef shows through the shallows (each spot's own)
   uReefEnd: { value: 190 }, uReefTint: { value: new THREE.Color(1, 1, 1) },   // where the shallows stop (the beach), and each spot's reef colour                                           // 0 = no reef under the water (a concrete pool)
 };
+// glowing plankton on sprays and splashes: a material keeps its daytime colour and is switched to a blue glow (added light)
+// at a night spot. Materials that last (the rail spray, the splashes on the lens) are kept in a list and switched with the weather
+const BIO_COL = new THREE.Color(0x4fd2ff), BIO_MATS = [];
+function glowMat(m, k = 1, on = ENV.uBio.value > 0) {
+  if (!m.userData.day) m.userData.day = { color: m.color.clone(), blending: m.blending };
+  if (on) { m.color.copy(BIO_COL).multiplyScalar(k); m.blending = THREE.AdditiveBlending; } else { m.color.copy(m.userData.day.color); m.blending = m.userData.day.blending; }
+  m.needsUpdate = true; return m;
+}
+export function bioMat(m, k = 1) { BIO_MATS.push([m, k]); glowMat(m, k); return m; }
 export function setWeather(name) {
   const w = WEATHER[name]; ENV.weather = w; ENV.name = name;
   ENV.uSun.value.set(...w.sun).normalize();
   for (const k of ['zen', 'hor', 'sunCol', 'fog', 'deep', 'turq']) ENV['u' + k[0].toUpperCase() + k.slice(1)].value.setHex(w[k]);
-  ENV.uGold.value = w.gold || 0;
+  ENV.uGold.value = w.gold || 0; ENV.uNight.value = w.night || 0; ENV.uStars.value = w.night || 0; ENV.uBio.value = w.bio || 0; for (const [m, k] of BIO_MATS) glowMat(m, k);
   ENV.uCloud.value = w.cloud; ENV.uChop.value = w.chop; ENV.uFogFar.value = w.fogFar; ENV.uSunVis.value = w.sunVis;
 }
 setWeather('medium');
@@ -498,7 +513,7 @@ export function waterMaterial({ wave = false } = {}) {
       }`,
     fragmentShader: /* glsl */`
       precision highp float;
-      uniform float uTime, uH, uCloud, uChop, uFogFar, uSunVis, uFlash, uReef, uReefEnd, uReefK, uGold; uniform vec3 uReefTint; uniform vec3 uSun, uZen, uHor, uSunCol, uFog, uDeep, uTurq; uniform vec4 uPool;
+      uniform float uTime, uH, uCloud, uChop, uFogFar, uSunVis, uFlash, uReef, uReefEnd, uReefK, uGold, uBio; uniform vec3 uReefTint; uniform vec3 uSun, uZen, uHor, uSunCol, uFog, uDeep, uTurq; uniform vec4 uPool;
       varying vec3 vW; varying vec3 vN; varying vec2 vFT; varying float vAge;
       ${NOISE}${SUNSET}
       vec3 sky(vec3 d){
@@ -559,7 +574,7 @@ export function waterMaterial({ wave = false } = {}) {
         thin *= smoothstep(.03, .22 * uH, vW.y);                        // flat water in front of the wave matches the open sea (no seam)
         float base = smoothstep(.0, .9, vW.y / max(uH, .5));
         float back = pow(max(dot(-V, uSun), 0.), 3.);                // looking toward the sun through the water
-        vec3 body = mix(deep, turq, thin * .8) + turq * thin * back * 1.3 * uSunVis + uSunCol * thin * back * .25 * uSunVis + turq * thin * .25 * (1. - uSunVis);
+        vec3 body = mix(deep, turq, thin * .8) + (turq * thin * back * 1.3 * uSunVis + uSunCol * thin * back * .25 * uSunVis) * (1. - .6 * uBio) + turq * thin * .25 * (1. - uSunVis) * (1. - .8 * uBio);
         body *= .55 + .45 * base;
         body = mix(vec3(dot(body, vec3(.3, .59, .11))), body, 1.2 - .2 * thin);   // (the filmic tone curve greys colours: the water gets a little back; not the glowing thin water, which went neon)
         // the reef under clear shallow water (flat water inside the break, toward the beach): pale turquoise over sand
@@ -578,10 +593,17 @@ export function waterMaterial({ wave = false } = {}) {
           vec3 reefCol = mix(vec3(.3, .66, .62) + vec3(.06, .05, .02) * sandy, mix(vec3(.13, .25, .22), vec3(.21, .2, .13), coral * .7), clamp((smoothstep(.46, .6, rn) + .35 * (rn2 - .5)) * (1. - .85 * sandy) + coral * .4, 0., 1.));
           body = mix(body, reefCol * uReefTint * (.55 + .45 * uSunVis), reefK * uReefK);   // (fades in gradually up the trough: a narrow switch followed one row of the wave mesh and drew a ruler-straight edge)
         }
-        ${wave ? '// the upper face and lip glow a lighter, see-through green: skylight passing through thin water near the top\n        float glow = smoothstep(.4, .95, vW.y / max(uH, .5)) * clamp(thin * 1.4, 0., 1.);\n        body += (turq * .55 + vec3(.04, .1, .08)) * glow * (.5 + .5 * uSunVis);\n        // the throwing lip is a moving sheet: light and dark streaks run through it, and its thinnest edge glows palest\n        if (glow > .001) {   // (the upper face and lip only)\n          vec2 shq = vec2(vW.x * .9, (vW.y - vW.z) * .3 + uTime * 1.2); float sheet = vnoise(shq) * .62 + vnoise(shq * 2.3 + 1.7) * .38;   // (two layers of noise: plenty for a streak, half the cost of the full four)\n          body *= 1. + (sheet - .5) * 1.4 * glow;\n          body += vec3(.3, .55, .5) * smoothstep(.8, 1., vFT.y) * glow * .25 * (.4 + .6 * uSunVis);\n          // sunlight through the thin lip: a bright, uneven band of pale green-gold where the water is thinnest, broken by the streaks\n          float thru = smoothstep(.55, .95, vFT.y) * glow * smoothstep(.3, .75, sheet);\n          body += (vec3(.35, .62, .5) + uSunCol * .18) * thru * (.35 + .65 * uSunVis);\n        }\n        // water drawn up the face: long vertical streaks, lighter and darker, running up the wall as it feeds the lip\n        float faceSt = 0.; { float faceK = smoothstep(.9, .45, abs(normalize(vN).y)) * smoothstep(40., 8., length(cameraPosition - vW)) * smoothstep(.05, .3, vW.y / max(uH, .5));\n          if (faceK > .001) { vec2 sq = vec2(vW.x * 2.4 + vW.z * .8, vW.y * .14 - uTime * .6); float st = smoothstep(.32, .68, vnoise(sq) * .6 + vnoise(sq * vec2(2.7, 1.3) + 5.1) * .4);\n            faceSt = (st - .5) * .42 * faceK; body *= 1. + faceSt; } }\n        // the lip itself, the sheet of water thrown out and down over you: it moves, so it streaks light and dark along its\n        // throw, with lighter bands where it is thinnest and the light comes through (it was one flat colour)\n        float cK = smoothstep(.85, .98, vFT.y);\n        if (cK > .001) { vec2 cq = vec2(vW.x * 2.6 + vW.z * 1.3, vW.y * .3 + uTime * 1.4); float c1 = vnoise(cq) * .6 + vnoise(cq * vec2(3.1, 1.2) + 2.3) * .4;\n          body *= 1. + (c1 - .5) * 1.2 * cK; body += (vec3(.22, .42, .36) + uSunCol * .08) * smoothstep(.55, .8, c1) * cK * (.3 + .3 * uSunVis); }' : ''}
+        ${wave ? '// the upper face and lip glow a lighter, see-through green: skylight passing through thin water near the top\n        float glow = smoothstep(.4, .95, vW.y / max(uH, .5)) * clamp(thin * 1.4, 0., 1.);\n        body += (turq * .55 + vec3(.04, .1, .08) * (1. - .9 * uBio)) * glow * (.5 + .5 * uSunVis);\n        body += vec3(.0, .12, .2) * glow * glow * uBio;   // (at night the top of the wall holds a faint blue glow: plankton stirred up the face)\n        // the throwing lip is a moving sheet: light and dark streaks run through it, and its thinnest edge glows palest\n        if (glow > .001) {   // (the upper face and lip only)\n          vec2 shq = vec2(vW.x * .9, (vW.y - vW.z) * .3 + uTime * 1.2); float sheet = vnoise(shq) * .62 + vnoise(shq * 2.3 + 1.7) * .38;   // (two layers of noise: plenty for a streak, half the cost of the full four)\n          body *= 1. + (sheet - .5) * 1.4 * glow;\n          body += vec3(.3, .55, .5) * smoothstep(.8, 1., vFT.y) * glow * .25 * (.4 + .6 * uSunVis) * (1. - .9 * uBio);\n          // sunlight through the thin lip: a bright, uneven band of pale green-gold where the water is thinnest, broken by the streaks\n          float thru = smoothstep(.55, .95, vFT.y) * glow * smoothstep(.3, .75, sheet);\n          body += (vec3(.35, .62, .5) + uSunCol * .18) * thru * (.35 + .65 * uSunVis) * (1. - .85 * uBio) + vec3(.05, .45, .8) * thru * thru * .35 * uBio;\n        }\n        // water drawn up the face: long vertical streaks, lighter and darker, running up the wall as it feeds the lip\n        float faceSt = 0.; { float faceK = smoothstep(.9, .45, abs(normalize(vN).y)) * smoothstep(40., 8., length(cameraPosition - vW)) * smoothstep(.05, .3, vW.y / max(uH, .5));\n          if (faceK > .001) { vec2 sq = vec2(vW.x * 2.4 + vW.z * .8, vW.y * .14 - uTime * .6); float st = smoothstep(.32, .68, vnoise(sq) * .6 + vnoise(sq * vec2(2.7, 1.3) + 5.1) * .4);\n            faceSt = (st - .5) * .42 * faceK; body *= 1. + faceSt; } }\n        // the lip itself, the sheet of water thrown out and down over you: it moves, so it streaks light and dark along its\n        // throw, with lighter bands where it is thinnest and the light comes through (it was one flat colour)\n        float cK = smoothstep(.85, .98, vFT.y);\n        if (cK > .001) { vec2 cq = vec2(vW.x * 2.6 + vW.z * 1.3, vW.y * .3 + uTime * 1.4); float c1 = vnoise(cq) * .6 + vnoise(cq * vec2(3.1, 1.2) + 2.3) * .4;\n          body *= 1. + (c1 - .5) * 1.2 * cK; body += (vec3(.22, .42, .36) * (1. - .85 * uBio) + uSunCol * .08) * smoothstep(.55, .8, c1) * cK * (.3 + .3 * uSunVis); }' : ''}
         ${wave ? 'if (N.y < -.15) refl = mix(refl, body * .8, smoothstep(-.15, -.55, N.y));   // (the underside of the lip mirrors the water below it, not the sky)' : ''}
         vec3 col = mix(body, refl, fres);
         ${wave ? 'col *= 1. + faceSt * .8;   // (the streaks show in the sky it reflects too: at a glancing angle the face is mostly reflection)' : ''}
+        ${wave ? `// the night spot: the wave gives off its own faint light (stirred plankton), on top of what it reflects, so from your
+        // own eyes the face you ride and the inside of the tube always read against the dark: a deep teal wall, brighter up
+        // toward the lip and in the streaks of water drawn up it, the thin lip and tube ceiling glowing strongest
+        if (uBio > 0.) { float hU = clamp(vW.y / max(uH, .5), 0., 1.2), fk2 = smoothstep(.95, .35, abs(normalize(vN).y)) * smoothstep(.02, .15, hU);
+          float fU = (.55 * smoothstep(.0, .35, hU) + .45 * smoothstep(.25, 1., hU)) * smoothstep(.999, .85, abs(normalize(vN).y));
+          float bn = .55 + .75 * (vnoise(vec2(vW.x * .18 + vW.z * .05, vW.y * .5 - uTime * .35)) * .6 + vnoise(vec2(vW.x * .55, vW.y * 1.4 - uTime * .7)) * .4);   // (the glow drifts in soft patches and bands up the face, never one flat colour)
+          col += (vec3(.008, .14, .26) * fU * (.6 + .6 * hU) * bn + vec3(.02, .3, .55) * pow(clamp(vFT.y, 0., 1.), 2.5) * .55 + vec3(.0, .28, .5) * max(faceSt, 0.) * 3. * fU) * uBio; }` : ''}
         // sun glint
         // (broken into glitter by the small ripples, as on real water; a smooth glint reads as a white smudge up close)
         float spec = pow(max(dot(R, uSun), 0.), 220.) * uSunVis;
@@ -619,15 +641,29 @@ export function waterMaterial({ wave = false } = {}) {
         float lump = fbm(fp) * .65 + fbm(fp * 2.7 + 5.3) * .35;
         float shade = .55 + .45 * smoothstep(.25, .75, lump);
         vec3 foamCol = vec3(.93, .92, .9) * shade * (.72 + .28 * max(dot(N, uSun), 0.)) + mix(uHor, uZen, .5) * .12 * (1. - shade * .5);
+        if (uBio > 0.) {   // (Pantai Bintang: the churned water lights up, brightest in the fresh boil at the curl, fading to scattered glowing lace behind)
+          float fresh = 1. - .93 * pow(vAge, .6), flick = .7 + .6 * vnoise(vW.xz * .9 + vec2(uTime * .9, -uTime * .6));
+          vec3 bc = mix(vec3(.02, .3, .95), vec3(.3, .95, 1.), smoothstep(.35, .85, lump));
+          foamCol = mix(foamCol, foamCol * .06 + bc * (.08 + 1.5 * lump * lump * lump) * fresh * flick, uBio);
+        }
         col = mix(col, foamCol, foamMask * (.82 + .18 * lump));   // thin spots show the water through
         }
         // the lip laced with white: aerated streaks of foam running along the thrown sheet, thickest near its leading edge
         { float lK = smoothstep(.88, .99, vFT.y);
           if (lK > .001) { vec2 lq = vec2(vW.x * 3.4 + vW.z * 1.7, vW.y * .4 + uTime * 1.6); float fr = vnoise(lq) * .55 + vnoise(lq * vec2(2.9, 1.6) + 6.1) * .45;
-            col = mix(col, vec3(.9, .93, .92) * (.78 + .22 * uSunVis), lK * smoothstep(.6, .84, fr) * .45); } }
+            col = mix(col, mix(vec3(.9, .93, .92) * (.78 + .22 * uSunVis), vec3(.25, .85, 1.) * 1.6, uBio), lK * smoothstep(.6, .84, fr) * mix(.45, .7, uBio)); } }
         ` : ''}
         // distance haze toward the horizon
         float d = length(cameraPosition - vW);
+        // glowing plankton: tiny points winking on and off where the water is stirred (the breaking wave, its whitewater,
+        // the face as it draws up), and a few loose ones in the open water close to you
+        if (uBio > 0. && d < 70.) {
+          vec2 bp = ${wave ? 'vec2(vW.x * 2.6, (vW.y + vW.z) * 2.6)' : 'vW.xz * 2.2'}; vec2 bi = floor(bp), bf = fract(bp); float bh = hash(bi);
+          float where = ${wave ? 'clamp(vFT.x * 2.2 + smoothstep(.4, .95, vFT.y) * .5 + smoothstep(.9, .5, abs(normalize(vN).y)) * .15, 0., 1.)' : '.18'};
+          float tw = max(0., sin(uTime * (1.5 + bh * 5.) + bh * 60.)); tw *= tw;
+          float pt = 1. - smoothstep(.02, .07, length(bf - vec2(hash(bi + 2.1), hash(bi + 4.7)) * .7 - .15));
+          col += vec3(.1, .6, 1.) * pt * tw * step(${wave ? '.5' : '.82'}, bh) * where * uBio * 1.6 * smoothstep(70., 12., d);
+        }
         col = mix(col, uFog, smoothstep(uFogFar * .25, uFogFar, d) * .9);   // (from a quarter of the way out: from 15% the whole mid-distance went milky)
         gl_FragColor = vec4(col, 1.);
         #include <tonemapping_fragment>
@@ -641,12 +677,34 @@ export function skyDome(scene) {
     side: THREE.BackSide, depthWrite: false,
     uniforms: { ...ENV, uTime: { value: 0 } },
     vertexShader: `varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
-    fragmentShader: `uniform vec3 uSun, uZen, uHor, uSunCol; uniform float uCloud, uSunVis, uTime, uFlash, uGold, uNight; varying vec3 vD; ${NOISE}${SUNSET}
+    fragmentShader: `uniform vec3 uSun, uZen, uHor, uSunCol; uniform float uCloud, uSunVis, uTime, uFlash, uGold, uNight, uStars; varying vec3 vD; ${NOISE}${SUNSET}
       void main(){
         vec3 d = normalize(vD); float h = clamp(d.y, 0., 1.);
         vec3 c = sunset(d, mix(uHor, uZen, pow(h, .45)));
         float s = max(dot(d, uSun), 0.);
-        c += uSunCol * (pow(s, 900.) * 8. * uSunVis + pow(s, 10.) * .5 * max(uSunVis, .3));
+        c += uSunCol * (pow(s, 900.) * 8. * uSunVis + pow(s, 10.) * .5 * max(uSunVis, .3)) * (1. - uStars);
+        // night: the moon (a crisp disk with a soft halo round it), the stars and the Milky Way across the sky
+        if (uStars > .01) {
+          float md = acos(clamp(s, -1., 1.));   // (angle from the moon's centre)
+          c += uSunCol * (smoothstep(.022, .019, md) * (2.2 - .9 * smoothstep(.45, .7, fbm(d.xy * 260. + 7.))) + exp(-md * 14.) * .3 + exp(-md * 3.5) * .08) * uStars;
+          vec3 mwN = normalize(vec3(.64, -.37, -.67)), t1 = normalize(cross(mwN, vec3(0., 1., 0.))), t2 = cross(mwN, t1);
+          vec2 mp = vec2(dot(d, t1), dot(d, t2)) * 9.;
+          float band = exp(-pow(dot(d, mwN) / .2, 2.)), core = exp(-pow(dot(d, mwN) / .08, 2.)), dust = smoothstep(.55, .7, fbm(mp * 1.7 + 3.1)) * core;
+          float mw = (band * .6 + core * .4) * (.45 + .7 * fbm(d.xz * 6. + d.y * 4.));
+          float hz = smoothstep(.0, .22, d.y) * (1. - smoothstep(.0, .5, 1. - md / 3.14159) * .0) * (1. - exp(-md * 6.));   // (the haze near the horizon and the moon's glare hide them)
+          c += mix(vec3(.06, .08, .16), vec3(.12, .12, .17), core) * mw * .45 * hz * uStars;
+          vec3 sd = d * 380., ci = floor(sd), cf = fract(sd) - .5;
+          float h1 = fract(sin(dot(ci, vec3(12.9898, 78.233, 45.164))) * 43758.5453), h2 = fract(h1 * 17.31 + .23);
+          float thr = mix(.972, .93, band);
+          float star = step(thr, h1) * (1. - smoothstep(.12, .36, length(cf))) * (.25 + 1.4 * h2 * h2 * h2) * (.7 + .3 * sin(uTime * (1.3 + h2 * 4.) + h1 * 80.));
+          c += mix(vec3(.75, .82, 1.), vec3(1., .9, .75), step(.8, h2)) * star * hz * uStars;
+          // a shooting star every few seconds, somewhere out over the sea: a short bright streak with a fading tail
+          float sk = floor(uTime / 6.5), ph = fract(uTime / 6.5);
+          if (ph < .09) { float r1 = fract(sin(sk * 12.9898) * 43758.5), r2 = fract(sin(sk * 78.233) * 43758.5), r3 = fract(sin(sk * 39.425) * 43758.5);
+            vec2 ae = vec2(atan(d.x, -d.z), asin(clamp(d.y, -1., 1.))), a0 = vec2(-1.1 + 2.2 * r1, .45 + .45 * r2), dr = normalize(vec2(r3 < .5 ? 1. : -1., -.6));
+            float pr = ph / .09, L = .32 * pr; vec2 pa = ae - a0; float tt = clamp(dot(pa, dr), 0., L), dist = length(pa - dr * tt), tail = tt / max(L, 1e-3);
+            c += vec3(.85, .92, 1.) * smoothstep(.0035, .0, dist) * tail * tail * (1. - smoothstep(.75, 1., pr)) * 1.6 * uStars; }
+        }
         // clouds: thin streaks on clear days, a heavy low ceiling in a storm
         vec2 p = d.xz / max(d.y + .08, .02) * .6 + vec2(uTime * .01, 0.);
         float n = fbm(p * vec2(1., 3. - uCloud * 2.));
@@ -657,6 +715,7 @@ export function skyDome(scene) {
         vec3 cloudCol = mix(cloudLit, vec3(.12,.14,.16), uCloud * .85) * (.75 + .25 * n);
         cloudCol += uSunCol * pow(s, 6.) * .4 * uSunVis;                       // silver lining near the sun
         cloudCol = mix(cloudCol, uHor * 1.25 + vec3(.01, .012, .02), uNight);   // (at night just a shade lighter than the sky behind)
+        cloudCol += uSunCol * pow(s, 8.) * .3 * uStars * uSunVis;   // (moonlit edges near the moon)
         c = mix(c, cloudCol, cl * mix(.55, .97, uCloud) * smoothstep(.0, .2, d.y));
         if (d.y < 0.) c = mix(uHor, uHor * .3, clamp(-d.y*6., 0., 1.));
         gl_FragColor = vec4(c + uFlash, 1.);
@@ -763,10 +822,11 @@ function makeLandMat() {
           w.x += mod(uTime * 2.2 + 900., 1500.) - 750.; w.y += sin(uTime * .7) * .25;   // (sailing slowly along the horizon, round and round, rising on the swell)
         #endif
         vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
-    fragmentShader: `uniform vec3 uSun, uSunCol, uHor, uZen, uFog; uniform float uSunVis, uFlash, uTime; varying vec3 vC; varying vec3 vW; varying vec3 vN;
+    fragmentShader: `uniform vec3 uSun, uSunCol, uHor, uZen, uFog; uniform float uSunVis, uFlash, uTime, uStars; varying vec3 vC; varying vec3 vW; varying vec3 vN;
       void main(){
         float l = .45 + .55 * max(dot(normalize(vN), uSun), 0.) * uSunVis;
         vec3 c = vC * (l * mix(vec3(1.), uSunCol, .5) + uZen * .25) + uFlash * .4;
+        c = mix(c, vC * (l * uSunCol * .38 + vec3(.05, .07, .13)), uStars);   // (a night spot: the land only catches a little cold moonlight)
         #ifdef SHORE
           // the shore break: every few seconds a sheet of broken water runs up the sand with a line of foam on its edge,
           // then drains back leaving the sand dark and shiny; the sets arrive a little later along the beach

@@ -2,13 +2,13 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV } from './wave.js?v=165';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=166';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=166';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=16';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=90';
-import { villa, VILLA } from './villa.js?v=134';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=91';
+import { villa, VILLA } from './villa.js?v=135';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
@@ -82,7 +82,7 @@ const DESK = matchMedia('(hover: hover) and (pointer: fine)').matches && !('onto
   if (DESK && (force || (!own && !globalThis.Wavedash && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && !/[?&]desk=1\b/.test(location.search)))) document.body.classList.add('phoneonly'); }
 if (DESK) {
   document.body.classList.add('desk');
-  document.querySelector('#start .intro').textContent = 'Pick a spot and press START SURFING. Sit in the lineup, turn and paddle for a wave with Space, and ride it with the left and right arrows: tap for a small turn, hold for a hard carve. Hold Space for speed and Shift to stall and get barrelled.';
+  document.querySelector('#start .keys').innerHTML = '<span><kbd>\u2190 \u2192</kbd>turn</span><span><kbd>Space</kbd>paddle, then pump for speed</span><span><kbd>Shift</kbd>stall into the barrel</span>';   // (the keyboard's own controls)
   document.getElementById('soundTip').lastChild.textContent = ' Click anywhere for music';
 }
 if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone && !matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches && document.getElementById('homeTip')) document.getElementById('homeTip').hidden = false;   // (the Wavedash copy has no tip: without the check, iPhones stopped right here, 28 Sep 2026)
@@ -101,8 +101,8 @@ let stance = 'goofy'; try { if (localStorage.getItem('sumbasurf.stance') === 're
 const stanceName = () => (stance === 'regular' ? 'Regular' : 'Goofy');
 const BOARD_INFO = {
   // name, how it feels, what it's best for, and 1-5 ratings (paddling, speed, turning, stability, airs)
-  short: ['Shortboard', "6'2\" thruster. The high-performance board: sharp, snappy turns, snaps off the lip and airs. It's small, so it paddles slowly and you have to take off late and steep, and it loses speed if you stop pumping.", 'Tanjung Uma, Batu Hitam, the Ranch', [2, 4, 5, 2, 5]],
-  fish: ['Fish', "5'8\" wide twin fin with a swallow tail. Loose and fast: planes easily, paddles well and flies down the line on soft or slow waves with little pumping. Turns are skatey and the tail drifts early; on steep, heavy waves it's twitchy and loses grip.", 'Pantai Kuda, the Ranch', [4, 5, 4, 3, 4]],
+  short: ['Shortboard', "6'2\" thruster. The high-performance board: sharp, snappy turns, snaps off the lip and airs. It's small, so it paddles slowly and you have to take off late and steep, and it loses speed if you stop pumping.", 'Tanjung Uma, Batu Hitam, Pantai Bintang, the Ranch', [2, 4, 5, 2, 5]],
+  fish: ['Fish', "5'8\" wide twin fin with a swallow tail. Loose and fast: planes easily, paddles well and flies down the line on soft or slow waves with little pumping. Turns are skatey and the tail drifts early; on steep, heavy waves it's twitchy and loses grip.", 'Pantai Kuda, Pantai Bintang, the Ranch', [4, 5, 4, 3, 4]],
   long: ['Longboard', "9'2\" single fin. Smooth and relaxed: paddles fast and catches waves early, rock steady, glides forever. Turns are slow, wide arcs, like steering a boat, and it can't do snaps or airs. Clumsy in steep barrels.", 'Pantai Kuda (learning)', [5, 3, 1, 5, 0]],
   gun: ['Gun', "9'6\" big-wave board with a pointed nose and pin tail. Paddles into giant waves early, before they get too steep, and holds its line at high speed with lots of grip. Stiff, long turns; sluggish on small waves.", 'Gunung Laut', [5, 4, 2, 5, 2]],
 };
@@ -297,7 +297,8 @@ function setSpot(m) {
   if (!r) { const sg = spotGroup(scene, key); sg.visible = true; if (sg.userData.farVilla) sg.userData.farVilla.visible = m !== 'villa'; }   // (at the villa itself the real house is drawn, not the stand-in seen from the water)
   ranchW.group.visible = r;
   if (villaW) villaW.group.visible = m === 'villa'; if (crewW) crewW.group.visible = m === 'villa'; if (wildW) wildW.group.visible = m === 'villa'; if (friendsW) { friendsW.group.visible = m === 'villa'; if (m !== 'villa') friendsW.hide(); }
-  { const warm = m === 'villa', W = ENV.weather || {}; hemi.color.set(warm ? 0xfff0dc : W.hemi || 0xcfe6ff); hemi.groundColor.set(warm ? 0x5a4030 : W.hemiGround || 0x3a4a48); sunLight.color.set(warm ? 0xffdcb0 : W.light || 0xfff0dd); }   // (a spot's own light on the land: its weather can warm it or grey it)   // (the villa in warm evening light, reflected off the wood; the surf spots keep their clear daylight)
+  { const warm = m === 'villa', W = ENV.weather || {}; hemi.color.set(warm ? 0xfff0dc : W.hemi || 0xcfe6ff); hemi.groundColor.set(warm ? 0x5a4030 : W.hemiGround || 0x3a4a48); sunLight.color.set(warm ? 0xffdcb0 : W.light || 0xfff0dd); }
+  hemi.intensity = W.night && !(m === 'villa') ? 0.8 : 1.3; sunLight.intensity = W.night && !(m === 'villa') ? 0.9 : 2.0;   // (the night spot: people, boards and the land lit only by the moon)   // (a spot's own light on the land: its weather can warm it or grey it)   // (the villa in warm evening light, reflected off the wood; the surf spots keep their clear daylight)
   ENV.uReefEnd.value = 190 + S.dz; ENV.uReefTint.value.setRGB(...S.reefTint); ENV.uReefK.value = S.reefK || 0.38;
   if (r) ENV.uPool.value.set(POOL.x0, POOL.x1, POOL.z0, POOL.z1); else ENV.uPool.value.set(-1e6, 1e6, -1e6, 1e6);
   ENV.uReef.value = r ? 0 : 1;
@@ -576,7 +577,7 @@ function mmPanel() {
   const m = spotSel, b = document.querySelector(`[data-mode="${m}"]`), $ = (id) => document.getElementById(id); if (!b || !$('mmBig')) return;
   const sm = b.querySelector('small'), lvl = sm && sm.querySelector('i') ? sm.querySelector('i').textContent : '', desc = sm ? [...sm.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim() : '';
   const name = b.querySelector('.nm').textContent;
-  $('mmKick').textContent = lvl; $('mmBig').textContent = name; $('mmDesc').textContent = desc ? desc + '.' : '';
+  $('mmKick').textContent = lvl; $('mmBig').textContent = name; $('mmKick').classList.toggle('nite', m === 'bintang'); $('mmDesc').textContent = desc ? desc + '.' : '';
   const v = bestFor(m), lv = levelOf(v), nx = LEVELS[lv + 1], dots = `<i>${[0, 1, 2].map((i) => `<b${i <= lv ? ' class="on"' : ''}></b>`).join('')}</i>`;
   $('mmLvl').innerHTML = v ? `<span class="chip">${dots}${lv >= 0 ? LEVELS[lv][0] : 'No level yet'}</span><span>Your best ${v.toFixed(1)}${nx ? `  \u00b7  ${(nx[1] - v).toFixed(1)} more for ${nx[0]}` : ''}</span>` : '<span>No waves here yet</span>';
   const bb = Object.keys(BOARD_INFO).filter((t) => BOARD_INFO[t][2].includes(name) || (m === 'ranch' && /Ranch/.test(BOARD_INFO[t][2]))).map((t) => BOARD_INFO[t][0]);
@@ -1070,7 +1071,7 @@ const railSpray = (() => {
   gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
   cx.fillStyle = gr; cx.fillRect(0, 0, 32, 32);
   const tex = new THREE.CanvasTexture(cv);
-  const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xf6f1ea, size: 0.11, map: tex, transparent: true, opacity: 0.8, depthWrite: false }));   // (bigger, soft drops: at 7 cm they read as specks)
+  const pts = new THREE.Points(g, bioMat(new THREE.PointsMaterial({ color: 0xf6f1ea, size: 0.11, map: tex, transparent: true, opacity: 0.8, depthWrite: false })));   // (bigger, soft drops: at 7 cm they read as specks)
   pts.frustumCulled = false; scene.add(pts);
   let next = 0, acc = 0, fanAcc = 0, fanHit = false, ballAcc = 0, ballLens = 0;
   const emit = (p, v, n, spread) => {
@@ -1092,7 +1093,7 @@ const railSpray = (() => {
       if (rider && rider.standing) {
         const load = Math.min(1.3, Math.abs(rider.turn) * rider.v / 14 + rider.skid * 1.2 + (rider.state === 'POP' ? 0.5 : 0) + Math.max(0, rider.v - 6) * 0.03);
         const out = Math.sign(rider.lean) || 1, sideX = Math.sin(rider.th) * out, sideZ = -Math.cos(rider.th) * out;   // toward the outside of the turn
-        acc += load * 1150 * dt;
+        acc += load * 1150 * dt * (1 + 0.8 * ENV.uBio.value);   // (the night spot: more of it, each drop a blue spark)
         if (acc >= 1) {
           const n = Math.floor(acc); acc -= n;
           // a curtain off the rail from mid-board to the tail: out to the side of the turn, up, carried along with you
@@ -1166,12 +1167,12 @@ const surfFx = (() => {
   // sheets (big soft spray)
   const SN = 280, sp = new Float32Array(SN * 3), sv = new Float32Array(SN * 3), sl = new Float32Array(SN).fill(-1);
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
-  const spts = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xf4f7f6, size: 0.34, map: soft, transparent: true, opacity: 0.42, depthWrite: false }));
+  const spts = new THREE.Points(sg, bioMat(new THREE.PointsMaterial({ color: 0xf4f7f6, size: 0.34, map: soft, transparent: true, opacity: 0.42, depthWrite: false }), 0.6));
   spts.frustumCulled = false; scene.add(spts); for (let i = 0; i < SN; i++) sp[i * 3 + 1] = -99;
   // drops on the deck (in the board's own frame, so they ride with it)
   const DN = 48, dp = new Float32Array(DN * 3), dsp = new Float32Array(DN);
   const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(dp, 3));
-  const dpts = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xf2fbff, size: 0.045, map: soft, transparent: true, opacity: 0.95, depthWrite: false }));
+  const dpts = new THREE.Points(dg, bioMat(new THREE.PointsMaterial({ color: 0xf2fbff, size: 0.045, map: soft, transparent: true, opacity: 0.95, depthWrite: false })));
   dpts.frustumCulled = false; for (let i = 0; i < DN; i++) dp[i * 3 + 1] = -99;
   let sNext = 0, sAcc = 0, mAcc = 0, lastTrick = null, frame = 0, spurtT = 2;
   const _a = new THREE.Vector3(), _b = new THREE.Vector3();
@@ -1222,9 +1223,9 @@ const wake = (() => {
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('aA', new THREE.BufferAttribute(a, 1)); g.setAttribute('aS', new THREE.BufferAttribute(sz, 1));
   const m = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false,
-    uniforms: { uScale: { value: 1 }, uMax: { value: 8 } },
+    uniforms: { uScale: { value: 1 }, uMax: { value: 8 }, uBio: ENV.uBio },
     vertexShader: 'attribute float aA; attribute float aS; varying float vA; uniform float uScale; uniform float uMax; void main(){ vA = aA; vec4 mv = modelViewMatrix * vec4(position, 1.); gl_PointSize = min(aS * uScale / -mv.z, uMax); gl_Position = projectionMatrix * mv; }',
-    fragmentShader: 'varying float vA; void main(){ vec2 d = gl_PointCoord - .5; float r = dot(d, d) * 4.; if (r > 1.) discard; gl_FragColor = vec4(vec3(.96, .95, .93), vA * (1. - r) * .7); }',
+    fragmentShader: 'uniform float uBio; varying float vA; void main(){ vec2 d = gl_PointCoord - .5; float r = dot(d, d) * 4.; if (r > 1.) discard; gl_FragColor = vec4(mix(vec3(.96, .95, .93), vec3(.3, .85, 1.) * 1.8, uBio), vA * (1. - r) * mix(.7, .95, uBio)); }',   // (the night spot: the flecks glow blue)
   });
   const pts = new THREE.Points(g, m); pts.frustumCulled = false; scene.add(pts);
   let next = 0, acc = 0, frame = 0;
@@ -1261,20 +1262,67 @@ const wake = (() => {
 // ---------- your track: the churned white line your board leaves on the water. Laid at the fins every 30 cm as a ribbon
 // that lies on the surface, spreads and breaks up as it ages, drifts in with the wave, and fades over five seconds (a
 // cut or a slide leaves a wider scar). One mesh of a few hundred points: nothing for a phone
+// the night spot's plankton, lit up by you where you can see it from your own eyes: along the rails and round the nose as
+// the board moves through the water (more the faster you go and the harder you turn), and a swirl at each hand as you
+// paddle. Points that sit on the water where they're stirred and fade over a second (blue light added, so it shines)
+const BIO_N = 3200;
+const bowGlow = (() => {
+  const pos = new Float32Array(BIO_N * 3), col = new Float32Array(BIO_N * 3), life = new Float32Array(BIO_N).fill(-1), max = new Float32Array(BIO_N), vel = new Float32Array(BIO_N * 2);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const cv = document.createElement('canvas'); cv.width = cv.height = 32; const cx = cv.getContext('2d'), gr = cx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); cx.fillStyle = gr; cx.fillRect(0, 0, 32, 32);
+  const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.055, map: new THREE.CanvasTexture(cv), vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  pts.frustumCulled = false; pts.visible = false; scene.add(pts);
+  let next = 0, acc = 0, fr = 0, glowK = 0; const side = new THREE.Vector3();
+  const put = (x, z, vx, vz, l) => { const i = next; next = (next + 1) % BIO_N; pos[i * 3] = x; pos[i * 3 + 1] = heightAt(waves, x, z) + 0.03; pos[i * 3 + 2] = z; vel[i * 2] = vx; vel[i * 2 + 1] = vz; life[i] = max[i] = l; };
+  return {
+    // a paddle stroke: a swirl of light where each hand goes in
+    stroke() { if (!(ENV.uBio.value > 0) || !rider) return; side.crossVectors(pose.fwd, pose.up).normalize();
+      for (const sgn of [-1, 1]) for (let k = 0; k < 90; k++) { const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * 0.4;
+        put(rig.position.x + side.x * sgn * 0.5 + pose.fwd.x * 0.25 + Math.cos(a) * r, rig.position.z + side.z * sgn * 0.5 + pose.fwd.z * 0.25 + Math.sin(a) * r, Math.cos(a) * 0.4 - pose.fwd.x * 0.8, Math.sin(a) * 0.4 - pose.fwd.z * 0.8, 0.8 + Math.random() * 0.7); } },
+    update(dt) {
+      const on = ENV.uBio.value > 0; pts.visible = on;
+      // the board lit from below by the glowing water it runs through: a soft blue on it, stronger as you go faster
+      glowK += ((on && rider && rider.y > -1 ? 0.45 + 0.55 * Math.min(1, rider.v / 8) : 0) - glowK) * Math.min(1, dt * 3);
+      if (board.material.emissive) board.material.emissive.setRGB(0.03 * glowK, 0.2 * glowK, 0.34 * glowK);
+      if (!on) return;
+      if (rider && rider.y > -1 && rider.v > 0.6 && rider.state !== 'WIPE') {
+        const load = rider.standing ? Math.min(1.5, rider.v / 9 + Math.abs(rider.turn) * rider.v / 12 + rider.skid) : Math.min(0.6, rider.v / 5);
+        acc += load * 1300 * dt; side.crossVectors(pose.fwd, pose.up).normalize();
+        while (acc >= 1) { acc -= 1; const sgn = Math.random() < 0.5 ? -1 : 1, along = 0.95 - Math.random() * (rider.standing ? 1.6 : 1.9), w = 0.22 + Math.random() * 0.12 + (along > 0.6 ? (0.95 - along) * 0.4 : 0);
+          put(rig.position.x + pose.fwd.x * along + side.x * sgn * w, rig.position.z + pose.fwd.z * along + side.z * sgn * w,
+            side.x * sgn * (0.6 + Math.random()) + rider.vx * 0.25, side.z * sgn * (0.6 + Math.random()) + rider.vz * 0.25, 0.5 + Math.random() * 0.8); }
+      }
+      fr = (fr + 1) % 3;
+      for (let i = 0; i < BIO_N; i++) {
+        if (life[i] < 0) { if (col[i * 3 + 2] !== 0) { col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = 0; } continue; }
+        life[i] -= dt; const k = Math.max(0, life[i] / max[i]), f = k * k * (0.75 + 0.5 * Math.random());   // (a flicker as it fades)
+        pos[i * 3] += vel[i * 2] * dt; pos[i * 3 + 2] += vel[i * 2 + 1] * dt;
+        if (i % 3 === fr) pos[i * 3 + 1] = heightAt(waves, pos[i * 3], pos[i * 3 + 2]) + 0.03;   // (kept on the water as the wave moves under it: a third of them a frame) vel[i * 2] *= 1 - dt * 2.5; vel[i * 2 + 1] *= 1 - dt * 2.5;
+        col[i * 3] = 0.1 * f; col[i * 3 + 1] = 0.7 * f; col[i * 3 + 2] = 1.0 * f;
+      }
+      g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true;
+    },
+  };
+})();
 const TRACK_N = 320;
 const track = (() => {
   const P = Array.from({ length: TRACK_N }, () => ({ x: 0, y: -99, z: 0, t: -99, w: 0, dx: 1, dz: 0 }));
   const pos = new Float32Array(TRACK_N * 2 * 3), uv = new Float32Array(TRACK_N * 2 * 2), al = new Float32Array(TRACK_N * 2), idx = [];
   for (let i = 0; i < TRACK_N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setAttribute('aA', new THREE.BufferAttribute(al, 1)); g.setIndex(idx);
-  const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, uniforms: { uBio: ENV.uBio, uTime: ENV.uTime },
     vertexShader: 'attribute float aA; varying float vA; varying vec2 vUv; void main(){ vA = aA; vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
-    fragmentShader: `varying float vA; varying vec2 vUv;
+    fragmentShader: `uniform float uBio, uTime; varying float vA; varying vec2 vUv;
       float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y); }
       void main(){ float across = abs(vUv.y - .5) * 2.;                               // 0 on the line, 1 at its edges
         float lace = n(vec2(vUv.x * 1.3, vUv.y * 5.)) * .6 + n(vec2(vUv.x * 4.1, vUv.y * 11.)) * .4;
         float a = vA * smoothstep(1., .25, across) * smoothstep(.28 + (1. - vA) * .35, .62, lace);   // breaking up into lace as it ages
+        // the night spot: the line you draw lights up the plankton: a glowing blue trail, brightest where you just passed, with sparks winking in it
+        if (uBio > 0.) { float spark = step(.9, h(floor(vec2(vUv.x * 6., vUv.y * 4.)))) * (.5 + .5 * sin(uTime * 7. + vUv.x * 13.));
+          float ab = vA * smoothstep(1., .1, across) * (.35 + .65 * lace) + spark * vA * .6;
+          if (ab < .01) discard; gl_FragColor = vec4(mix(vec3(.05, .45, 1.), vec3(.5, .95, 1.), vA) * (1.2 + spark), min(1., ab)); return; }
         if (a < .01) discard; gl_FragColor = vec4(vec3(.95, .96, .95), a * .85); }` });
   const mesh = new THREE.Mesh(g, m); mesh.frustumCulled = false; scene.add(mesh);
   let head = -1, last = null, dist = 0, T0 = 0, frame = 0;
@@ -2232,7 +2280,7 @@ function tick(dt) {
     updateRig(dt, T);
     if (mixer) { mixer.update(dt); paddleArms(dt); dtArm = dt; surfStance(); }
     updateLeash(); updateScenery(dt); updateLocals(dt);
-    railSpray.update(dt);
+    railSpray.update(dt); bowGlow.update(dt);
     wake.update(dt); track.update(dt); surfFx.attach(); surfFx.update(dt);
     updateCamera(dt);
     updateHUD(dt); lensTick(dt);
@@ -2251,7 +2299,7 @@ function tick(dt) {
       if (best) audio.crash(best.cond.H * (best.size || 1), bd);
       crashT = 1.1 + Math.random() * 0.9 - (best ? best.cond.H * 0.1 : 0);
     }
-    if (st === 'LIE' && rider.paddling) { strokeT -= dt * 1.6; if (strokeT <= 0) { strokeT = 0.55; audio.paddle(); } }
+    if (st === 'LIE' && rider.paddling) { strokeT -= dt * 1.6; if (strokeT <= 0) { strokeT = 0.55; audio.paddle(); bowGlow.stroke(); } }
     if (st !== lastState) {
       if (st === 'POP') audio.splash(0.35);
       lastState = st;
@@ -2270,7 +2318,7 @@ function tick(dt) {
     // behind the start screen: a slow drift along a peeling wave
     if (!tick.demo) { tick.demo = new Wave(scene, CONDITIONS.medium); tick.demo.peelX = -30; }
     tick.demo.update(dt);
-    railSpray.update(dt); wake.update(dt); track.update(dt);   // (let any spray left from the last ride fall and fade)
+    railSpray.update(dt); bowGlow.update(dt); wake.update(dt); track.update(dt);   // (let any spray left from the last ride fall and fade)
     rig.visible = false; leash.visible = false; jukung.visible = false; for (const L of locals) L.grp.visible = false; for (const b of birds) b.visible = false;   // the menu shows only the sea
     // ...seen from inside the barrel: tucked in under the lip, looking out down the line through the opening
     const w = tick.demo, H = w.cond.H, px = w.peelX, sw = Math.sin(T * 0.6);

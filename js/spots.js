@@ -2,7 +2,7 @@
 // landmarks of its own. Distances are in the coast's own frame: the beach is ~185-225 m in from the break, and the
 // whole coast is pushed back by dz (a longer run to the sand makes a longer ride).
 import * as THREE from 'three';
-import { coast, landMaterial } from './wave.js?v=165';
+import { coast, landMaterial } from './wave.js?v=166';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const SPOTS = {
@@ -17,6 +17,9 @@ export const SPOTS = {
   kanan: { name: 'Watu Kanan', mirror: true, dz: 80, xEnd: 220, reefTint: [1.05, 1.1, 1.0], look: { sandWet: [0.5, 0.4, 0.28], sandDry: [0.42, 0.33, 0.22], land: [0.13, 0.26, 0.1], palms: 0.9, cliffH: 0.75, rock: [0.64, 0.36, 0.24], cliffGreen: 1.2, temple: true, mountain: [0.24, 0.32, 0.26], mountainScale: 0.8, jungle: 1.1 } },
   // Karang Hiu: a shallow coral shelf off a low grey reef-rock shore, bright white sand, windswept palms
   hiu: { name: 'Karang Hiu', mirror: true, dz: 100, xEnd: 280, reefTint: [1.15, 1.3, 1.25], reefK: 0.45, look: { sandWet: [0.64, 0.62, 0.55], sandDry: [0.4, 0.39, 0.35], land: [0.14, 0.24, 0.12], palms: 0.7, cliffH: 0.45, rock: [0.5, 0.5, 0.47], cliffGreen: 0.6, temple: false, mountain: [0.28, 0.33, 0.33], mountainScale: 0.7, jungle: 0.6 } },
+  // Pantai Bintang (intermediate, breaks left): the night spot. Always night: a dark coast of palms and low cliffs under the
+  // moon and the Milky Way, lamp boats out at sea, a fire on the beach, and plankton that glows wherever the water breaks
+  bintang: { name: 'Pantai Bintang', dz: 160, xEnd: 320, reefTint: [0.45, 0.55, 0.7], reefK: 0.001, look: { sandWet: [0.34, 0.35, 0.37], sandDry: [0.5, 0.49, 0.46], land: [0.07, 0.13, 0.09], palms: 1, cliffH: 0.02, rock: [0.32, 0.32, 0.35], cliffGreen: 0.9, temple: false, stacks: false, boat: false, mountain: [0.1, 0.13, 0.18], mountainScale: 0.8, jungle: 1 } },   // (no cliffs and none of the usual offshore stacks: a low palm beach, and its own rock arch out to sea)
   // experts: a giant outer reef far off a towering coast, sea stacks, a storm
   extreme: { name: 'Gunung Laut', dz: 230, xEnd: 430, reefTint: [0.6, 0.65, 0.65], look: { stacks: false, boat: false,  sandWet: [0.18, 0.17, 0.16], sandDry: [0.12, 0.12, 0.11], land: [0.09, 0.14, 0.08], palms: 0.1, cliffH: 2.6, rock: [0.36, 0.35, 0.33], cliffGreen: 0.7, temple: false, mountain: [0.2, 0.23, 0.24], mountainScale: 1.6, jungle: 0.6 } },
 };
@@ -39,6 +42,7 @@ export function spotGroup(scene, key) {
   if (key === 'kanan') redHead(g);
   if (key === 'hard') lighthouseHead(g);
   if (key === 'hiu') palmPoint(g);
+  if (key === 'bintang') ownDice(g, nightLights, 11);
   if (key === 'easy') ownDice(g, horseHead);
   if (key === 'extreme') ownDice(g, seaMountain);
   waterProps(g, key);
@@ -352,4 +356,63 @@ function theMountain(g) {
     const cap = new THREE.SphereGeometry(r * 0.8, 9, 5, 0, Math.PI * 2, 0, Math.PI / 2); cap.scale(1, 0.35, 1); put(g, cap, [0.1, 0.17, 0.09], x, h - 2, z, 0.3);
   };
   stack(-330, -120, 95, 22); stack(-290, -40, 60, 14); stack(-380, 40, 130, 30); stack(590, 90, 70, 16);   // (beyond the end of the reef, clear of the waves)
+}
+
+// Pantai Bintang's lights in the dark: a driftwood fire on the beach with its glow on the sand, and the lamp boats out
+// at sea (the bagan: fishermen's platforms with bright lamps that draw the squid up at night), strung along the horizon
+function glowTex(stops) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64; const c = cv.getContext('2d'), gr = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+  for (const [o, col] of stops) gr.addColorStop(o, col); c.fillStyle = gr; c.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(cv);
+}
+// Pantai Bintang's landmark: a great rock arch standing alone out to sea, right where the moon sits as you wait in the
+// lineup, so the moon hangs in its opening; plankton glows where the swell breaks round its feet
+function moonArch(g, halo) {
+  const X = 92, Z = -470, R = 30, T = 11;   // (the coast sits 160 m back: this keeps the arch 310 m out from the lineup)
+  const geo = new THREE.TorusGeometry(R, T, 12, 48, Math.PI), pp = geo.attributes.position;
+  for (let i = 0; i < pp.count; i++) { const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i), a = Math.atan2(y, x), n = 1 + 0.14 * Math.sin(a * 5 + 1.3) + 0.08 * Math.sin(a * 13 + z * 0.2) + 0.05 * Math.sin(x * 0.9 + z * 0.7);
+    const cx = x / Math.max(1e-3, Math.hypot(x, y)) * R, cy = y / Math.max(1e-3, Math.hypot(x, y)) * R;   // (the rock swells and pinches round its centre line)
+    pp.setXYZ(i, cx + (x - cx) * n, cy + (y - cy) * n * (y > R * 0.7 ? 0.8 : 1), z * n * 1.25); }
+  geo.computeVertexNormals();
+  const legs = [-R, R].map((lx) => { const c = new THREE.CylinderGeometry(T * 1.0, T * 1.6, 30, 14, 4), cp = c.attributes.position;
+    for (let i = 0; i < cp.count; i++) { const y = cp.getY(i), a = Math.atan2(cp.getZ(i), cp.getX(i)), k = 1 + 0.12 * Math.sin(a * 3 + lx) + 0.06 * Math.sin(a * 7 + y * 0.08); cp.setXYZ(i, cp.getX(i) * k, y, cp.getZ(i) * k * 1.25); }
+    c.computeVertexNormals(); c.translate(lx, -15, 0); return c; });
+  for (const q of [geo, ...legs]) { q.translate(X, 26, Z); put(g, q, [0.2, 0.2, 0.23], 0, 0, 0, 0.25); }
+  // a low rock at its foot, and the glow where the swell washes round them
+  put(g, new THREE.DodecahedronGeometry(1, 1).scale(16, 7, 11), [0.18, 0.18, 0.2], X + 62, 0, Z + 18, 0.3);
+  const ring = []; for (const [cx, cz, rr] of [[X - R, Z, T * 1.6], [X + R, Z, T * 1.6], [X + 62, Z + 18, 16]]) for (let k = 0; k < 110; k++) { const a = Math.random() * Math.PI * 2, r2 = rr * (0.95 + Math.random() * 0.6); ring.push([cx + Math.cos(a) * r2, 0.4, cz + Math.sin(a) * r2 * 1.2]); }   // (a loose, uneven wash of light round each rock, not a neat ring)
+  const rg = new THREE.BufferGeometry(); rg.setAttribute('position', new THREE.Float32BufferAttribute(ring.flat(), 3));
+  const rm = new THREE.Points(rg, new THREE.PointsMaterial({ color: 0x3fc8ff, size: 7, map: halo, transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+  rm.frustumCulled = false; g.add(rm);
+  rm.onBeforeRender = () => { rm.material.opacity = 0.2 + 0.14 * Math.sin(performance.now() / 1000 * 0.8); };   // (the swell surging round the rocks and draining)
+}
+function nightLights(g) {
+  const halo = glowTex([[0, 'rgba(255,255,255,1)'], [0.15, 'rgba(255,255,255,.8)'], [0.4, 'rgba(255,255,255,.18)'], [1, 'rgba(255,255,255,0)']]);
+  moonArch(g, halo);
+  const glow = (pts, color, size, opacity = 1) => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pts.flat(), 3));
+    const m = new THREE.Points(geo, new THREE.PointsMaterial({ color, size, map: halo, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); m.frustumCulled = false; g.add(m); return m; };
+  // the lamp boats: a dark hull, a frame of poles, and a row of lamps hanging over the water (with their light on the sea under them)
+  const lamps = [], sea = [];
+  for (let i = 0; i < 7; i++) {
+    const x = -420 + i * 150 + (Math.random() - 0.5) * 60, z = -520 - Math.random() * 260, n = 3 + Math.floor(Math.random() * 3);
+    put(g, new THREE.BoxGeometry(9, 1.2, 2.2), [0.05, 0.05, 0.06], x, 0.4, z, 0.05);
+    for (let k = 0; k < n; k++) { const lx = x - 4 + 8 * k / Math.max(1, n - 1); lamps.push([lx, 3.2 + Math.random() * 0.4, z]); sea.push([lx, 0.3, z + 1]); }
+  }
+  glow(lamps, 0xfff4d6, 8); glow(lamps, 0xffe2a8, 30, 0.35); glow(sea, 0xffd79a, 40, 0.2);
+  // the fire on the beach: a hot core, its flames, and a wide warm glow over the sand
+  const fx = 40, fz = 214;
+  for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, log = put(g, new THREE.CylinderGeometry(0.12, 0.14, 1.6, 5), [0.12, 0.08, 0.05], fx + Math.cos(a) * 0.3, 1.9, fz + Math.sin(a) * 0.3); log.rotation.set(Math.cos(a) * 0.9, 0, Math.sin(a) * 0.9); }
+  glow([[fx, 2.3, fz]], 0xffb050, 2.6); glow([[fx, 2.9, fz]], 0xff7a1e, 5, 0.8); glow([[fx, 2.2, fz]], 0xff8a2a, 26, 0.3);
+  // paper lanterns let go from the beach, drifting up and out over the bay (each on its own slow loop: up for about two
+  // minutes, swaying, fading out high up, then another from the sand)
+  { const N = 26, P = new Float32Array(N * 3), L = Array.from({ length: N }, (_, i) => ({ x: -80 + Math.random() * 260, z: 205 + Math.random() * 20, ph: i / N, sp: 0.85 + Math.random() * 0.3, sw: Math.random() * 6.3 }));
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3));
+    const lan = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffa24a, size: 2.4, map: halo, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    lan.frustumCulled = false; g.add(lan);
+    lan.onBeforeRender = () => { const t = performance.now() / 1000;
+      for (let i = 0; i < N; i++) { const l = L[i], k = (t / 130 * l.sp + l.ph) % 1, e = k * k;
+        P[i * 3] = l.x + Math.sin(t * 0.3 + l.sw) * 3 + k * 40; P[i * 3 + 1] = 3 + k * 150 + Math.sin(t * 0.7 + l.sw) * 0.6; P[i * 3 + 2] = l.z - e * 420; }
+      geo.attributes.position.needsUpdate = true; lan.material.opacity = 0.9; };
+  }
+  // a few houses back in the palms with a warm window each
+  glow([[-60, 9, 238], [-20, 11, 246], [120, 10, 240], [165, 14, 252]], 0xffc070, 2.2, 0.9);
 }
