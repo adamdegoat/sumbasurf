@@ -441,16 +441,19 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-0952</small>
+    <small id="build">build 260928-1001</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-28-shift', date: '28 Sep 2026', time: '9:59 am', title: 'Stall on Shift', items: [
+      'On a computer, stall is now the Shift key. The STALL button shows it while you surf.',
+    ] },
     { id: '2026-09-28-computer', date: '28 Sep 2026', time: '9:47 am', title: 'Play on a computer', items: [
       'SumbaSurf now plays on a computer too. Steer with the left and right arrows: a quick tap for a small turn, hold for a hard carve.',
-      'Space paddles, pops you up and pumps. The Down arrow stalls. In the villa, walk with WASD or the arrows and drag the mouse to look.',
+      'Space paddles, pops you up and pumps. Shift stalls. In the villa, walk with WASD or the arrows and drag the mouse to look.',
       'On a phone nothing changes.',
     ] },
     { id: '2026-09-28-pets', date: '28 Sep 2026', time: '2:44 am', title: 'New friends at the villa', items: [
@@ -595,6 +598,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=808"></script>
+<script type="module" src="js/game.js?v=809"></script>
 </body>
 </html>

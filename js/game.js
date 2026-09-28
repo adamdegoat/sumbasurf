@@ -77,7 +77,7 @@ const DESK = matchMedia('(hover: hover) and (pointer: fine)').matches && !('onto
 // (Until then a computer got a card with a QR code to open it on the phone; #phoneOnly is still in the page, unused.)
 if (DESK) {
   document.body.classList.add('desk');
-  document.querySelector('#start .intro').textContent = 'Pick a spot and press START SURFING. Sit in the lineup, turn and paddle for a wave with Space, and ride it with the left and right arrows: tap for a small turn, hold for a hard carve. Hold Space for speed and the Down arrow to stall and get barrelled.';
+  document.querySelector('#start .intro').textContent = 'Pick a spot and press START SURFING. Sit in the lineup, turn and paddle for a wave with Space, and ride it with the left and right arrows: tap for a small turn, hold for a hard carve. Hold Space for speed and Shift to stall and get barrelled.';
   document.getElementById('soundTip').lastChild.textContent = ' Click anywhere for music';
 }
 if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone && !matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) document.getElementById('homeTip').hidden = false;
@@ -443,7 +443,7 @@ const ui = {
 };
 // the same tips in keyboard words, on a computer
 const DESK_WORDS = [['Slide your thumb left and right to carve, like a steering wheel', 'Carve with the left and right arrows: tap for a small turn, hold for a hard one'], ['Let go and the board just glides straight', 'Let go of the keys and the board just glides straight'],
-  ['PUMP and steer', 'Hold Space and steer'], ['hold PUMP', 'hold Space'], ['Hold PUMP', 'Hold Space'], ['tap PUMP', 'tap Space'], ['Tap PUMP', 'Tap Space'], ['STALL', 'Down'], ['Paddle now!', 'Paddle now! (Space)'], ['Paddle hard!', 'Paddle hard! (hold Space)'], ['Keep paddling!', 'Keep paddling! (Space)'],
+  ['PUMP and steer', 'Hold Space and steer'], ['hold PUMP', 'hold Space'], ['Hold PUMP', 'Hold Space'], ['tap PUMP', 'tap Space'], ['Tap PUMP', 'Tap Space'], ['STALL', 'Shift'], ['Paddle now!', 'Paddle now! (Space)'], ['Paddle hard!', 'Paddle hard! (hold Space)'], ['Keep paddling!', 'Keep paddling! (Space)'],
   ['Wave coming: turn to face', 'Wave coming: use the arrow keys to face']];
 const deskHint = (h) => { for (const [a, b] of DESK_WORDS) if (h.includes(a)) h = h.replace(a, b); return h; };
 const hold = (el, on, off) => {
@@ -452,7 +452,7 @@ const hold = (el, on, off) => {
   el.addEventListener('touchcancel', (e) => { e.preventDefault(); if (e.targetTouches.length === 0) off(e); }, { passive: false });
   el.addEventListener('mousedown', on); addEventListener('mouseup', off);
 };
-if (DESK) ui.stall.innerHTML = 'STALL<small>DOWN</small>';
+if (DESK) ui.stall.innerHTML = 'STALL<small>SHIFT</small>';   // (Shift only, his call 28 Sep 2026: one stall key, no confusion)
 hold(ui.paddle, () => { audio.wake(); input.paddleBtn = true; ui.paddle.classList.add('down'); }, () => { input.paddleBtn = false; ui.paddle.classList.remove('down'); });
 hold(ui.stall, () => { audio.wake(); input.stallBtn = true; ui.stall.classList.add('down'); }, () => { input.stallBtn = false; ui.stall.classList.remove('down'); });
 // thumb: touch anywhere on the right half and drag; the spot you first touch is the centre.
@@ -2157,7 +2157,7 @@ function tick(dt) {
   // (in the barrel view the camera looks back at you, so left/right are flipped to match the screen)
   if (rider && rider.standing && input.test == null) {
     // (scripted checks drive a virtual stick: y down = STALL held, y up = PUMP held)
-    const stallOn = !!input.stallBtn || keys.has('ArrowDown') || keys.has('KeyS') || keys.has('ShiftLeft') || keys.has('ShiftRight') || !!(input.stick && input.stick.y > 0.5);
+    const stallOn = !!input.stallBtn || keys.has('ShiftLeft') || keys.has('ShiftRight') || !!(input.stick && input.stick.y > 0.5);
     const pumpOn = inp.pump || !!(input.stick && input.stick.y < -0.3);
     const o = surfSteer(tubeK > 0.5 ? -inp.steer : inp.steer, stallOn);
     inp.steer = o.steer; inp.pump = pumpOn; inp.stall = o.stall;
