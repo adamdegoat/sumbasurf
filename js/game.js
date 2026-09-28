@@ -696,7 +696,7 @@ const _pq2 = new THREE.Quaternion(), popEye0 = new THREE.Vector3(), lastEye = ne
 const pov = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0, pitch: -0.2, roll: 0, ready: false }, _eye = new THREE.Vector3(), _pe = new THREE.Euler(0, 0, 0, 'YXZ');
 function povCamera(dt) {
   if (!bones.head && surfer) surfer.traverse((o) => { if (o.isBone) bones[o.name] = o; });
-  const standing = rider.standing, st = rider.state;
+  const standing = rider.standing || finishing(), st = rider.state;   // (kicking out at the end you're still on your feet: eyes on the water ahead, not up at the next wave)
   // the eye point: just in front of the head, where the eyes are
   if (bones.head) bones.head.getWorldPosition(_eye); else _eye.copy(pose.pos).y += standing ? 1.4 : 0.35;
   const moving = rider.v > (standing ? 2 : 0.6);
@@ -751,7 +751,8 @@ function povCamera(dt) {
   const dropK = st === 'POP' ? 4 * popIn : st === 'RIDE' ? 4 * Math.max(0, 1 - rider.stateT / 0.5) : 0;   // the pop: eyes down on the board between your hands, then back up to the line
   let pitchLook = -9, pitchT = standing ? POVCAM.pitch - POVCAM.drop * dropK : sitting ? -0.53 : -0.4;   // sitting: tipped down enough to see your knees and hands on the board   // take-off: look down at the board and the face; lying: down enough to see your arms paddling
   // sitting or lying facing out to sea: look up at a wave that's coming (a 15 m wave's crest is well above the horizon)
-  if (!standing) {
+  if (!standing && settling()) pitchT = -0.22;   // (settling onto the board after a ride: eyes level on the water around you, not snapping up to hunt for the next wave)
+  else if (!standing) {
     const inc = incoming();
     if (inc.w && inc.t < 14 && inc.t > -1 && Math.sin(rider.th) < 0.3) {
       const dist = Math.max(4, inc.t * inc.w.cond.speed + 6), up = Math.atan2(inc.w.cond.H * 0.9 - 0.8, dist);
@@ -953,7 +954,7 @@ function updateCamera(dt) {
   // shoulder swings right up to the lens (you saw the inside of your own upper arm as a brown blob): the upper arm near
   // the lens is left out then, only forearm and hand show, as they already do lying on the board
   { const slip = Math.abs(Math.atan2(Math.sin(rider.th - Math.atan2(rider.vz, rider.vx)), Math.cos(rider.th - Math.atan2(rider.vz, rider.vx))));
-    const want = rider.standing && (rider.air || (rider.v > 3 && slip > 0.35)) ? 1 : 0;
+    const want = (rider.standing && (rider.air || (rider.v > 3 && slip > 0.35))) || finishing() ? 1 : 0;   // (and while you kick out at the end: the board turns under you)
     armCutK += (want - armCutK) * Math.min(1, dt * (want ? 12 : 3));
     // the pop-up: your eyes are down between your shoulders and the arms fold up past the lens (a big blurry arm flashed
     // across the view, and cutting only the upper arm left stumps): the arms go out of view while you push up, the
@@ -973,15 +974,21 @@ const setStance = () => { invQ.copy(rig.quaternion).invert(); surfer.quaternion.
 // body moves between poses (sitting -> lying -> popping up) glide over ~0.15 s instead of jumping in one frame: the
 // camera rides on your head, so a jump was a jolt in the view (sit to paddle dropped 57 cm, paddle to pop rose 44 cm)
 const _gp = new THREE.Vector3();
-function glideTo(x, y, z, dt) {
+function glideTo(x, y, z, dt, rate = 18) {
   _gp.set(x, y, z);
-  if (snapCam || surfer.position.distanceTo(_gp) > 1.5) surfer.position.copy(_gp); else surfer.position.lerp(_gp, 1 - Math.exp(-dt * 18));
+  if (snapCam || surfer.position.distanceTo(_gp) > 1.5) surfer.position.copy(_gp); else surfer.position.lerp(_gp, 1 - Math.exp(-dt * rate));
 }
+// the end of a ride you stood up on (his note 29 Sep 2026: it dropped you onto your backside in a blink): you stay on your
+// feet for a moment, straightening up tall as the board glides on and turns up over the back of the wave, then settle
+// down to sit on the board over most of a second
+const FIN_HOLD = 0.8, FIN_SIT = 0.7;
+const finishing = () => rider && rider.state === 'OUT' && rider.ride && rider.ride.t > 0 && rider.stateT < FIN_HOLD && !/^Closed out:/.test(rider.why || '');   // (not when the whitewater has you: then it knocks you down onto the board)
+const settling = () => rider && rider.state === 'OUT' && rider.ride && rider.ride.t > 0 && rider.stateT < FIN_HOLD + FIN_SIT + 0.6;
 let bobK = 1;
 function updateRig(dt, t) {
   if (rider.state === 'WIPE' && W.on) { wipeout(dt); return; }
   rider.pose(pose);
-  const standing = rider.standing;
+  const fin = finishing(), standing = rider.standing || fin;
   // standing, the board rides on its rail (partway between the face and level) and rolls into the carve
   if (standing) {
     pose.up.lerp(WORLD_UP, 0.45).normalize();
@@ -999,7 +1006,7 @@ function updateRig(dt, t) {
   _tq.setFromRotationMatrix(tmpM);
   // the water surface kinks where the face bends; ease the board's tilt so it rides over those instead of snapping
   // the sitting tilt eases in and out too; smoothing runs on its own copy so extra tilts never pile up
-  const sitK = rider.state === 'LIE' && !rider.paddling || rider.state === 'OUT' ? 1 : 0;
+  const sitK = rider.state === 'LIE' && !rider.paddling || (rider.state === 'OUT' && !fin) ? 1 : 0;
   sitTilt += (sitK - sitTilt) * Math.min(1, dt * 4);
   _tq.multiply(_yq.setFromAxisAngle(_xAxis, -0.4 * sitTilt));   // ~23 deg: your weight on the tail lifts the nose clear of the water
   if (snapCam) rigQ.copy(_tq);
@@ -1027,11 +1034,15 @@ function updateRig(dt, t) {
   const st = rider.state;
   sitting = false;
   surfer.rotation.set(0, 0, 0);   // (position: every state below sets it; lying/sitting/popping glide from the last pose)
-  if (st === 'LIE' || st === 'OUT') {
+  if (st === 'OUT' && fin) {   // (the finish: still on your feet, rising out of the crouch)
+    if (curClip !== clips.crouch) { play('crouch', { fade: 0.3 }); clips.stand.reset().play(); }
+    const k = Math.min(1, rider.stateT / FIN_HOLD); clips.crouch.weight += (0.25 - clips.crouch.weight) * Math.min(1, dt * 3); clips.stand.weight = 1 - clips.crouch.weight;
+    setStance(); surfer.position.set(0, -0.04 * clips.crouch.weight, -0.1 - 0.05 * k);
+  } else if (st === 'LIE' || st === 'OUT') {
     if (rider.paddling && st === 'LIE') { play('paddle', { speed: 0.7 + rider.v / 3 }); glideTo(0, -0.93, -0.5, dt); }   // chest mid-board, feet at the tail
     else {
       // sitting astride: weight over the tail sinks it, nose tips up ~14 deg, legs hang in the water either side
-      play('sit'); glideTo(0, -0.36, -0.25, dt);
+      const slow = settling(); play('sit', { fade: slow ? FIN_SIT : 0.25 }); glideTo(0, -0.36, -0.25, dt, slow ? 5 : 18);   // (after a ride: sinking down onto the board slowly)
       sitting = true;
     }
   } else if (st === 'POP') {
@@ -1824,7 +1835,7 @@ function updateHUD(dt) {
   // a wipeout plays out first (you see yourself go over), then the summary fades in
   if (endT >= 0) {
     endT += dt;
-    const showAt = st === 'WIPE' ? 1.4 : 0.2;
+    const showAt = st === 'WIPE' ? 1.4 : rider.ride && rider.ride.t > 0 ? FIN_HOLD + 0.35 : 0.2;   // (after a ride, once you've kicked out and are settling onto the board)
     if (endT >= showAt && ui.msg.style.display !== 'flex') { ui.msg.style.opacity = 0; ui.msg.style.display = 'flex'; requestAnimationFrame(() => (ui.msg.style.opacity = 1)); }
     if (endT > showAt + (st === 'WIPE' ? 4.6 : 4.0) && !spec && !contestHold) spawnRider();   // (in a contest, contest.js says what comes next)   // (long enough to read the judges' sheet)
   }
@@ -2277,6 +2288,8 @@ function tick(dt) {
     rider.caughtT = rider.washed ? 6 : Math.max(0, (rider.caughtT || 0) - dt);   // (remember being washed in for a few seconds: that's why you ended up inside)
     // drifting too far inside or out wide on a lie: bring the surfer back to the lineup (the pool's walls hold you in)
     if (!spec && !isRanch() && rider.state === 'LIE' && (rider.z > 40 || Math.abs(rider.x - 5) > 70 || rider.z < -60)) { rider.out(rider.z > 40 && rider.caughtT > 0 ? 'Caught inside: the whitewater washed you in' : 'Drifted out of the lineup'); }
+    if (!spec && finishing()) { if (rider.finTh === undefined) rider.finTh = rider.th; const want = -Math.PI / 2, d = Math.atan2(Math.sin(want - rider.th), Math.cos(want - rider.th)), room = 0.7 - Math.abs(Math.atan2(Math.sin(rider.th - rider.finTh), Math.cos(rider.th - rider.finTh)));
+      if (room > 0) rider.th += Math.sign(d) * Math.min(Math.abs(d), room, dt * 1.9); } else if (rider.state !== 'OUT') rider.finTh = undefined;   // (the kick-out: up to ~40 deg round toward the open sea, up the face and over the back as the wave rolls on under you)
     updateRig(dt, T);
     if (mixer) { mixer.update(dt); paddleArms(dt); dtArm = dt; surfStance(); }
     updateLeash(); updateScenery(dt); updateLocals(dt);
