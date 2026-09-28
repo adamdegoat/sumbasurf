@@ -463,7 +463,7 @@ hold(ui.paddle, () => { audio.wake(); input.paddleBtn = true; ui.paddle.classLis
 hold(ui.stall, () => { audio.wake(); input.stallBtn = true; ui.stall.classList.add('down'); }, () => { input.stallBtn = false; ui.stall.classList.remove('down'); });
 // thumb: touch anywhere on the right half and drag; the spot you first touch is the centre.
 // Left/right turns the board left/right, like leaning on a real board: lying, it points you where you paddle; standing, it carves.
-let keyLean = 0; const KEY_START = 0.3, KEY_FULL = 0.35;           // (arrow keys: the lean a press starts at, seconds held to a full lean)
+let keyLean = 0; const KEY_START = 0.3, KEY_FULL = 0.6;   // (0.35 to a full lean until 28 Sep 2026: held keys gave the hardest carve every time, his call: gentler and smoother)           // (arrow keys: the lean a press starts at, seconds held to a full lean)
 let padTouch = null, padX = 0, padY = 0, lastPadTouch = undefined, lastKnob = '', steerF = 0, stickY = 0, lastStickMode = null;
 const PAD_R = 80;                                                   // thumb travel (px) for a full lean
 const padMove = (x, y) => { if (!padTouch) return; padX = Math.max(-1, Math.min(1, (x - padTouch.x0) / PAD_R)); padY = Math.max(-1, Math.min(1, (y - padTouch.y0) / PAD_R)); };
@@ -478,11 +478,11 @@ function readInput(dt) {
   if (!padTouch) { padX *= Math.max(0, 1 - dt * 10); padY *= Math.max(0, 1 - dt * 10); }   // let go and the board runs straight
   const kraw = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
   // keys are on or off, a thumb isn't: standing, a press starts at a third of a lean (a quick tap trims ~7 deg on a
-  // shortboard) and holding builds to a full carve by ~0.35 s (0.4 s held ~ a full thumb for 0.4 s, ~42 deg); letting go
-  // straightens in ~0.3 s. Long and gun stay slow because the boards are (the keys match the thumb on them too).
+  // shortboard) and holding builds to a full carve by ~0.6 s; letting go
+  // straightens in ~0.4 s. Long and gun stay slow because the boards are (the keys match the thumb on them too).
   // Lying down the keys still turn the board at once, as before
   const kStand = !!(rider && rider.standing);
-  if (!kStand || !kraw) keyLean = kStand ? keyLean * Math.max(0, 1 - dt * 12) : kraw;
+  if (!kStand || !kraw) keyLean = kStand ? keyLean * Math.max(0, 1 - dt * 8) : kraw;   // (let go: back to straight in ~0.4 s, was ~0.3)
   else { const k0 = KEY_START, kf = KEY_FULL; if (Math.sign(keyLean) !== kraw || Math.abs(keyLean) < k0) keyLean = kraw * k0; keyLean = Math.max(-1, Math.min(1, keyLean + kraw * dt * (1 - k0) / kf)); }
   const kx = Math.abs(keyLean) < 0.02 ? 0 : keyLean;
   // thumb feel: a small dead zone (a resting thumb wobbles), fine control near the centre, full lean at the edge,
