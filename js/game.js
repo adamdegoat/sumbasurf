@@ -1783,7 +1783,7 @@ function updateHUD(dt) {
 }
 
 // ---------- automatic quality
-let fpsAcc = 0, fpsN = 0, lowT = 0, highT = 0, refFps = 60, prCap = MAX_PR, capT = 0, probe = null;
+let fpsAcc = 0, fpsN = 0, lowT = 0, highT = 0, refFps = 60, prCap = MAX_PR, capT = 0, probe = null, screenSlow = false;   // (screenSlow: a drop didn't make it faster, so the screen sets the pace, e.g. 30 Hz Low Power Mode, not the chip; a slow chip itself never climbs to more sharpness than it can draw at 60)
 function autoQuality(dt) {
   fpsAcc += dt; fpsN++;
   if (fpsAcc < 1) return;
@@ -1797,11 +1797,11 @@ function autoQuality(dt) {
   if (capT > 0 && --capT === 0) prCap = MAX_PR;
   // a drop is a test: two seconds on, did it get faster? if not, the screen itself is the limit (30 Hz Low Power Mode),
   // not the drawing: put the sharpness back and take this pace as the screen's
-  if (probe) { if (++probe.t < 2) return; if (fps < probe.fps * 1.12) { pr = probe.pr; renderer.setPixelRatio(pr); prCap = pr; capT = 60; refFps = Math.min(refFps, fps + 2); } probe = null; lowT = highT = 0; return; }
+  if (probe) { if (++probe.t < 2) return; if (fps < probe.fps * 1.12) { screenSlow = true; pr = probe.pr; renderer.setPixelRatio(pr); prCap = pr; capT = 60; refFps = Math.min(refFps, fps + 2); } probe = null; lowT = highT = 0; return; }
   if (fps < refFps * 0.82) { lowT++; highT = 0; } else if (fps > refFps * 0.95) { highT++; lowT = 0; }
   const riding = rider && (rider.state === 'RIDE' || rider.state === 'POP');
   if (lowT >= 2 && pr > 0.75) { probe = { pr, fps, t: 0 }; prCap = pr - 0.05; capT = 60; pr = Math.max(0.75, pr - 0.15); renderer.setPixelRatio(pr); lowT = 0; }
-  if (highT >= 6 && pr + 0.1 <= prCap && !riding) { pr = Math.min(MAX_PR, pr + 0.1); renderer.setPixelRatio(pr); highT = 0; }
+  if (highT >= 6 && pr + 0.1 <= prCap && !riding && (fps > 55 || screenSlow)) { pr = Math.min(MAX_PR, pr + 0.1); renderer.setPixelRatio(pr); highT = 0; }
   if (Q.has('debug')) document.getElementById('fps').textContent = `${Math.round(fps)} fps · pr ${pr.toFixed(2)}`;
 }
 
@@ -2287,8 +2287,17 @@ function tick(dt) {
 // the GL call, so the renderer's own bookkeeping stays as it is)
 const flipProj = (cam) => { cam.projectionMatrix.elements[0] *= -1; cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert(); };
 { const gl = renderer.getContext(), ff = gl.frontFace.bind(gl); gl.frontFace = (m) => ff(MIRROR ? (m === gl.CW ? gl.CCW : gl.CW) : m); }
+// heat (28 Sep 2026, measured on his 2019 MacBook Pro: the menu kept its graphics chip 86% busy): never more than 60
+// pictures a second (a 120 or 144 Hz screen drew twice the work for nothing), and the menu, where the wave is only the
+// backdrop behind the panels, 30. A skipped frame does nothing at all, and the next one simply covers the longer time
+let drawnT = 0, menuWas = false;
 renderer.setAnimationLoop(() => {
-  const now = performance.now(), dt = Math.min((now - last) / 1000, 0.05); last = now;
+  const now0 = performance.now(), menu = ui.start.style.display !== 'none' && !starting;
+  const step = menu ? 1000 / 30 : 1000 / 60;
+  if (now0 - drawnT < step - 3) return;   // (3 ms spare: a 60 Hz screen's frames arrive a little early or late, and none may be skipped)
+  drawnT = Math.max(drawnT + step, now0 - step);   // (kept on a steady 60 or 30 beat, whatever the screen's own pace)
+  if (menu !== menuWas) { menuWas = menu; fpsAcc = 0; fpsN = 0; lowT = highT = 0; probe = null; }   // (the menu's slower pace never counts as the chip being slow, or fast)
+  const now = now0, dt = Math.min((now - last) / 1000, 0.05); last = now;
   if (!(window.__g && window.__g.paused) && (!portrait.matches || ui.start.style.display !== 'none')) tick(dt);   // turned upright: the game waits (the menu's wave keeps rolling behind the turn-your-phone screen)
   if (!liveShown && (tick.demo || mode)) { liveShown = true; requestAnimationFrame(() => document.body.classList.add('live')); }   // (the wave is drawn: the poster behind the turn-your-phone screen fades away)
   if (portrait.matches !== lastPortrait) { lastPortrait = portrait.matches; if (document.body.classList.contains('playing')) audio.pause(portrait.matches); }   // (and so does the sound: no endless drone while it waits)
@@ -2310,7 +2319,7 @@ renderer.setAnimationLoop(() => {
     renderer.autoClear = false; renderer.clear(); renderer.render(scene, camera); renderer.clearDepth(); scene.matrixWorldAutoUpdate = !!globalThis.__slowMat; renderer.render(scene, armCam); scene.matrixWorldAutoUpdate = true; renderer.autoClear = true;   // (the arms pass draws the same scene a moment later: nothing has moved, so don't work everything out again)
   }
   if (mir) { flipProj(camera); if (!camera.layers.isEnabled(1)) flipProj(armCam); }   // (both lenses back to normal between frames)
-  autoQuality(dt); musicTick();
+  if (!menuWas) autoQuality(dt); musicTick();
 });
 
 // ---------- the surf contest (the Wavedash copy's contest.js drives this; on sumbasurf.app none of it ever runs)
