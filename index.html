@@ -424,6 +424,7 @@
   #start .spotList .soon:hover { border-color: var(--line); } #start .spotList .soon .wg { color: rgba(246,236,220,.5); height: 20px; }
   #start .spotList .soon .nm { color: rgba(246,236,220,.62); } #start .spotList .soon small i { color: var(--amber); letter-spacing: .03em; }
   #start .spotList #goVilla { display: grid; gap: 0 12px; margin-top: 2px; padding: 0 12px 0 8px; border-radius: 12px; border: 1px dashed rgba(255,201,120,.55); background: linear-gradient(180deg, rgba(60,40,20,.6), rgba(30,20,11,.72)); font: inherit; letter-spacing: 0; }
+  #start .spotList #goVilla { position: sticky; bottom: 0; z-index: 1; flex: none; background: linear-gradient(180deg, #3a2714, #20150b); box-shadow: 0 -6px 12px rgba(10,7,4,.55); }   /* (always in sight: on a short screen the spots scroll behind it, his call 28 Sep 2026) */
   #start .spotList #goVilla svg { grid-row: 1 / span 2; width: 22px; height: 22px; justify-self: center; color: var(--amber); }
   #start .spotList #goVilla span { grid-column: 2; grid-row: 1 / span 2; font: 700 clamp(16px, 2.4vh, 21px)/1 var(--disp); }
   #start .spotList #goVilla small { display: block; margin-top: 3px; font: 500 clamp(11px, 1.5vh, 13px)/1.1 var(--body); color: rgba(246,236,220,.66); }
@@ -445,11 +446,11 @@
   #start .mmPicks .boardrow, #start .mmPicks .stancerow { display: flex; align-items: center; gap: 8px; margin: 0; }
   #start .mmPicks .stl { margin-left: 0 !important; }
   @media (max-height: 460px) {
-    #start .mm { height: calc(100vh - 86px); height: calc(100dvh - 86px); margin-top: 6px; gap: 12px; }   /* (dvh: the height you can see; on a phone 100vh counts the space under Safari's bar too) */ #start h1 { font-size: 22px !important; } #start .intro { display: none; }
+    #start .mm { height: calc(100vh - 58px); height: calc(100dvh - 58px); margin-top: 6px; gap: 12px; }   /* (dvh: the height you can see; on a phone 100vh counts the space under Safari's bar too) */ #start h1 { font-size: 22px !important; } #start .intro { display: none; }
     #start .spotList { gap: 3px; } #start .spotList > button { min-height: 26px; max-height: 30px; padding: 0 10px 0 6px; column-gap: 8px; border-radius: 9px; grid-template-columns: 26px 1fr auto; }
     #start .spotList small, #start .spotList .chd, #start .spotList #goVilla small { display: none !important; } #start .spotList .nm, #start .spotList #goVilla span { grid-row: 1 / span 2; align-self: center; font-size: 15px; }
     #start .spotList .best { grid-row: 1 / span 2; align-self: center; } #start .spotList .best b { font-size: 14px; } #start .spotList .wg { height: 13px; } #start .spotList #goVilla svg { width: 17px; height: 17px; }
-    #start .mmPanel { padding: 10px 16px; } #start .mmBig { font-size: 38px; } #start .mmBB { display: none; } #start .mmActs #goSurf { min-height: 46px; } #start .mmActs #goSurf span { font-size: 22px; }
+    #start .mmPanel { padding: 10px 16px; margin-bottom: 28px; }   /* (only the right panel stops short: Patch notes sits below it; the spot list keeps its full height) */ #start .mmBig { font-size: 38px; } #start .mmBB { display: none; } #start .mmActs #goSurf { min-height: 46px; } #start .mmActs #goSurf span { font-size: 22px; }
     #start .mmPicks { margin-top: 8px; padding-top: 8px; } #start .mmPicks .blabel { display: none; }
     #pnBtn { bottom: max(5px, calc(env(safe-area-inset-bottom) + 3px)); right: max(10px, calc(env(safe-area-inset-right) + 8px)); padding: 5px 10px 4px; font-size: 11px; }   /* (back in its corner, his call 28 Sep 2026: the menu stops short of it, below) */
   }
@@ -528,7 +529,7 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-1943</small>
+    <small id="build">build 260928-1946</small>
   </div>
 </div>
 <script>
