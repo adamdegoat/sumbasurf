@@ -541,13 +541,16 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-2244</small>
+    <small id="build">build 260928-2317</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-28-songs4', date: '28 Sep 2026', time: '11:17 pm', title: 'Four new island songs', items: [
+      'Breathe Again, Rhythm in Motion, Bring Yuh Basket and The Last Waltz join the radio, in the water and at the villa.',
+    ] },
     { id: '2026-09-28-bintang', date: '28 Sep 2026', time: '10:44 pm', title: 'New spot: Pantai Bintang', items: [
       'A night spot for intermediates: a long left that glows blue wherever the water breaks, under a full moon and a sky of stars.',
       'Your board, your trail and every splash light up. Watch for the moon inside the rock arch and the lanterns drifting over the bay.',
@@ -744,6 +747,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=849"></script>
+<script type="module" src="js/game.js?v=850"></script>
 </body>
 </html>
