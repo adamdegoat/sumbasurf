@@ -54,7 +54,7 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 // and the back (from behind the wave up to the crest). Heights in the wave's own frame: zl = z - wave.zW.
 // what each move is worth before how well and where you did it (28 Sep 2026: turns, snaps and cutbacks raised so a
 // wave of hard, committed turns in the pocket can score like a barrel, as real judges score it)
-export const MOVE_BASE = { TURN: 1.0, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0 };   // (airs kept above the turns: the hardest move scores most)
+export const MOVE_BASE = { TURN: 1.0, CARVE: 3.8, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0 };   // (airs kept above the turns: the hardest move scores most)
 export const MOVE_BASE_OLD = { TURN: 0.9, SNAP: 2.2, CUTBACK: 2.4, FLOATER: 2.0, AIR: 3.0, 'AIR 360': 4.2 };
 const JUDGE_K = 6;   // (28 Sep 2026: with quality over quantity below, 3 to 5 great moves reach the 8s; was 8)   // how hard the top of the scale is (calibrated with test riders: see HANDOVER)
 
@@ -160,7 +160,8 @@ export function heightAt(waves, x, z) { return waterAt(waves, x, z, _q).y; }
 // old = the scoring before 28 Sep 2026 (for comparing in tests only)
 export function scoreRide(r, fell = false, detail = false, old = false) {
   const ms = (fell ? r.moves.filter((m) => m.t < r.t - 0.8) : r.moves).map((m) => (old && MOVE_BASE_OLD[m.name] && m.base ? { ...m, pts: m.pts * (m.base - MOVE_BASE[m.name] + MOVE_BASE_OLD[m.name]) / m.base } : m));
-  const seen = {}, items = [...ms].sort((a, b) => b.pts - a.pts).map((m) => { const n = (seen[m.name] = (seen[m.name] || 0) + 1); return { m, n, v: m.pts * Math.pow(m.name === 'TURN' ? 0.6 : 0.5, n - 1) }; }).sort((a, b) => b.v - a.v);   // (your best one of each move counts in full, the others less)
+  const hasBig = ms.some((m) => m.name !== 'TURN');   // (a hard carve is the wave's main move only on a wave of carves: next to barrels and snaps it's a linking turn again)
+  const seen = {}, items = [...ms].sort((a, b) => b.pts - a.pts).map((m) => { const n = (seen[m.name] = (seen[m.name] || 0) + 1), pts = hasBig && m.name === 'TURN' && m.base === MOVE_BASE.CARVE ? m.pts * MOVE_BASE.TURN / MOVE_BASE.CARVE : m.pts; return { m, n, v: pts * Math.pow(m.name === 'TURN' ? 0.7 : 0.5, n - 1) }; }).sort((a, b) => b.v - a.v);   // (your best one of each move counts in full, the others less)
   const W = [1, 0.85, 0.65, 0.1, 0.06, 0.035, 0.02, 0.01];   // (quality over quantity, like the judges: your best three moves decide the wave)
   items.forEach((it, i) => (it.w = it.v * (W[i] || 0.005)));
   let raw = items.reduce((a, it) => a + it.w, 0);
@@ -551,6 +552,7 @@ export class Rider {
     const C = this.wave.cond, R = this.ride, spd = Math.min(1, this.v / (C.speed * 1.15));
     const pow = name === 'TURN' ? Math.min(1, R.gPk / 2.1) : R.leanPk;
     let q = Math.min(1, 0.35 * spd + 0.35 * pow + 0.3 * crit), base = MOVE_BASE[name] || 0;
+    if (name === 'TURN' && q >= 0.65 && crit >= 0.55) base = MOVE_BASE.CARVE;   // (a powerful carve close to the curl is a real move to a judge, not a linking turn)
     let posK = 0.25 + 0.75 * crit;   // (where you did it: the pocket counts, the flats barely)
     const notes = [];
     if (name === 'BARREL') {

@@ -264,6 +264,15 @@ const PASSES = []; export const _debug = () => { const P = plan(), p = [0, 0, 0]
     for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) if (o(A[i], B[i], A[j]) * o(A[i], B[i], B[j]) < 0 && o(A[j], B[j], A[i]) * o(A[j], B[j], B[i]) < 0) n++; out.push(n); }
   return { passes: PASSES, crossings: out, maxStepMs: +MAXSTEP.toFixed(1) }; };
 let PLAN = null, PLAN_P = null;   // PLAN[s][d]: drone d's slot in formation s
+// the shapes and the plan come ready-made in show-data.json (made once from this file with _export, 28 Sep 2026), so a
+// phone does no preparing at all and the show looks the same on every device. Change a formation and bump DATA_V: an
+// old file is then ignored and everything is worked out on the phone as before
+const DATA_V = 'animals-1';
+export function _export() { plan(); const r = (a) => a.map(([x, y]) => [Math.round(x * 100) / 100, Math.round(y * 100) / 100]); return { v: DATA_V, shapes: Object.fromEntries(Object.entries(S_).map(([k, a]) => [k, r(a)])), text: r(TEXT), plan: PLAN.map((a) => Array.from(a)) }; }
+function load(d) {
+  if (!d || d.v !== DATA_V || !Array.isArray(d.plan) || d.plan.length !== SCENES.length || d.plan.some((a) => a.length !== N) || !d.text || d.text.length !== N || READY || GEN) return false;
+  S_ = d.shapes; TEXT = d.text; PLAN = d.plan.map((a) => Int32Array.from(a)); SH_DONE = READY = true; return true;
+}
 function* planGen() {
   const p = [0, 0, 0], c = [0, 0, 0], P = [Int32Array.from({ length: N }, (_, i) => i)];
   for (let s = 0; s + 1 < SCENES.length; s++) {
@@ -278,7 +287,8 @@ function* planGen() {
 function plan() { while (!READY) step(); return PLAN; }
 
 export function droneShow(scene) {
-  const bg = () => { work(5); if (!READY) setTimeout(bg, 40); }; setTimeout(bg, 0);
+  const bg = () => { work(5); if (!READY) setTimeout(bg, 40); };
+  fetch(new URL('./show-data.json?v=' + DATA_V, import.meta.url)).then((r) => (r.ok ? r.json() : null)).then((d) => { if (!load(d)) setTimeout(bg, 0); }).catch(() => setTimeout(bg, 0));   // (no file, or an old one: prepare here, a slice at a time)
   const pos = new Float32Array(N * 3), col = new Float32Array(N * 3), tw = new Float32Array(N);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('aTw', new THREE.BufferAttribute(tw, 1));
