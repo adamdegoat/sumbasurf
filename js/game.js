@@ -603,7 +603,10 @@ function hello(where) {
   let kind = 'new', who = '';
   try { const me = localStorage.getItem('sumbasurf.me'); if (me === '1') return; if (me === 'claude') { who = 'claude'; kind = 'test'; throw 0; } const last = localStorage.getItem('sumbasurf.seen');
     kind = last ? 'back' : 'new'; localStorage.setItem('sumbasurf.seen', new Date().toISOString().slice(0, 10)); } catch (e) {}   // (every visit is an alert, not once a day; the server still lets one device through only once every few minutes)
-  fetch('/api/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind, where, who }), keepalive: true }).catch(() => {});
+  // (the device, as the game sees it: an iPad's browser says it's a Mac, so the server alone called iPads computers)
+  const ua = navigator.userAgent, touch = navigator.maxTouchPoints > 1;
+  const dev = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && touch) || (/Android/i.test(ua) && !/Mobile/i.test(ua)) ? 'tablet' : /iPhone|Android|Mobile/i.test(ua) ? 'phone' : touch ? 'touchscreen computer' : 'computer';
+  fetch('/api/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind, where, who, dev }), keepalive: true }).catch(() => {});
 }
 async function start(m) {
   if (starting) return; starting = true; if (window.__g) window.__g.paused = false;

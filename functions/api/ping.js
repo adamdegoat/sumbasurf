@@ -26,7 +26,9 @@ export async function onRequestPost({ request, env }) {
   const where = SPOTS.includes(b.where) ? b.where : 'the menu';   // (only known names get through: nobody can send you their own text)
   let country = request.cf && request.cf.country || '';
   try { country = new Intl.DisplayNames(['en'], { type: 'region' }).of(country) || country; } catch (e) {}
-  const ua = request.headers.get('user-agent') || '', dev = /iPad|Tablet/i.test(ua) ? 'tablet' : /iPhone|Android|Mobile/i.test(ua) ? 'phone' : 'computer';
+  // (the device: what the game itself saw, from a fixed list, else a guess from the browser's name)
+  const ua = request.headers.get('user-agent') || '', DEV = ['phone', 'tablet', 'computer', 'touchscreen computer'];
+  const dev = DEV.includes(b.dev) ? b.dev : /iPad|Tablet/i.test(ua) ? 'tablet' : /iPhone|Android|Mobile/i.test(ua) ? 'phone' : 'computer';
   const text = `${b.who === 'claude' ? 'Claude testing: ' : ''}${b.kind === 'back' ? 'A player is back' : 'New player'} at ${where}${country ? ` (${country}, ${dev})` : ` (${dev})`}`;
   await fetch(`https://api.telegram.org/bot${env.TG_TOKEN}/sendMessage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: chat, text }) });
   } catch (e) {}   // (Telegram down: the game never notices)
