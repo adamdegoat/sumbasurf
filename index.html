@@ -114,6 +114,7 @@
     border-radius: 50%; border: 2px solid rgba(255,255,255,.55); background: rgba(10,30,40,.28); display: none; place-items: center;
     font-weight: 700; letter-spacing: .1em; font-size: 11px; touch-action: none; }
   body.riding #stall { display: grid; } #stall.down { background: rgba(255,255,255,.3); }
+  #stall.bog { animation: bogPulse .45s ease-in-out infinite; } @keyframes bogPulse { 50% { background: rgba(214,70,48,.7); border-color: #ff8a70; } }   /* (stalled too slow: the tail is sinking, let go) */
   /* riding, like driving: PUMP (gas) on top, STALL (brake) underneath, both the same size */
   body.riding #paddle { width: 88px; height: 88px; left: max(30px, calc(env(safe-area-inset-left) + 8px)); bottom: max(122px, calc(env(safe-area-inset-bottom) + 102px)); }
   body.riding #stall { width: 88px; height: 88px; left: max(30px, calc(env(safe-area-inset-left) + 8px)); bottom: max(20px, env(safe-area-inset-bottom)); }
@@ -541,13 +542,18 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260929-0027</small>
+    <small id="build">build 260929-0103</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-29-stall', date: '29 Sep 2026', time: '1:03 am', title: 'A real stall', items: [
+      'STALL now bites hard and you can see it: you sit back, the nose lifts and your hand drags in the wave.',
+      'Stall too long and the board starts to wobble. Let go in time or the tail sinks and you fall.',
+      'In the barrel, stalling holds you deep in the tube.',
+    ] },
     { id: '2026-09-29-finish', date: '29 Sep 2026', time: '12:27 am', title: 'A proper finish to every ride', items: [
       'At the end of a wave you stay on your feet and kick out over the back, then settle onto your board, instead of dropping straight down.',
     ] },
@@ -750,6 +756,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=852"></script>
+<script type="module" src="js/game.js?v=853"></script>
 </body>
 </html>

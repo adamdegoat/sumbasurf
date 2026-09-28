@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=166';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=166';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=167';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=16';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
@@ -13,8 +13,8 @@ import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=48';
-import { wildlife } from './wildlife.js?v=52';
+import { crew } from './crew.js?v=49';
+import { wildlife } from './wildlife.js?v=53';
 import { droneShow } from './show.js?v=13';
 
 const Q = new URLSearchParams(location.search);
@@ -718,7 +718,7 @@ function povCamera(dt) {
   const popFwd = st === 'POP' ? 0.15 : st === 'RIDE' ? 0.15 * Math.max(0, 1 - rider.stateT / 0.8) : 0;
   const sK = standing ? (st === 'POP' ? Math.min(1, popClock() / 0.25) : 1) : 0;   // (lying -> standing eye point blended over the start of the pop, not switched in a frame)
   const ef = -0.05 + (POVCAM.fwd + popFwd + 0.05) * sK, eu = 0.2 + (POVCAM.up - 0.2) * sK;   // lying: eyes at the head, a bit up, so your paddling hands pass below them
-  _eye.x += Math.cos(yawT) * ef; _eye.z += Math.sin(yawT) * ef; _eye.y += eu;   // camera just in front of the face, like a surfer's mouth-mounted camera
+  _eye.x += Math.cos(yawT) * ef; _eye.z += Math.sin(yawT) * ef; _eye.y += eu - 0.08 * stallV;   // (sitting back in a stall: a little lower)   // camera just in front of the face, like a surfer's mouth-mounted camera
   // smooth the eye's position relative to the board (not in the world, or at speed it would trail behind your head)
   _eye.sub(rig.position);
   // eyes never lower than this above the board; during the pop it rises with you instead of snapping up in one frame
@@ -761,9 +761,9 @@ function povCamera(dt) {
   }
   if (pitchLook > pitchT) pitchT = pitchLook;
   if (!standing && isRanch()) pitchT = Math.max(pitchT, -0.2);   // at the Surf Ranch, eyes up on the machine wall where your wave comes from
-  pitchT += 0.14 * tubeEase;   // (in the barrel your eyes lift ~8 deg, so you see the tube arching over you)   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
+  pitchT += 0.14 * tubeEase + 0.07 * stallV + 0.035 * bogV * Math.sin(T * 7.3);   // (a stall: you sit back and your eyes tip up a little; sinking, they bob)   // (in the barrel your eyes lift ~8 deg, so you see the tube arching over you)   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
   pov.pitch += (pitchT - pov.pitch) * Math.min(1, dt * (st === 'POP' ? 4 + 20 * Math.min(1, popClock() / 0.3) : st === 'RIDE' ? 5 + 19 * Math.max(0, 1 - rider.stateT / 0.4) : 5));   // (and out of it without a kink: the rates hand over gradually when you're up)   // (the pop: eyes snap down to the board between your hands)
-  pov.roll += ((standing ? -rider.lean * 0.2 : 0) - pov.roll) * Math.min(1, dt * 6);   // you feel the lean: the horizon tips as you lay into a carve (less than the board: people hold their head nearer level)
+  pov.roll += ((standing ? -rider.lean * 0.2 + 0.05 * bogV * Math.sin(T * 9.1) : 0) - pov.roll) * Math.min(1, dt * 6);   // (the wobble of a sinking tail rocks the horizon)   // you feel the lean: the horizon tips as you lay into a carve (less than the board: people hold their head nearer level)
   // three.js cameras look down -z: turn our heading (angle in x/z) into a yaw about y
   _pe.set(pov.pitch - (rider.standing ? 0.055 * pumpA : 0), -pov.yaw - Math.PI / 2, pov.roll);   // (each pump stroke: the head nods down ~3 deg as you compress, like real POV footage)
   camera.quaternion.setFromEuler(_pe);
@@ -982,6 +982,26 @@ function glideTo(x, y, z, dt, rate = 18) {
 // feet for a moment, straightening up tall as the board glides on and turns up over the back of the wave, then settle
 // down to sit on the board over most of a second
 const FIN_HOLD = 0.8, FIN_SIT = 0.7;
+// the stall you can see and hear (his call 29 Sep 2026: the stronger stall must show): stallV eases in and out with the
+// button, bogV rises as the board stops planing under you (the warning before the tail sinks). They tip your eyes back
+// and lift the nose (updateRig, povCamera), throw spray off your dragging hand, gurgle, wobble, and pulse the button
+let stallV = 0, bogV = 0, stallSprayAcc = 0, gurgleT = 0;
+const _stP = new THREE.Vector3(), _stV = new THREE.Vector3();
+function stallFx(dt) {
+  const on = rider && rider.standing && rider.state === 'RIDE';
+  stallV += ((on ? rider.stalling || 0 : 0) - stallV) * Math.min(1, dt * (rider && rider.stalling ? 7 : 4));
+  bogV += ((on ? rider.bogK || 0 : 0) - bogV) * Math.min(1, dt * 8);
+  if (ui.stall.classList.contains('bog') !== bogV > 0.12) ui.stall.classList.toggle('bog', bogV > 0.12);
+  if (!on || stallV < 0.2 || rider.v < 1.5) return;
+  // spray off the hand dragging in the face, on the wave side, thrown back and up; less as you slow down
+  stallSprayAcc += 170 * stallV * Math.min(1, rider.v / 6) * dt;
+  while (stallSprayAcc >= 1) { stallSprayAcc -= 1;
+    _stP.copy(rig.position).addScaledVector(INTO_WAVE, 0.5 + Math.random() * 0.15).addScaledVector(pose.fwd, 0.15 - Math.random() * 0.3); _stP.y = heightAt(waves, _stP.x, _stP.z) + 0.05;
+    _stV.set(rider.vx * 0.35, 0.9 + Math.random() * 1.3, rider.vz * 0.35).addScaledVector(pose.fwd, -1.2 - Math.random()).addScaledVector(INTO_WAVE, 0.4);
+    railSpray.stream(_stP, _stV, 1, 0.5); }
+  // the tail sinking: a gurgle every so often as the warning builds
+  if (bogV > 0.2) { gurgleT -= dt; if (gurgleT <= 0) { gurgleT = 0.28 + 0.2 * Math.random(); audio.burst(0.1 + 0.12 * bogV, 180 + 60 * Math.random(), 0.3, 'lowpass'); } }
+}
 const finishing = () => rider && rider.state === 'OUT' && rider.ride && rider.ride.t > 0 && rider.stateT < FIN_HOLD && !/^Closed out:/.test(rider.why || '');   // (not when the whitewater has you: then it knocks you down onto the board)
 const settling = () => rider && rider.state === 'OUT' && rider.ride && rider.ride.t > 0 && rider.stateT < FIN_HOLD + FIN_SIT + 0.6;
 let bobK = 1;
@@ -997,6 +1017,7 @@ function updateRig(dt, t) {
     const pw = rider.pumping ? Math.sin(Math.PI * rider.pumpT / PUMP_STROKE) : 0, ps = rider.pumpN % 2 ? 1 : -1;
     const roll = rider.lean * 0.8 + ps * 0.12 * pw;                     // the board on its rail: the lean you're carving with
     pose.fwd.applyAxisAngle(WORLD_UP, ps * 0.07 * pw);
+    pose.fwd.y += 0.14 * stallV + 0.07 * bogV * Math.sin(t * 7.5); pose.fwd.normalize();   // (a stall: weight on the tail lifts the nose; sinking, it bobs)
     pose.up.applyAxisAngle(pose.fwd, roll);   // (+lean turns right, toward +z; rolling up toward +z puts the right rail in the water)
   }
   pose.up.addScaledVector(pose.fwd, -pose.up.dot(pose.fwd)).normalize();
@@ -1799,7 +1820,7 @@ function updateHUD(dt) {
   else if (st === 'RIDE' && rider.stateT > 13 && rider.stateT < 17 && session.waves >= 1 && session.waves < 6 && !rider.ride.moves.some((m) => m.name.startsWith('AIR')) && RIDE.air) hint = 'Air: race down, then turn hard up the face into the lip and it launches you';
   // the curl is right behind you: tell the player how to get covered (a barrel comes to whoever sets up for it)
   if (st === 'RIDE' && !hint && !rider.inBarrel && rider.wave && rider.s > 0 && rider.s < 2.2 * rider.wave.cond.H && rider.wave.cond.hollow > 0.5 && session.barrels < 2) hint = rider.y < 0.6 * rider.wave.cond.H ? 'Barrel coming! Stay low and hold STALL' : 'The lip is pitching behind you: drop low to get barreled';
-  setText(ui.hint, spec ? '' : session.waves < 5 || st === 'POP' ? (DESK ? deskHint(hint) : hint) : '');   // (no coaching while you watch someone else)
+  setText(ui.hint, spec ? '' : bogV > 0.3 ? (DESK ? 'Too slow: let go of Shift' : 'Too slow: let go of STALL') : session.waves < 5 || st === 'POP' ? (DESK ? deskHint(hint) : hint) : '');   // (the sinking-tail warning shows every time, not only in the first waves)   // (no coaching while you watch someone else)
   // the callout: BARREL while you're in it, or the move you just landed
   tubeShowT = rider.inBarrel ? 0.4 : Math.max(0, tubeShowT - dt);   // (held a moment: a wobble at the tube's edge doesn't flicker the word)
   hudCall(st, dt);
@@ -2288,6 +2309,7 @@ function tick(dt) {
     rider.caughtT = rider.washed ? 6 : Math.max(0, (rider.caughtT || 0) - dt);   // (remember being washed in for a few seconds: that's why you ended up inside)
     // drifting too far inside or out wide on a lie: bring the surfer back to the lineup (the pool's walls hold you in)
     if (!spec && !isRanch() && rider.state === 'LIE' && (rider.z > 40 || Math.abs(rider.x - 5) > 70 || rider.z < -60)) { rider.out(rider.z > 40 && rider.caughtT > 0 ? 'Caught inside: the whitewater washed you in' : 'Drifted out of the lineup'); }
+    stallFx(dt);
     if (!spec && finishing()) { if (rider.finTh === undefined) rider.finTh = rider.th; const want = -Math.PI / 2, d = Math.atan2(Math.sin(want - rider.th), Math.cos(want - rider.th)), room = 0.7 - Math.abs(Math.atan2(Math.sin(rider.th - rider.finTh), Math.cos(rider.th - rider.finTh)));
       if (room > 0) rider.th += Math.sign(d) * Math.min(Math.abs(d), room, dt * 1.9); } else if (rider.state !== 'OUT') rider.finTh = undefined;   // (the kick-out: up to ~40 deg round toward the open sea, up the face and over the back as the wave rolls on under you)
     updateRig(dt, T);

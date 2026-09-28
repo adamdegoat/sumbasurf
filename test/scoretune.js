@@ -1,6 +1,6 @@
 // Re-score saved rides (scorecmp.js output) with different scoring settings, to tune without riding again.
 //   const T = await import('./test/scoretune.js?x=1'); T.report(__cmp, T.P0)
-import { MOVE_BASE } from '../js/surf.js?v=166';
+import { MOVE_BASE } from '../js/surf.js?v=167';
 export const P0 = { barrelK: 1, base: { ...MOVE_BASE }, repTurn: 0.7, repBig: 0.6, W: [1, 0.8, 0.6, 0.45, 0.35, 0.25, 0.18, 0.12], variety: 0.4, K: 8, rule: true, strongTurn: true };
 export function score(ride, fell, P) {
   const ms = (fell ? ride.moves.filter((m) => m.t < ride.t - 0.8) : ride.moves).map((m) => (MOVE_BASE[m.name] && m.base ? { ...m, pts: m.pts * (P.base[m.name] + m.base - MOVE_BASE[m.name]) / m.base } : m.name === 'BARREL' ? { ...m, pts: m.pts * (P.barrelK || 1) } : m));

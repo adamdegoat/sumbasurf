@@ -22,6 +22,8 @@ export const RIDE = {
   skidLoss: 0.16,                      // share of the excess sideways force lost as speed while the tail drifts
   glide: 0.7,                          // share of the fins' braking given back in a carve (0 = raw physics, 1 = no loss)
   stallDrag: 3.0,                      // full brake (back foot + hand drag) slows you by this (m/s^2)
+  stallBite: 1.1,                      // ...and more at first: the tail digs in hard, then the brake eases to the steady drag above (x (1 + this), fading over ~0.5 s)
+  planeV: 3.6,                         // below this speed through the water a stalled board stops planing: the tail sinks (hold on and you fall)
   pump: 0.5,                           // how hard a pump stroke drives the board (see the stroke in step: 4 x this at its peak, m/s^2)
   popTime: 0.6,                        // seconds from lying to standing (real surfers take about 0.6-1.2 s; it was 0.35)
   waterPush: 1.0,                      // how much the wave's moving water carries you
@@ -40,11 +42,12 @@ export const RIDE = {
 //   longboard 9'2": paddles fast and catches waves early; very stable and glides; slow, wide turns; no snaps or airs
 //   gun       9'6" big-wave board: paddles into huge waves early; holds a line at high speed with lots of grip; stiff turns
 const BASE = { ...RIDE };
+const BOG_FALL = 1.1;   // seconds a board can sit below planing speed in a stall before the tail sinks and you fall
 export const BOARDS = {
   short: {},
-  fish: { snap: 0.85, paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.3, relFrom: 0.3, leanRate: 10.0, yawLag: 0.06, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85, catchPaddle: 0.6, catchLate: 1.9, catchReach: 1.4 },
-  long: { snap: 0.3, paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.85, catchK: 0.65, catchPaddle: 0.35, catchLate: 2.5, catchReach: 3.0, air: false, turnMin: 0.55 },
-  gun: { snap: 0.45, paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.72, catchK: 0.75, catchPaddle: 0.5, catchLate: 2.0, catchReach: 1.8, turnMin: 0.75 },
+  fish: { planeV: 3.0, snap: 0.85, paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.3, relFrom: 0.3, leanRate: 10.0, yawLag: 0.06, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85, catchPaddle: 0.6, catchLate: 1.9, catchReach: 1.4 },
+  long: { planeV: 2.3, snap: 0.3, paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.85, catchK: 0.65, catchPaddle: 0.35, catchLate: 2.5, catchReach: 3.0, air: false, turnMin: 0.55 },
+  gun: { planeV: 3.0, snap: 0.45, paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.72, catchK: 0.75, catchPaddle: 0.5, catchLate: 2.0, catchReach: 1.8, turnMin: 0.75 },
 };
 export function setBoard(name) { Object.assign(RIDE, BASE, BOARDS[name] || {}); }
 
@@ -318,8 +321,14 @@ export class Rider {
       const dr = P.drag * along + P.drag2 * along * Math.abs(along) + 1.6 * sk * (this.slide || 0) * Math.sign(along);   // (a snap scrubs speed: the tail sliding across the water)
       ax += -dr * dx; az += -dr * dz;
       // stalling: weight on the tail and the trailing hand dragged in the face, a strong brake (you let the wave catch you)
+      // (his call 29 Sep 2026: more like the real thing) it bites hard the moment you sit back, then eases; and hold it
+      // once you've slowed right down and the board stops planing: the tail sinks under you (a wobble first, then you fall)
       this.stalling = inp.stall || 0;
-      if (this.stalling) { const sd = P.stallDrag * this.stalling * Math.min(1, Math.abs(along) / 2) * Math.sign(along); ax -= sd * dx; az -= sd * dz; }
+      this.stallT = this.stalling ? (this.stallT || 0) + h : 0;
+      if (this.stalling) { const bite = 1 + (P.stallBite ?? 1.1) * Math.exp(-this.stallT / 0.45), sd = P.stallDrag * bite * this.stalling * Math.min(1, Math.abs(along) / 2) * Math.sign(along); ax -= sd * dx; az -= sd * dz; }
+      { const vr = Math.hypot(rx, rz); if (this.stalling && vr < (P.planeV ?? 3.6)) this.bogT = (this.bogT || 0) + h; else this.bogT = Math.max(0, (this.bogT || 0) - 2.5 * h);
+        this.bogK = Math.min(1, this.bogT / BOG_FALL);
+        if (this.bogT > BOG_FALL) return this.wipe('Stalled too long: the tail sank'); }
       // inside the tube the wave's own flow helps you hold your spot (the tiny foot adjustments a real surfer makes that a
       // thumb can't): a small friendly tube holds you in well, a heavy one hardly at all. Pump or stall still override it.
       if (this.inBarrel && w && C.tube && !w.closing) {   // (not while it closes out: the collapsing tube carries no one)
@@ -328,7 +337,7 @@ export class Rider {
         const want = (-1.3 * C.H - this.s) * 0.6, vT = Math.hypot((w.peelRate || C.peel) + want, cw);
         // (for the first few seconds only: a real tube doesn't hold anyone forever. It fades out from 3 s to 6 s in there,
         //  then staying in is all your own pumping and stalling: with it for good, barrels lasted 20-35 s)
-        const hold = C.tube * Math.max(0, 1 - Math.max(0, (this.ride.tubeT || 0) - 3) / 3);
+        const hold = C.tube * Math.max(0, 1 - Math.max(0, (this.ride.tubeT || 0) - 3) / 3) * (1 - 0.85 * (this.stalling || 0));   // (a stall overrides the tube's hold: you really do drop back deeper)
         const sp = Math.hypot(this.vx, this.vz) || 1, push = Math.max(-5, Math.min(5, 2 * hold * (vT - sp)));
         ax += push * this.vx / sp; az += push * this.vz / sp;   // along your line, like the push of a pump (a sideways shove, the fins would just cancel)
       }
@@ -521,7 +530,7 @@ export class Rider {
     const spin = mine ? inp.steer * 5.2 : Math.max(-2.8, Math.min(2.8, off * 5));
     this.th += spin * h; A.spin += mine ? spin * h : 0; this.turn = spin * 0.5;
     this.lean += (inp.steer * 0.3 - this.lean) * Math.min(1, h * 6);
-    this.skid = 0; this.slide = 0; this.stalling = 0; this.pumping = false; this.inBarrel = false; this.onFace = false;
+    this.skid = 0; this.slide = 0; this.stalling = 0; this.stallT = 0; this.bogT = 0; this.bogK = 0; this.pumping = false; this.inBarrel = false; this.onFace = false;
     this.ride.t += h;
     const q = waterAt(waves, this.x, this.z, _c), e = 0.15;
     if (q.w) { this.wave = q.w; this.s = q.s; this.zl = q.zl; }
