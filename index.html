@@ -529,19 +529,13 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-1946</small>
+    <small id="build">build 260928-1949</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
-    { id: '2026-09-28-pncorner', date: '28 Sep 2026', time: '7:43 pm', title: 'Patch notes back in the corner', items: [
-      'On phones and smaller screens the Patch notes button is back at the bottom right, with the menu fitting neatly above it.',
-    ] },
-    { id: '2026-09-28-mpnow', wd: true, date: '28 Sep 2026', time: '7:37 pm', title: 'Multiplayer button right away', items: [
-      'The Multiplayer button now shows the moment the game opens. Tap it early and your rooms open as soon as the game is ready.',
-    ] },
     { id: '2026-09-28-judging', date: '28 Sep 2026', time: '7:28 pm', title: 'Scored like a real contest', items: [
       'Big snaps and cutbacks close to the curl now score much more: a wave of powerful turns can be very good or excellent, like in a real contest.',
       'Quality over quantity: your best three moves decide the wave. Repeating the same move adds less.',
@@ -553,25 +547,10 @@
       'Time it as the lip throws and you come off the lip instead of going over the falls. A big snap off the lip scores more.',
       'Shortboards snap the most, the fish nearly as much, longboards and guns less.',
     ] },
-    { id: '2026-09-28-phonesapp', wd: true, date: '28 Sep 2026', time: '6:33 pm', title: 'On a phone? Play at sumbasurf.app', items: [
-      'SumbaSurf on Wavedash is made for computers. Phones now get a link to sumbasurf.app, where the full phone version is free.',
-    ] },
-    { id: '2026-09-28-smallphone', date: '28 Sep 2026', time: '6:25 pm', title: 'Menu tidied for small phones', items: [
-      'On smaller phones like the iPhone SE, the menu panel no longer piles up: boards and stance now sit two to a row.',
-    ] },
-    { id: '2026-09-28-phonefit', date: '28 Sep 2026', time: '5:50 pm', title: 'Menu fits your phone again', items: [
-      'Fixed: with the phone turned sideways, the bottom of the menu could be cut off behind the browser bar.',
-    ] },
-    { id: '2026-09-28-iphonewd', wd: true, date: '28 Sep 2026', time: '5:50 pm', title: 'SumbaSurf now plays on iPhone', items: [
-      'Fixed: on iPhones the game only showed the menu words. It now starts properly. For the biggest screen, turn on Portrait Orientation Lock, press Fullscreen and hold your phone sideways.',
-    ] },
     { id: '2026-09-28-droneshow', date: '28 Sep 2026', time: '5:08 pm', title: 'A new drone show', items: [
       'The villa drone show is all new: a sea turtle, a manta ray, leaping dolphins, a humpback whale, a galloping Sumba horse and a sea eagle, then SUMBA in lights.',
       'Smoother from start to finish: each animal flows into the next, and the lights never jump.',
       'You stay where you are when the show starts. The balcony has the best view.',
-    ] },
-    { id: '2026-09-28-mpfast', wd: true, date: '28 Sep 2026', time: '4:36 pm', title: 'Multiplayer shows straight away', items: [
-      'The Multiplayer button now appears as soon as the menu opens, instead of a few seconds later.',
     ] },
     { id: '2026-09-28-rooms2', wd: true, date: '28 Sep 2026', time: '4:33 pm', title: 'Smoother contest rooms', items: [
       'Everyone starts in their own spot in the villa, and you no longer walk inside each other.',
@@ -587,14 +566,6 @@
     { id: '2026-09-28-menu', date: '28 Sep 2026', time: '2:20 pm', title: 'A new menu', items: [
       'Spots are now a list on the left. Tap one to see it big on the right: what it is like, your level there, the best boards for it, and its wave drawn to scale next to you.',
       'Room for more spots: three new ones are coming soon.',
-    ] },
-    { id: '2026-09-28-computer-wd', date: '28 Sep 2026', time: '12:50 pm', title: 'On a computer? Play on Wavedash', items: [
-      'Opening sumbasurf.app on a computer now takes you to SumbaSurf on Wavedash, free, or shows a code to play on your phone.',
-      'On a phone nothing changes.',
-    ] },
-    { id: '2026-09-28-wavedash', date: '28 Sep 2026', time: '12:37 pm', title: 'SumbaSurf is on Wavedash', items: [
-      'SumbaSurf is now also on Wavedash at wavedash.com/games/sumbasurf: a leaderboard for every spot, 13 badges to earn, and your progress saved to your account.',
-      'It stays free, and it stays here too.',
     ] },
     { id: '2026-09-28-score', date: '28 Sep 2026', time: '10:55 am', title: 'A cleaner score screen', items: [
       'After each wave you now see your score, the three moves that counted most, and your level with how far the next one is.',
