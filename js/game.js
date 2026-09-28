@@ -521,7 +521,7 @@ const levelOf = (v) => { let k = -1; LEVELS.forEach(([, t], i) => { if (v >= t) 
 // your best ride per level, kept on this phone (quietly does nothing if storage is blocked)
 // (best5: the stricter judge of 28 Sep 2026 started everyone's bests afresh; the old best4 scores aren't comparable)
 const bestFor = (m) => { try { return +localStorage.getItem('balisurf.best5.' + m) || 0; } catch (e) { return 0; } };
-const saveBest = (m, v) => { try { localStorage.setItem('balisurf.best5.' + m, String(v)); } catch (e) {} showBests(); };
+const saveBest = (m, v) => { try { localStorage.setItem('balisurf.best5.' + m, String(v)); } catch (e) {} showBests(); if (typeof mmPanel === 'function') mmPanel(); };
 // moments other code can listen for (the Wavedash copy's saves, badges and leaderboards; on sumbasurf.app nothing listens)
 const ssEvent = (n, d) => { try { dispatchEvent(new CustomEvent('ss:' + n, { detail: d })); } catch (e) {} };
 function showBests() {
@@ -564,7 +564,35 @@ let spotSel = 'easy'; try { const v = localStorage.getItem('sumbasurf.spot'); if
 const spotLabel = (m) => m === 'ranch' ? 'Surf Ranch' : (SPOTS[m] && SPOTS[m].name) || m;
 function selSpot(m) { spotSel = m; try { localStorage.setItem('sumbasurf.spot', m); } catch (e) {}
   for (const b of document.querySelectorAll('[data-mode]')) b.classList.toggle('sel', b.dataset.mode === m);
-  document.getElementById('goSpot').textContent = spotLabel(m); }
+  document.getElementById('goSpot').textContent = spotLabel(m); mmPanel(); }
+// the menu's big panel: the chosen spot, what it's like, your level there, the boards the board notes recommend for it,
+// and its wave drawn to scale beside a 1.8 m surfer (the size in its description; the pool's wave is ordered, so none)
+// the list's wave icons: each glyph drawn in a wide strip for the old tiles; cropped to the wave so it shows in a small icon
+// (the bigger waves stay bigger)
+function mmGlyphs() { for (const g of document.querySelectorAll('#start .spotList [data-mode] .wg')) { const p = g.querySelector('path[fill]'); if (!p) continue; try { const bb = p.getBBox(); if (bb.width) g.setAttribute('viewBox', `0 0 ${Math.max(22, bb.x + bb.width + 3).toFixed(1)} 30`); g.setAttribute('preserveAspectRatio', 'xMidYMax meet'); } catch (e) {} } }
+setTimeout(mmGlyphs, 0);
+function mmPanel() {
+  const m = spotSel, b = document.querySelector(`[data-mode="${m}"]`), $ = (id) => document.getElementById(id); if (!b || !$('mmBig')) return;
+  const sm = b.querySelector('small'), lvl = sm && sm.querySelector('i') ? sm.querySelector('i').textContent : '', desc = sm ? [...sm.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim() : '';
+  const name = b.querySelector('.nm').textContent;
+  $('mmKick').textContent = lvl; $('mmBig').textContent = name; $('mmDesc').textContent = desc ? desc + '.' : '';
+  const v = bestFor(m), lv = levelOf(v), nx = LEVELS[lv + 1], dots = `<i>${[0, 1, 2].map((i) => `<b${i <= lv ? ' class="on"' : ''}></b>`).join('')}</i>`;
+  $('mmLvl').innerHTML = v ? `<span class="chip">${dots}${lv >= 0 ? LEVELS[lv][0] : 'No level yet'}</span><span>Your best ${v.toFixed(1)}${nx ? `  \u00b7  ${(nx[1] - v).toFixed(1)} more for ${nx[0]}` : ''}</span>` : '<span>No waves here yet</span>';
+  const bb = Object.keys(BOARD_INFO).filter((t) => BOARD_INFO[t][2].includes(name) || (m === 'ranch' && /Ranch/.test(BOARD_INFO[t][2]))).map((t) => BOARD_INFO[t][0]);
+  $('mmBB').innerHTML = bb.length ? `Best boards here: <b>${bb.join(', ')}</b>` : '';
+  const hm = desc.match(/([\d.]+) m\b/), h = hm ? +hm[1] : 0;
+  if (m === 'ranch' || !h) { $('mmScale').innerHTML = '<svg viewBox="0 0 200 240" aria-hidden="true"><text x="100" y="128" text-anchor="middle" fill="rgba(246,236,220,.55)" font-family="Barlow Condensed" font-weight="700" font-size="20" letter-spacing="2">YOU PICK THE WAVE</text></svg>'; return; }
+  // one wave shape, the 15 m one, shrunk evenly for smaller spots: the size you see is the real size next to you
+  const base = 222, k = Math.min(1, h / 15), H = 200, top = base - H, man = 200 * (1.8 / 15), topK = base - H * k, Y = (f) => (top + f * H).toFixed(1), sx = 14 + 44 * k, sy = base - 3;
+  const face = `M14 ${base} C58 ${base} 74 ${Y(0.7)} 80 ${Y(0.4)} C70 ${Y(0.3)} 56 ${Y(0.3)} 47 ${Y(0.43)} C49 ${Y(0.13)} 72 ${top} 97 ${top} C127 ${top} 150 ${Y(0.45)} 196 ${base} Z`;
+  $('mmScale').innerHTML = `<svg viewBox="0 0 200 240" aria-label="${h} metre wave next to a 1.8 metre surfer"><line x1="10" y1="${base}" x2="190" y2="${base}" stroke="rgba(246,236,220,.3)"/>
+    <path d="${face}" transform="translate(14 ${base}) scale(${k.toFixed(3)}) translate(-14 -${base})" fill="rgba(159,227,214,.85)"/>
+    <line x1="${14 + 186 * k}" y1="${topK}" x2="${14 + 186 * k}" y2="${base}" stroke="rgba(246,236,220,.45)" stroke-dasharray="3 3"/><line x1="${8 + 186 * k}" y1="${topK}" x2="${20 + 186 * k}" y2="${topK}" stroke="rgba(246,236,220,.6)"/>
+    <text x="${Math.max(60, 6 + 186 * k)}" y="${Math.max(18, topK - 8)}" text-anchor="end" fill="#ffc978" font-family="Barlow Condensed" font-weight="800" font-size="26">${h} m</text>
+    <g fill="#f6ecdc"><circle cx="${sx}" cy="${sy - man + man * 0.1}" r="${man * 0.1}"/><rect x="${sx - man * 0.07}" y="${sy - man * 0.8}" width="${man * 0.14}" height="${man * 0.45}" rx="${man * 0.05}"/>
+    <path d="M${sx - man * 0.06} ${sy - man * 0.36} L${sx - man * 0.18} ${sy} M${sx + man * 0.06} ${sy - man * 0.36} L${sx + man * 0.2} ${sy}" stroke="#f6ecdc" stroke-width="${man * 0.08}" stroke-linecap="round"/></g>
+    <text x="${sx}" y="${base + 16}" text-anchor="middle" fill="rgba(246,236,220,.6)" font-family="Barlow" font-size="11">you, 1.8 m</text></svg>`;
+}
 // a tap that counts even if the finger slides a little (the page blocks touch scrolling, and on a phone that made a tap
 // with any movement in it vanish: spots needed pressing two or three times)
 function onTap(el, fn) {
@@ -2273,4 +2301,4 @@ renderer.setAnimationLoop(() => {
   if (mir) { flipProj(camera); if (!camera.layers.isEnabled(1)) flipProj(armCam); }   // (both lenses back to normal between frames)
   autoQuality(dt); musicTick();
 });
-window.__g = { get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, want: () => _want };
+window.__g = { get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), useStance: (k) => useStance(k), get board() { return boardType; }, get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, want: () => _want };

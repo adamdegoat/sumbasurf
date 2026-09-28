@@ -402,6 +402,57 @@
   #ranch span { font: 700 14px var(--disp) !important; letter-spacing: .04em !important; }
   #ranch button { border-radius: 14px !important; font-size: 15px !important; font-weight: 700 !important; padding: 8px 14px !important; border: 1px solid var(--line) !important; background: linear-gradient(180deg, rgba(40,28,18,.7), rgba(24,17,11,.78)) !important; box-shadow: inset 0 1px 0 rgba(255,236,200,.12); }
   #ranch button small { font-family: var(--body); font-size: 11px !important; } #ranch button:active { border-color: var(--amber) !important; background: linear-gradient(180deg, rgba(90,58,26,.72), rgba(44,29,14,.8)) !important; }
+
+  /* ---- the menu, list + panel (his call 28 Sep 2026): every spot one line on the left (room for ten, the last three
+     'Coming soon'), the chosen spot big on the right with its wave drawn to scale, Start and the board/stance picks */
+  #start .mm { display: grid; grid-template-columns: minmax(250px, 34%) 1fr; gap: clamp(12px, 2vw, 28px); height: clamp(300px, calc(100vh - 190px), 680px); margin-top: clamp(8px, 1.8vh, 18px); }
+  #start .spotList { display: flex; flex-direction: column; gap: clamp(4px, .7vh, 7px); min-height: 0; overflow-y: auto; padding-right: 3px; }
+  #start .spotList > button { position: relative; display: grid; grid-template-columns: clamp(28px, 3vw, 40px) 1fr auto; grid-template-rows: auto auto; column-gap: 12px; align-items: center; flex: 1 1 0; min-height: clamp(34px, 5.4vh, 54px); max-height: 60px;
+    padding: 0 12px 0 8px; border-radius: 12px; border: 1px solid var(--line); background: linear-gradient(180deg, rgba(40,28,18,.62), rgba(24,17,11,.72)); box-shadow: inset 0 1px 0 rgba(255,236,200,.1);
+    color: var(--sand); text-align: left; cursor: pointer; transition: border-color .15s, background .15s; transform: none !important; }
+  #start .spotList > button:hover { border-color: rgba(255,201,120,.75); }
+  #start .spotList .wg { grid-row: 1 / span 2; width: 100%; height: 22px; margin: 0; color: var(--sea); } #start .spotList .rt .wg { transform: scaleX(-1); }
+  #start .spotList .nm { grid-column: 2; align-self: end; font: 700 clamp(16px, 2.4vh, 21px)/1 var(--disp); }
+  #start .spotList small { grid-column: 2; align-self: start; display: block; margin-top: 2px; font-size: 0 !important; line-height: 1; }
+  #start .spotList small i { display: inline; font: 500 clamp(11px, 1.5vh, 13px)/1.1 var(--body) !important; color: rgba(246,236,220,.66); margin: 0; }
+  #start .spotList .best { grid-column: 3; grid-row: 1; align-self: end; margin: 0; min-height: 0; font-size: 0; text-align: right; }
+  #start .spotList .best b { margin: 0; font: 700 clamp(15px, 2.1vh, 19px)/1 var(--disp); color: var(--amber); }
+  #start .spotList .chd { position: static; grid-column: 3; grid-row: 2; align-self: start; justify-self: end; margin-top: 4px; display: flex; gap: 3px; }
+  #start .spotList .chd b { width: 6px; height: 6px; border-radius: 50%; border: 1.2px solid rgba(255,201,120,.55); } #start .spotList .chd b.on { background: var(--amber); border-color: var(--amber); }
+  #start .spotList > button.sel { border-color: var(--amber); border-width: 1px; background: linear-gradient(180deg, rgba(90,58,26,.75), rgba(44,29,14,.82)); box-shadow: inset 3px 0 0 var(--amber); }
+  #start .spotList .soon { cursor: default; border-style: dashed; background: rgba(20,14,9,.35); opacity: .75; }
+  #start .spotList .soon:hover { border-color: var(--line); } #start .spotList .soon .wg { color: rgba(246,236,220,.5); height: 20px; }
+  #start .spotList .soon .nm { color: rgba(246,236,220,.62); } #start .spotList .soon small i { color: var(--amber); letter-spacing: .03em; }
+  #start .spotList #goVilla { display: grid; gap: 0 12px; margin-top: 2px; padding: 0 12px 0 8px; border-radius: 12px; border: 1px dashed rgba(255,201,120,.55); background: linear-gradient(180deg, rgba(60,40,20,.6), rgba(30,20,11,.72)); font: inherit; letter-spacing: 0; }
+  #start .spotList #goVilla svg { grid-row: 1 / span 2; width: 22px; height: 22px; justify-self: center; color: var(--amber); }
+  #start .spotList #goVilla span { grid-column: 2; grid-row: 1 / span 2; font: 700 clamp(16px, 2.4vh, 21px)/1 var(--disp); }
+  #start .spotList #goVilla small { display: block; margin-top: 3px; font: 500 clamp(11px, 1.5vh, 13px)/1.1 var(--body); color: rgba(246,236,220,.66); }
+  #start .mmPanel { display: flex; flex-direction: column; min-height: 0; padding: clamp(14px, 2.8vh, 28px) clamp(18px, 2.2vw, 34px); border-radius: 16px; border: 1px solid var(--line); background: linear-gradient(180deg, rgba(30,21,13,.7), rgba(18,13,8,.8)); box-shadow: inset 0 1px 0 rgba(255,236,200,.1); }
+  #start .mmTop { display: grid; grid-template-columns: 1fr minmax(150px, 34%); gap: clamp(12px, 2vw, 26px); flex: 1; min-height: 0; }
+  #start .mmKick { font: 700 clamp(12px, 1.8vh, 15px)/1 var(--disp); letter-spacing: .18em; text-transform: uppercase; color: var(--amber); }
+  #start .mmBig { margin: clamp(4px, 1vh, 10px) 0 0; font: 800 clamp(40px, 9vh, 88px)/.88 var(--disp); letter-spacing: -.005em; text-transform: uppercase; color: var(--sand); }
+  #start .mmDesc { margin: clamp(6px, 1.3vh, 12px) 0 0; font: 500 clamp(14px, 2.2vh, 19px)/1.35 var(--body); color: rgba(246,236,220,.86); max-width: 32em; }
+  #start .mmLvl { margin-top: clamp(8px, 1.7vh, 16px); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font: 500 clamp(13px, 1.9vh, 16px) var(--body); color: rgba(246,236,220,.78); }
+  #start .mmLvl .chip { display: inline-flex; align-items: center; gap: 7px; font: 700 clamp(14px, 2vh, 18px)/1 var(--disp); letter-spacing: .08em; text-transform: uppercase; color: var(--amber); }
+  #start .mmLvl .chip i { display: inline-flex; gap: 4px; } #start .mmLvl .chip b { width: 7px; height: 7px; border-radius: 50%; border: 1.3px solid rgba(255,201,120,.55); } #start .mmLvl .chip b.on { background: var(--amber); border-color: var(--amber); }
+  #start .mmBB { margin-top: clamp(8px, 1.5vh, 14px); font: 500 clamp(13px, 1.9vh, 16px) var(--body); color: rgba(246,236,220,.72); } #start .mmBB b { font: 700 clamp(14px, 2vh, 17px)/1 var(--disp); letter-spacing: .04em; color: var(--sand); }
+  #start .mmScale { position: relative; min-height: 0; } #start .mmScale svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #start .mmActs { display: flex; gap: 14px; align-items: stretch; padding-top: clamp(10px, 2vh, 20px); }
+  #start .mmActs #goSurf { flex: 1.35; display: flex; flex-direction: row; justify-content: space-between; align-items: center; min-height: clamp(52px, 9.5vh, 84px); padding: 0 clamp(16px, 2vw, 26px); border: 0; border-radius: 14px;
+    background: linear-gradient(180deg, #ffd694, #f2ad52); color: #2a1a0c; box-shadow: 0 4px 0 #b9782c; transform: none !important; text-align: left; }
+  #start .mmActs #goSurf span { font: 800 clamp(22px, 3.8vh, 34px)/1 var(--disp); letter-spacing: .06em; } #start .mmActs #goSurf small { display: none; } #start .mmActs #goSurf svg { width: clamp(20px, 3vh, 28px); height: clamp(20px, 3vh, 28px); }
+  #start .mmPicks { display: flex; gap: clamp(12px, 2vw, 26px); align-items: center; flex-wrap: wrap; margin-top: clamp(10px, 1.9vh, 18px); padding-top: clamp(10px, 1.7vh, 16px); border-top: 1px solid rgba(246,236,220,.12); }
+  #start .mmPicks .boardrow, #start .mmPicks .stancerow { display: flex; align-items: center; gap: 8px; margin: 0; }
+  #start .mmPicks .stl { margin-left: 0 !important; }
+  @media (max-height: 460px) {
+    #start .mm { height: calc(100vh - 58px); margin-top: 6px; gap: 12px; } #start h1 { font-size: 22px !important; } #start .intro { display: none; }
+    #start .spotList { gap: 3px; } #start .spotList > button { min-height: 26px; max-height: 30px; padding: 0 10px 0 6px; column-gap: 8px; border-radius: 9px; grid-template-columns: 26px 1fr auto; }
+    #start .spotList small, #start .spotList .chd, #start .spotList #goVilla small { display: none !important; } #start .spotList .nm, #start .spotList #goVilla span { grid-row: 1 / span 2; align-self: center; font-size: 15px; }
+    #start .spotList .best { grid-row: 1 / span 2; align-self: center; } #start .spotList .best b { font-size: 14px; } #start .spotList .wg { height: 13px; } #start .spotList #goVilla svg { width: 17px; height: 17px; }
+    #start .mmPanel { padding: 10px 16px; } #start .mmBig { font-size: 38px; } #start .mmBB { display: none; } #start .mmActs #goSurf { min-height: 46px; } #start .mmActs #goSurf span { font-size: 22px; }
+    #start .mmPicks { margin-top: 8px; padding-top: 8px; } #start .mmPicks .blabel { display: none; }
+    #pnBtn { top: max(7px, env(safe-area-inset-top)); bottom: auto; right: auto; left: calc(max(7vw, env(safe-area-inset-left)) + 118px); padding: 5px 10px 4px; font-size: 11px; }   /* (beside the title: bottom right sits on the panel) */
+  }
 </style>
 </head>
 <body>
@@ -438,15 +489,24 @@
 <div id="start">
   <h1>SumbaSurf</h1>
   <p class="intro">Pick a spot and press START SURFING. Sit in the lineup, turn and paddle for a wave, and ride it with your right thumb: slide left and right to carve, like a steering wheel. On the left, hold PUMP for speed and STALL to brake and get barrelled.</p>
-  <div class="row">
+  <div class="mm">
+    <nav class="spotList" aria-label="Surf spots">
     <button data-mode="easy"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C8.2 28 9.4 24.7 11.4 21.9 C13.6 21.4 16.0 22.8 15.8 24.7 C14.3 23.6 12.9 25.0 13.6 28.0 Z" fill="currentColor"/></svg><span class="nm">Pantai Kuda</span><small><i>Beginners, breaks left</i>5 m, slow, friendly barrels</small></button>
-    <button data-mode="medium"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C8.2 28 9.4 23.7 11.5 20.2 C13.7 19.6 16.1 21.4 15.8 23.7 C14.4 22.4 12.9 24.1 13.7 28.0 Z" fill="currentColor"/></svg><span class="nm">Tanjung Uma</span><small><i>Intermediate, breaks left</i>7.5 m clean barrels under the cliffs</small></button>
-    <button data-mode="hard"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C9.6 28 11.3 22.3 14.0 17.6 C16.9 16.8 20.1 19.2 19.8 22.3 C17.9 20.5 15.9 22.8 16.9 28.0 Z" fill="currentColor"/></svg><span class="nm">Batu Hitam</span><small><i>Advanced, breaks left</i>10 m, fast and heavy</small></button>
-    <button data-mode="extreme"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C18.1 28 22.1 13.7 29.0 2.0 C36.2 -0.1 44.3 5.9 43.5 13.7 C38.7 9.3 33.8 15.0 36.2 28.0 Z" fill="currentColor"/></svg><span class="nm">Gunung Laut</span><small><i>Experts only, breaks left</i>15 m in a storm</small></button><button data-mode="kanan" class="rt"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C8.2 28 9.4 23.7 11.5 20.2 C13.7 19.6 16.1 21.4 15.8 23.7 C14.4 22.4 12.9 24.1 13.7 28.0 Z" fill="currentColor"/></svg><span class="nm">Watu Kanan</span><small><i>Intermediate, breaks right</i>7 m hollow right off red cliffs</small></button><button data-mode="hiu" class="rt"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C9.6 28 11.3 22.3 14.0 17.6 C16.9 16.8 20.1 19.2 19.8 22.3 C17.9 20.5 15.9 22.8 16.9 28.0 Z" fill="currentColor"/></svg><span class="nm">Karang Hiu</span><small><i>Advanced, breaks right</i>9.3 m fast right over shallow coral</small></button>
-    <button data-mode="ranch"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h60M0 18v10M60 18v10" stroke="currentColor" stroke-width="1" opacity=".45"/><path d="M4.0 28 C8.2 28 9.4 23.7 11.5 20.2 C13.7 19.6 16.1 21.4 15.8 23.7 C14.4 22.4 12.9 24.1 13.7 28.0 Z" fill="currentColor"/></svg><span class="nm">Surf Ranch</span><small><i>Wave pool, breaks left</i>Order the wave you want</small></button><button id="goSurf"><span>START SURFING<small id="goSpot"></small></span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h11M11 5.5 15.5 10 11 14.5"/></svg></button>
+<button data-mode="medium"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C8.2 28 9.4 23.7 11.5 20.2 C13.7 19.6 16.1 21.4 15.8 23.7 C14.4 22.4 12.9 24.1 13.7 28.0 Z" fill="currentColor"/></svg><span class="nm">Tanjung Uma</span><small><i>Intermediate, breaks left</i>7.5 m clean barrels under the cliffs</small></button>
+<button data-mode="hard"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C9.6 28 11.3 22.3 14.0 17.6 C16.9 16.8 20.1 19.2 19.8 22.3 C17.9 20.5 15.9 22.8 16.9 28.0 Z" fill="currentColor"/></svg><span class="nm">Batu Hitam</span><small><i>Advanced, breaks left</i>10 m, fast and heavy</small></button>
+<button data-mode="extreme"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C18.1 28 22.1 13.7 29.0 2.0 C36.2 -0.1 44.3 5.9 43.5 13.7 C38.7 9.3 33.8 15.0 36.2 28.0 Z" fill="currentColor"/></svg><span class="nm">Gunung Laut</span><small><i>Experts only, breaks left</i>15 m in a storm</small></button>
+<button data-mode="kanan" class="rt"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C8.2 28 9.4 23.7 11.5 20.2 C13.7 19.6 16.1 21.4 15.8 23.7 C14.4 22.4 12.9 24.1 13.7 28.0 Z" fill="currentColor"/></svg><span class="nm">Watu Kanan</span><small><i>Intermediate, breaks right</i>7 m hollow right off red cliffs</small></button>
+<button data-mode="hiu" class="rt"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C9.6 28 11.3 22.3 14.0 17.6 C16.9 16.8 20.1 19.2 19.8 22.3 C17.9 20.5 15.9 22.8 16.9 28.0 Z" fill="currentColor"/></svg><span class="nm">Karang Hiu</span><small><i>Advanced, breaks right</i>9.3 m fast right over shallow coral</small></button>
+<button data-mode="ranch"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h60M0 18v10M60 18v10" stroke="currentColor" stroke-width="1" opacity=".45"/><path d="M4.0 28 C8.2 28 9.4 23.7 11.5 20.2 C13.7 19.6 16.1 21.4 15.8 23.7 C14.4 22.4 12.9 24.1 13.7 28.0 Z" fill="currentColor"/></svg><span class="nm">Surf Ranch</span><small><i>Wave pool, breaks left</i>Order the wave you want</small></button>
+    <button class="soon" type="button" aria-disabled="true"><svg class="wg" viewBox="0 0 40 30" aria-hidden="true"><rect x="13" y="13" width="14" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 13v-3a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span class="nm">New spot</span><small><i>Coming soon</i></small></button><button class="soon" type="button" aria-disabled="true"><svg class="wg" viewBox="0 0 40 30" aria-hidden="true"><rect x="13" y="13" width="14" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 13v-3a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span class="nm">New spot</span><small><i>Coming soon</i></small></button><button class="soon" type="button" aria-disabled="true"><svg class="wg" viewBox="0 0 40 30" aria-hidden="true"><rect x="13" y="13" width="14" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 13v-3a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span class="nm">New spot</span><small><i>Coming soon</i></small></button>
+    <button id="goVilla"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M2 9.5 10 3l8 6.5"/><path d="M4.5 8v9h11V8"/><path d="M8.5 17v-4.5h3V17"/></svg><span>Your villa<small>Walk around, chill, watch the surf from the cliff</small></span></button>
+    </nav>
+    <section class="mmPanel" aria-live="polite">
+      <div class="mmTop"><div class="mmTxt"><div class="mmKick" id="mmKick"></div><h2 class="mmBig" id="mmBig"></h2><p class="mmDesc" id="mmDesc"></p><div class="mmLvl" id="mmLvl"></div><div class="mmBB" id="mmBB"></div></div><div class="mmScale" id="mmScale"></div></div>
+      <div class="mmActs"><button id="goSurf"><span>START SURFING<small id="goSpot"></small></span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h11M11 5.5 15.5 10 11 14.5"/></svg></button></div>
+      <div class="mmPicks"><div class="boardrow"><span class="blabel">Board</span><b id="boardName" hidden></b><div class="boards" id="boards"></div></div><div class="stancerow"><span class="blabel stl">Stance</span><div class="boards" id="stances"></div></div></div>
+    </section>
   </div>
-  <div class="boardrow"><span class="blabel">Board</span><b id="boardName" hidden></b><div class="boards" id="boards"></div></div>
-  <div class="villarow"><button id="goVilla"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M2 9.5 10 3l8 6.5"/><path d="M4.5 8v9h11V8"/><path d="M8.5 17v-4.5h3V17"/></svg><span>Your villa<small>Walk around, chill, watch the surf from the cliff</small></span></button><span class="blabel stl">Stance</span><div class="boards" id="stances"></div></div>
   <div id="load"></div>
   <p id="soundTip"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 6h3l4-3v10l-4-3H2z"/><path d="M11.5 5.5a3.5 3.5 0 0 1 0 5M13.5 3.5a6 6 0 0 1 0 9"/></svg> Tap anywhere for music</p>
   <p id="homeTip" hidden>For full screen: tap <b>Share</b>, then <b>Add to Home Screen</b>, and play from the icon.</p>
@@ -456,13 +516,17 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-1326</small>
+    <small id="build">build 260928-1420</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-28-menu', date: '28 Sep 2026', time: '2:20 pm', title: 'A new menu', items: [
+      'Spots are now a list on the left. Tap one to see it big on the right: what it is like, your level there, the best boards for it, and its wave drawn to scale next to you.',
+      'Room for more spots: three new ones are coming soon.',
+    ] },
     { id: '2026-09-28-computer-wd', date: '28 Sep 2026', time: '12:50 pm', title: 'On a computer? Play on Wavedash', items: [
       'Opening sumbasurf.app on a computer now takes you to SumbaSurf on Wavedash, free, or shows a code to play on your phone.',
       'On a phone nothing changes.',
@@ -625,6 +689,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=820"></script>
+<script type="module" src="js/game.js?v=823"></script>
 </body>
 </html>
