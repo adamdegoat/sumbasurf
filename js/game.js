@@ -1782,11 +1782,15 @@ const portrait = DESK ? { matches: false } : matchMedia('(orientation: portrait)
   const hit = q ? [q.charAt(0).toUpperCase() + q.slice(1)] : apps.find(([, re]) => re.test(ua));
   if (hit) {
     document.body.classList.add('inapp'); document.getElementById('rtAppName').textContent = hit[0];
-    const btn = document.getElementById('rtOpen'), url = 'https://sumbasurf.app/';
-    if (/Android/i.test(ua)) btn.addEventListener('click', () => { location.href = 'intent://sumbasurf.app/#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end'; });
+    // (the game's home: sumbasurf.app, or the Wavedash game page when the Wavedash copy sets SS_HOME; inside Wavedash's
+    // frame the jump has to move the whole page, not just the frame)
+    const btn = document.getElementById('rtOpen'), url = globalThis.SS_HOME || 'https://sumbasurf.app/', host = url.replace(/^https:\/\//, '');
+    const go = (to) => { try { if (window.top !== window) { window.top.location.href = to; return; } } catch (e) {} location.href = to; };
+    document.querySelector('#rtApp .rtUrl').textContent = host.replace(/\/$/, '');
+    if (/Android/i.test(ua)) btn.addEventListener('click', () => { go('intent://' + host + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end'); });
     else { btn.textContent = 'OPEN IN SAFARI';   // (iOS 17 and later hand an x-safari link to Safari; if the app blocks it, the same tap has already copied the link)
       btn.addEventListener('click', () => { let ok = false; try { navigator.clipboard.writeText(url).then(() => { ok = true; }, () => {}); } catch (e) {}
-        location.href = 'x-safari-' + url;
+        go('x-safari-' + url);
         setTimeout(() => { if (document.visibilityState === 'visible') btn.textContent = ok ? 'LINK COPIED. PASTE IT IN SAFARI' : 'SEE THE LINK BELOW'; }, 1500); }); }
   } }
 let liveShown = false;

@@ -91,6 +91,17 @@
   #pn { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgba(5,10,14,.6);
     padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
   #pn[hidden] { display: none; }
+  /* the Wavedash invite: once per device, on the menu; the patch notes' box and look */
+  #wdInv { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgba(5,10,14,.6);
+    padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  #wdInv[hidden] { display: none; } body.playing #wdInv { display: none !important; }
+  #wdInv .pnBox { width: min(420px, 100%); padding: 16px 20px 16px; } #wdInv .pnHead b { font-size: 22px; }
+  #wdInvX { width: 44px; height: 44px; margin: -10px -12px -6px 8px; display: grid; place-items: center; color: var(--sand); background: none; border: 0; cursor: pointer; touch-action: manipulation; } #wdInvX svg { width: 18px; height: 18px; }
+  #wdInv p { margin: 8px 0 4px; font-size: 14px; line-height: 1.4; color: rgba(246,236,220,.85); }
+  #wdInv ul { margin: 0 0 14px; padding-left: 18px; font-size: 14px; line-height: 1.55; color: rgba(246,236,220,.85); } #wdInv li::marker { color: var(--amber); }
+  .wdInvBtns { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  #wdInvGo { display: inline-block; padding: 11px 18px 10px; border-radius: 12px; background: linear-gradient(180deg, #ffd694, #f2ad52); color: #2a1a0c; font: 700 15px/1 var(--disp); letter-spacing: .06em; text-transform: uppercase; text-decoration: none; touch-action: manipulation; }
+  #wdInvStay { padding: 10px 12px; border: 0; background: none; color: rgba(246,236,220,.75); font: 500 14px var(--body); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; touch-action: manipulation; }
   .pnBox { width: min(540px, 100%); max-height: 100%; overflow-y: auto; background: rgba(15,22,26,.95); border: 1px solid rgba(253,247,238,.16); border-radius: 14px;
     padding: 14px 18px 12px; color: var(--sand); font-family: var(--body); -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
   .pnHead { display: flex; justify-content: space-between; align-items: center; }
@@ -291,7 +302,7 @@
   body.live #rotate::before { opacity: 0; }
   @media (orientation: portrait) and (max-width: 900px) {
     body:not(.desk) #rotate { display: flex; }   /* (a computer's narrow window just plays) */
-    body:not(.desk) :is(#start, .hud, .ctl, .vui, #msg, #fBubble, #soundTip, #pnBtn, #pn) { visibility: hidden !important; }
+    body:not(.desk) :is(#start, .hud, .ctl, .vui, #msg, #fBubble, #soundTip, #pnBtn, #pn, #wdInv) { visibility: hidden !important; }
   }
   body.phoneonly #rotate { display: none !important; }
   #rotate .rtName { font: 800 46px/.9 var(--disp); letter-spacing: -.01em; text-shadow: 0 2px 16px rgba(0,0,0,.35); }
@@ -443,18 +454,30 @@
   <p id="soundTip"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 6h3l4-3v10l-4-3H2z"/><path d="M11.5 5.5a3.5 3.5 0 0 1 0 5M13.5 3.5a6 6 0 0 1 0 9"/></svg> Tap anywhere for music</p>
   <p id="homeTip" hidden>For full screen: tap <b>Share</b>, then <b>Add to Home Screen</b>, and play from the icon.</p>
 </div>
+<div id="wdInv" role="dialog" aria-modal="true" aria-label="SumbaSurf is now on Wavedash" hidden>
+  <div class="pnBox">
+    <div class="pnHead"><b>SumbaSurf is now on Wavedash</b><button id="wdInvX" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button></div>
+    <p>Same game, still free. On Wavedash you also get:</p>
+    <ul><li>A leaderboard for every spot</li><li>13 badges to earn</li><li>Your progress saved to your account, on any device</li></ul>
+    <div class="wdInvBtns"><a id="wdInvGo" href="https://wavedash.com/games/sumbasurf">Play on Wavedash</a><button id="wdInvStay" type="button">Keep playing here</button></div>
+  </div>
+</div>
 <button id="pnBtn" type="button" aria-haspopup="dialog" aria-controls="pn">Patch notes<i id="pnDot" hidden></i></button>
 <div id="pn" role="dialog" aria-modal="true" aria-label="Patch notes" hidden>
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-1056</small>
+    <small id="build">build 260928-1237</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-28-wavedash', date: '28 Sep 2026', time: '12:37 pm', title: 'SumbaSurf is on Wavedash', items: [
+      'SumbaSurf is now also on Wavedash at wavedash.com/games/sumbasurf: a leaderboard for every spot, 13 badges to earn, and your progress saved to your account.',
+      'It stays free, and it stays here too.',
+    ] },
     { id: '2026-09-28-score', date: '28 Sep 2026', time: '10:55 am', title: 'A cleaner score screen', items: [
       'After each wave you now see your score, the three moves that counted most, and your level with how far the next one is.',
       'After a wipeout, what went wrong is shown bigger so you can learn from it.',
@@ -577,6 +600,29 @@
   onTap(pn, (e) => { if (e.target === pn) close(); });   // (outside the box; a scroll inside it moves too far to count as a tap)
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pn.hidden) close(); });
 })();
+// the Wavedash invite (his call 28 Sep 2026): sumbasurf.app players are told the game is on Wavedash too, once per
+// computer, a moment after the menu shows; closing it either way keeps it closed. Never inside the Wavedash copy itself
+(() => {
+  const box = document.getElementById('wdInv'), KEY = 'sumbasurf.wdInvite';
+  if (globalThis.Wavedash || !box) return;
+  let done = null; try { done = localStorage.getItem(KEY); } catch (e) {}
+  if (done) return;
+  const close = () => { box.hidden = true; try { localStorage.setItem(KEY, '1'); } catch (e) {} };
+  const onTap = (el, fn) => { let t0 = null;
+    el.addEventListener('touchstart', (e) => { const t = e.changedTouches[0]; t0 = { x: t.clientX, y: t.clientY }; }, { passive: true });
+    el.addEventListener('touchend', (e) => { const t = e.changedTouches[0]; if (t0 && Math.hypot(t.clientX - t0.x, t.clientY - t0.y) < 28) { e.preventDefault(); fn(e); } t0 = null; }, { passive: false });
+    el.addEventListener('click', fn); };
+  onTap(document.getElementById('wdInvX'), close);
+  onTap(document.getElementById('wdInvStay'), close);
+  onTap(box, (e) => { if (e.target === box) close(); });
+  onTap(document.getElementById('wdInvGo'), (e) => { e.preventDefault(); close(); location.href = 'https://wavedash.com/games/sumbasurf'; });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !box.hidden) close(); });
+  // (shown once the menu's wave is up, and only while the menu is on screen)
+  // (computers only, his call: on a phone Wavedash's page frames the game smaller and an iPhone can't go full screen there,
+  // so phone players keep the full screen sumbasurf.app)
+  const show = () => { if (document.body.classList.contains('desk') && !document.body.classList.contains('playing') && getComputedStyle(document.getElementById('start')).display !== 'none') box.hidden = false; };
+  const wait = () => document.body.classList.contains('live') ? setTimeout(show, 1200) : setTimeout(wait, 300); wait();
+})();
 </script>
 <div id="rotate">
   <div class="menuOnly"><div class="rtName">SumbaSurf</div><div class="rtTag">Surf the barrels of Sumba</div></div>
@@ -609,6 +655,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=815"></script>
+<script type="module" src="js/game.js?v=817"></script>
 </body>
 </html>
