@@ -529,13 +529,17 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-2015</small>
+    <small id="build">build 260928-2033</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-28-leaderboard', wd: true, date: '28 Sep 2026', time: '8:33 pm', title: 'Leaderboard for every spot', items: [
+      'Press Leaderboard, top right of the menu, to see the top 10 at every spot, with the board they rode and their best move.',
+      'Your own place always shows at the bottom, and each spot in the menu shows its record next to your best.',
+    ] },
     { id: '2026-09-28-carves', date: '28 Sep 2026', time: '8:13 pm', title: 'Powerful carves count', items: [
       'A wave of hard, committed carves close to the curl now scores properly, at the ocean spots and the Surf Ranch.',
     ] },
@@ -724,6 +728,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=842"></script>
+<script type="module" src="js/game.js?v=843"></script>
 </body>
 </html>

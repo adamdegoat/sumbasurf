@@ -1771,7 +1771,7 @@ function updateHUD(dt) {
     ui.sess.innerHTML = spec ? '' : lvl + parts.join('  \u00b7  ');
     if (!spec && r.t > 0) { const lv = levelOf(r.score);
       if (lv > levelOf(prevBest)) { levelWin(LEVELS[lv][0]); levelDots(); } }
-    if (!spec) ssEvent('ride', { spot: mode, board: boardType, score: r.score, stood: r.t > 0, made: st === 'OUT', tube: r.moves.reduce((a, m) => m.name === 'BARREL' ? Math.max(a, m.dur || 0) : a, 0), best: Math.max(bestFor(mode), r.score) });
+    if (!spec) ssEvent('ride', { spot: mode, board: boardType, score: r.score, stood: r.t > 0, made: st === 'OUT', tube: r.moves.reduce((a, m) => m.name === 'BARREL' ? Math.max(a, m.dur || 0) : a, 0), move: (r.moves.reduce((a, m) => (!a || m.pts > a.pts ? m : a), null) || {}).name || '', best: Math.max(bestFor(mode), r.score) });
   }
   // a wipeout plays out first (you see yourself go over), then the summary fades in
   if (endT >= 0) {
