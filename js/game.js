@@ -15,7 +15,7 @@ import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
 import { crew } from './crew.js?v=48';
 import { wildlife } from './wildlife.js?v=52';
-import { droneShow } from './show.js?v=11';
+import { droneShow } from './show.js?v=12';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
@@ -281,6 +281,7 @@ function play(name, { fade = 0.25, once = false, speed = 1, weight = 1 } = {}) {
 
 // ---------- the surf: a reef with the peak at x=0, z=0. Waves come in from the sea one swell period apart.
 // Each wave breaks at the peak when it gets there and peels off to the right. You sit in the lineup and pick your own.
+let spec = null, contestHold = false, waveSeq = 0;   // (the surf contest, Wavedash copy only: see specApply)
 let mode = null, rider = null, waves = [], session = { waves: 0, total: 0, best: 0, scores: [], barrels: 0 }, nextBreak = 0, setLeft = 0, setPos = 0;
 let REEF = { xEnd: 190, zBeach: 150 }; const PROFILES = new Map(), PROFILES_W = new Map();   // room for the bigger swells to run (the sand starts ~185 m in)
 const OCEAN_REEF = REEF, RANCH_REEF = { xEnd: POOL.x1 - 60, zBeach: POOL.z1 - 20 };
@@ -608,6 +609,7 @@ for (const b of document.querySelectorAll('[data-board]')) b.addEventListener('c
 let starting = false;
 // back to the level select: stop the game behind the menu (you pick a level again to restart)
 function toMenu() {
+  spec = null; contestHold = false; document.body.classList.remove('watching');
   starting = false; chalHide(); if (drone.on) droneSet(false); showOff(true); glareTick(false); audio.quiet(true);
   // clear the session: the menu gets its slow drifting wave behind it again (and nothing of the old ride keeps running)
   if (surfer) endWipe(); rider = null; rig.visible = false; endT = -1;
@@ -636,7 +638,7 @@ function hello(where) {
   const dev = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && touch) || (/Android/i.test(ua) && !/Mobile/i.test(ua)) ? 'tablet' : /iPhone|Android|Mobile/i.test(ua) ? 'phone' : touch ? 'touchscreen computer' : 'computer';
   fetch('/api/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind, where, who, dev }), keepalive: true }).catch(() => {});
 }
-async function start(m) {
+async function start(m, quick = false) {
   if (starting) return; starting = true; if (window.__g) window.__g.paused = false;
   hello(m === 'ranch' ? 'Surf Ranch' : (SPOTS[m] && SPOTS[m].name) || m);
   showOff(true); mode = m; setWeather(m); setSpot(m); audio.start(); audio.quiet(false); audio.musicStart(MUSIC); document.body.classList.toggle('reef', m !== 'ranch');
@@ -649,7 +651,7 @@ async function start(m) {
   session = { waves: 0, total: 0, best: 0, scores: [], barrels: 0 };
   levelIntro(m);   // (the three score levels, shown for a few seconds as you arrive)
   setLeft = 0; setPos = 0;
-  for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15;   // a calm start: time to look around and find the set
+  for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + (quick ? 5 : 15);   // a calm start: time to look around and find the set (a contest turn: the first wave sooner)
   updateWaves(0); spawnRider(); warmShaders();
   ui.cond.textContent = modeName(mode) + '  \u00b7  ' + BOARD_INFO[boardType][0] + '  \u00b7  ' + stanceName();   // (the spot, the board you're on, your stance)
 }
@@ -1710,6 +1712,7 @@ function hudCall(st, dt) {
 }
 function updateHUD(dt) {
   const st = rider.state;
+  if (spec && endT >= 0 && st !== 'WIPE' && st !== 'OUT') { endT = -1; ui.msg.style.display = 'none'; if (surfer) endWipe(); lastState = ''; snapCam = true; }   // (the friend you're watching paddled back out)
   hudSpeed(rider.standing ? Math.round(rider.v * 3.6) : -1);
   if (mode === 'random') setText(ui.cond, rider.wave && rider.standing ? `Random: ${rider.wave.cond.name.toLowerCase()} wave` : 'Random');
   ui.paddle.style.visibility = st === 'WIPE' || st === 'OUT' ? 'hidden' : 'visible';
@@ -1737,7 +1740,7 @@ function updateHUD(dt) {
   else if (st === 'RIDE' && rider.stateT > 13 && rider.stateT < 17 && session.waves >= 1 && session.waves < 6 && !rider.ride.moves.some((m) => m.name.startsWith('AIR')) && RIDE.air) hint = 'Air: race down, then turn hard up the face into the lip and it launches you';
   // the curl is right behind you: tell the player how to get covered (a barrel comes to whoever sets up for it)
   if (st === 'RIDE' && !hint && !rider.inBarrel && rider.wave && rider.s > 0 && rider.s < 2.2 * rider.wave.cond.H && rider.wave.cond.hollow > 0.5 && session.barrels < 2) hint = rider.y < 0.6 * rider.wave.cond.H ? 'Barrel coming! Stay low and hold STALL' : 'The lip is pitching behind you: drop low to get barreled';
-  setText(ui.hint, session.waves < 5 || st === 'POP' ? (DESK ? deskHint(hint) : hint) : '');
+  setText(ui.hint, spec ? '' : session.waves < 5 || st === 'POP' ? (DESK ? deskHint(hint) : hint) : '');   // (no coaching while you watch someone else)
   // the callout: BARREL while you're in it, or the move you just landed
   tubeShowT = rider.inBarrel ? 0.4 : Math.max(0, tubeShowT - dt);   // (held a moment: a wobble at the tube's edge doesn't flicker the word)
   hudCall(st, dt);
@@ -1745,9 +1748,9 @@ function updateHUD(dt) {
   if ((st === 'WIPE' || st === 'OUT') && endT < 0) {
     endT = 0;
     const r = rider.ride;
-    const prevBest = bestFor(mode), newBest = r.t > 0 && r.score > prevBest && prevBest > 0;
-    if (r.t > 0 && r.score > prevBest) saveBest(mode, r.score);
-    if (r.t > 0 || st === 'WIPE') { session.waves++; session.total += r.score; session.best = Math.max(session.best, r.score); session.scores.push(r.score); if (r.barrel > 0.5) session.barrels++; }
+    const prevBest = bestFor(mode), newBest = !spec && r.t > 0 && r.score > prevBest && prevBest > 0;   // (a friend's wave you watched is never yours: no best, no level, no leaderboard)
+    if (!spec && r.t > 0 && r.score > prevBest) saveBest(mode, r.score);
+    if (!spec && (r.t > 0 || st === 'WIPE')) { session.waves++; session.total += r.score; session.best = Math.max(session.best, r.score); session.scores.push(r.score); if (r.barrel > 0.5) session.barrels++; }
     // heat total, like a contest: your best two waves count
     const two = [...session.scores].sort((a, b) => b - a).slice(0, 2), heat = two.reduce((a, b) => a + b, 0);
     // the score screen, trimmed (his call 28 Sep 2026): the score, how it ended (big after a wipeout: it says what went
@@ -1764,17 +1767,17 @@ function updateHUD(dt) {
       if (lv >= 0) lvl = `<span class="lvl"><i>${[0, 1, 2].map((i) => `<b${i <= lv ? ' class="on"' : ''}></b>`).join('')}</i>${LEVELS[lv][0]}</span>`;
       if (nx) parts.push(`${(nx[1] - r.score).toFixed(1)} more for ${nx[0]}`);
       if (!newBest && prevBest > 0 && !globalThis.Wavedash) parts.push(`your best ${prevBest.toFixed(1)}`); }   // (on Wavedash the leaderboard line under it gives your best)
-    ui.sess.innerHTML = lvl + parts.join('  \u00b7  ');
-    if (r.t > 0) { const lv = levelOf(r.score);
+    ui.sess.innerHTML = spec ? '' : lvl + parts.join('  \u00b7  ');
+    if (!spec && r.t > 0) { const lv = levelOf(r.score);
       if (lv > levelOf(prevBest)) { levelWin(LEVELS[lv][0]); levelDots(); } }
-    ssEvent('ride', { spot: mode, board: boardType, score: r.score, stood: r.t > 0, made: st === 'OUT', tube: r.moves.reduce((a, m) => m.name === 'BARREL' ? Math.max(a, m.dur || 0) : a, 0), best: Math.max(bestFor(mode), r.score) });
+    if (!spec) ssEvent('ride', { spot: mode, board: boardType, score: r.score, stood: r.t > 0, made: st === 'OUT', tube: r.moves.reduce((a, m) => m.name === 'BARREL' ? Math.max(a, m.dur || 0) : a, 0), best: Math.max(bestFor(mode), r.score) });
   }
   // a wipeout plays out first (you see yourself go over), then the summary fades in
   if (endT >= 0) {
     endT += dt;
     const showAt = st === 'WIPE' ? 1.4 : 0.2;
     if (endT >= showAt && ui.msg.style.display !== 'flex') { ui.msg.style.opacity = 0; ui.msg.style.display = 'flex'; requestAnimationFrame(() => (ui.msg.style.opacity = 1)); }
-    if (endT > showAt + (st === 'WIPE' ? 4.6 : 4.0)) spawnRider();   // (long enough to read the judges' sheet)
+    if (endT > showAt + (st === 'WIPE' ? 4.6 : 4.0) && !spec && !contestHold) spawnRider();   // (in a contest, contest.js says what comes next)   // (long enough to read the judges' sheet)
   }
 }
 
@@ -1884,6 +1887,9 @@ function vStand() { const W_ = walker; if (!W_ || !W_.sit) return; [W_.x, W_.z, 
   W_.sit = null; W_.near = null; W_.seatT = 0.5; vSitB.classList.remove('on'); }
 { const t = (e) => { e.preventDefault(); e.stopPropagation(); if (walker && walker.sit) vStand(); else vSit(); }; vSitB.addEventListener('click', t); vSitB.addEventListener('touchstart', t, { passive: false }); }
 let villaW = null, crewW = null, wildW = null, birdsW = null, friendsW = null, walker = null, vMoveT = null, vLookT = null, vPickType = null;
+// a contest room (the Wavedash copy): the villa belongs to the players, so its own people stay away; inputLock holds
+// your feet still while a room panel is open (typing, picking a board)
+let roomMode = false, inputLock = false;
 const vStick = document.getElementById('vStick'), vPanel = document.getElementById('vPanel');
 // the villa, its surfers, the wildlife and the birds: built once. Normally done quietly while you're on the menu (so
 // tapping Your villa opens at once); if you get there first, right then
@@ -2030,10 +2036,11 @@ function applyNight(k) {
 }
 function showOff(now = false) {
   if (!showW || !dayEnv) return;
+  if (showW.on) ssEvent('showoff');
   showW.stop(); showB.classList.remove('on'); showB.querySelector('span').textContent = 'DRONE SHOW'; document.body.classList.remove('show');
   if (now) { applyNight(0); dayEnv = null; }
 }
-function showStart() {
+function showStart(skip = 0) {   // (skip: seconds already played, when joining a show a friend started)
   const W_ = walker; if (!W_ || !villaW) return;
   ssEvent('show');
   if (!showW) showW = droneShow(scene);
@@ -2044,12 +2051,14 @@ function showStart() {
   // bay parallel to the house): the show is 130 m out
   // (standing just off the corner and looking a little more out to sea than the diagonal: dead on the diagonal the
   //  roof's corner post stood right in the middle of the show)
+  // (the show is placed for that corner, but you stay where you are: no more jump to the balcony, his call 28 Sep 2026)
   const lx = VILLA.x1 + 1.7, lz = VILLA.z0 - 1.8, ya = -115 * Math.PI / 180, dx = Math.cos(ya), dzz = Math.sin(ya);   // (villa east = world -x, south = world -z)
-  W_.x = 88 - lx; W_.z = 31 + lz; W_.y = VILLA.Y + 1.65; W_.yaw = Math.atan2(dzz, dx); W_.pitch = 0.1; W_.near = null;
-  const dz = SPOTS.medium.dz, C = new THREE.Vector3(W_.x + dx * 130, 0, W_.z + dz + dzz * 130); C.y = heightAt(waves, C.x, C.z);
+  const bx = 88 - lx, bz = 31 + lz;
+  const dz = SPOTS.medium.dz, C = new THREE.Vector3(bx + dx * 130, 0, bz + dz + dzz * 130); C.y = heightAt(waves, C.x, C.z);
   showW.start(C, new THREE.Vector3(-dzz, 0, dx));   // (left to right as you look at it)
+  if (skip > 0) showW.seek(skip);   // (catch up with a show already under way)
   showB.classList.add('on'); showB.querySelector('span').textContent = 'END SHOW'; document.body.classList.add('show');
-  const tip = document.getElementById('vTip'); tip.textContent = 'Drone show over the bay. Look around as you like.'; tip.style.opacity = 1; clearTimeout(tip.t); tip.t = setTimeout(() => { tip.style.opacity = 0; }, 4000);
+  const tip = document.getElementById('vTip'); tip.textContent = 'Drone show out over the sea. The balcony has the best view.'; tip.style.opacity = 1; clearTimeout(tip.t); tip.t = setTimeout(() => { tip.style.opacity = 0; }, 4000);
 }
 { const t = (e) => { e.preventDefault(); e.stopPropagation(); if (showW && showW.on) showOff(); else showStart(); }; showB.addEventListener('click', t); showB.addEventListener('touchstart', t, { passive: false }); }
 
@@ -2092,13 +2101,13 @@ function villaTick(dt) {
   const beat = radioOn ? audio.musicBeat() : 0;   // (once a frame: it keeps a running peak)
   updateWaves(dt); crewW.detail = !!(walker && (walker.watch || walker.zoom || drone.on)); crewW.update(dt, waves, T); if (!(showW && showW.on)) wildW.update(dt, waves); birdsW.update(dt);   /* (the whales and eagles wait while the drone show is on: their 'tap ZOOM' notes would pop up with ZOOM hidden) */   // (zoomed in on them: every surfer posed every frame)
   if (!friendsW && surfer && (people || peopleFailed)) friendsW = friends(scene, surfer, villaW.friendSpots.map((f) => ({ ...f, z: f.z + SPOTS.medium.dz, board: f.board && [f.board[0], f.board[1], f.board[2] + SPOTS.medium.dz] })), people, life);   // (your friends: as soon as the body model is in)
-  if (friendsW) friendsW.update(dt, T, beat, { x: walker.x, y: walker.y, z: walker.z + SPOTS.medium.dz }, camera); if (villaW.tick) villaW.tick(dt, beat, walker.x, walker.z, walker.y - 1.65);
+  if (friendsW && roomMode) friendsW.group.visible = false; else if (friendsW) friendsW.update(dt, T, beat, { x: walker.x, y: walker.y, z: walker.z + SPOTS.medium.dz }, camera); if (villaW.tick) villaW.tick(dt, beat, walker.x, walker.z, walker.y - 1.65);
   if (showW && dayEnv) { showW.update(dt, renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360)), beat); applyNight(showW.night);
     if (showW.done && showB.classList.contains('on')) showOff();   // (over: the button goes back, the evening comes back)
     if (showW.done && showW.night < 0.005) { applyNight(0); dayEnv = null; } }
   const W_ = walker, V = villaW;
   // walk: the stick (or WASD / arrows) in the direction you're facing, sliding along anything solid
-  const kx = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0), kz = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
+  const kx = inputLock ? 0 : (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0), kz = inputLock ? 0 : (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
   // swimming in the pool: slower, head bobbing just above the water; a splash as you slide in, strokes as you swim
   const swim = !!(V.inPool && V.inPool(W_.x, W_.z, W_.y - 1.65));
   if (swim !== !!W_.swim) { W_.swim = swim; audio.splash(swim ? 0.35 : 0.12); }
@@ -2132,7 +2141,7 @@ function villaTick(dt) {
     const df = d3(V.sounds.fire); if (df < 14 && (W_.fireT = (W_.fireT || 0) - dt) <= 0) { W_.fireT = 0.06 + Math.random() * 0.22; audio.crackle(Math.pow(1 - df / 14, 2)); }
     const dc = d3(V.sounds.chime); if (dc < 20 && (W_.chimeT = (W_.chimeT || 0) - dt) <= 0) { W_.chimeT = Math.random() < 0.6 ? 0.25 + Math.random() * 0.5 : 2 + Math.random() * 4; audio.chime(Math.pow(1 - dc / 20, 1.5)); }
     if ((W_.birdT = (W_.birdT === undefined ? 3 : W_.birdT) - dt) <= 0) { W_.birdT = 5 + Math.random() * 9; audio.bird(0.5 + Math.random() * 0.5); }
-    for (const q of crewW.surfers) { if (q.st === 'RIDE' && q.tubeT > 2.4 && !q.hooted) { q.hooted = true; const d = Math.hypot(q.p.x - W_.x, q.p.z - (W_.z + SPOTS.medium.dz)); audio.hoot(Math.max(0.2, Math.min(1, 70 / d))); if (friendsW && Math.random() < 0.6) friendsW.say('nando', ['Did you see that? Spat right out of it!', 'Barrel! What a ride!', 'Deep in there, whoa!', 'That one was all time, brother.'][Math.random() * 4 | 0]); } if (!(q.tubeT > 0.1)) q.hooted = false; } }
+    for (const q of crewW.surfers) { if (q.st === 'RIDE' && q.tubeT > 2.4 && !q.hooted) { q.hooted = true; const d = Math.hypot(q.p.x - W_.x, q.p.z - (W_.z + SPOTS.medium.dz)); audio.hoot(Math.max(0.2, Math.min(1, 70 / d))); if (friendsW && !roomMode && Math.random() < 0.6) friendsW.say('nando', ['Did you see that? Spat right out of it!', 'Barrel! What a ride!', 'Deep in there, whoa!', 'That one was all time, brother.'][Math.random() * 4 | 0]); } if (!(q.tubeT > 0.1)) q.hooted = false; } }
   W_.gazeT = (W_.gazeT || 0) - dt;
   if (W_.gazeT <= 0) { W_.gazeT = 0.2; _vp.set(0, -0.1); _vr.setFromCamera(_vp, camera); _vr.far = 4.5;
     const hit = _vr.intersectObjects(V.rack, true)[0], t = hit ? hit.object.userData.type : null;
@@ -2213,11 +2222,12 @@ function tick(dt) {
     inp.steer = o.steer; inp.pump = pumpOn; inp.stall = o.stall;
   }
   if (rider) {
-    updateWaves(dt);
-    rider.update(dt, inp, waves); updateRanch(dt);
+    if (spec) specApply(dt);   // (watching a friend in a contest: their waves and their surfer, no physics of our own)
+    else { updateWaves(dt); rider.update(dt, inp, waves); }
+    updateRanch(dt);
     rider.caughtT = rider.washed ? 6 : Math.max(0, (rider.caughtT || 0) - dt);   // (remember being washed in for a few seconds: that's why you ended up inside)
     // drifting too far inside or out wide on a lie: bring the surfer back to the lineup (the pool's walls hold you in)
-    if (!isRanch() && rider.state === 'LIE' && (rider.z > 40 || Math.abs(rider.x - 5) > 70 || rider.z < -60)) { rider.out(rider.z > 40 && rider.caughtT > 0 ? 'Caught inside: the whitewater washed you in' : 'Drifted out of the lineup'); }
+    if (!spec && !isRanch() && rider.state === 'LIE' && (rider.z > 40 || Math.abs(rider.x - 5) > 70 || rider.z < -60)) { rider.out(rider.z > 40 && rider.caughtT > 0 ? 'Caught inside: the whitewater washed you in' : 'Drifted out of the lineup'); }
     updateRig(dt, T);
     if (mixer) { mixer.update(dt); paddleArms(dt); dtArm = dt; surfStance(); }
     updateLeash(); updateScenery(dt); updateLocals(dt);
@@ -2301,4 +2311,73 @@ renderer.setAnimationLoop(() => {
   if (mir) { flipProj(camera); if (!camera.layers.isEnabled(1)) flipProj(armCam); }   // (both lenses back to normal between frames)
   autoQuality(dt); musicTick();
 });
-window.__g = { get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), useStance: (k) => useStance(k), get board() { return boardType; }, get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, want: () => _want };
+
+// ---------- the surf contest (the Wavedash copy's contest.js drives this; on sumbasurf.app none of it ever runs)
+// Watching a friend's wave: their game sends what the waves and their surfer are doing 15 times a second; here the same
+// spot is drawn with no surfer of your own to steer. The waves are placed where theirs are, your surfer is posed from
+// theirs (so the camera sits in their head and sees what they see), and the rest (spray, sound, the view) runs as normal.
+const SPEC_LAG = 0.2;   // (seconds behind the surfer: room to glide smoothly between their updates)
+const SPEC_NUM = ['x', 'y', 'z', 'vx', 'vz', 'v', 'th', 'lean', 'turn', 'skid', 'slide', 's', 'zl', 'hx', 'hz', 'gAlong', 'stateT', 'relS', 'liftT', 'paddleT', 'padUp', 'foamT', 'tubeOut', 'catchT', 'vyS', 'stalling', 'pumpT', 'weave'];
+const r3 = (k, v) => (typeof v === 'number' ? Math.round(v * 1000) / 1000 : v);
+function contestSnap() {
+  if (!rider || spec) return null;
+  const r = {}; for (const k in rider) if (k !== 'wave') r[k] = rider[k];
+  for (const v of waves) if (!v.sid) v.sid = ++waveSeq;
+  r.waveId = rider.wave ? rider.wave.sid : 0;
+  const w = waves.map((v) => [v.sid, v.tBreak, v.size || 1, v.pkX || 0, v.pkZ || 0, v.px || 0, v.peelRate || 0, v.secK || 0, v.secA || 1, v.closing ? 1 : 0, v.closeT || 0, v.spat ? 1 : 0, v.spitT || 0]);
+  return JSON.stringify({ T, pad: input.paddle ? 1 : 0, rk: ranchKind, r, w }, r3);
+}
+async function specStart(m) {
+  try { await ready; } catch (e) { return; }
+  starting = false; chalHide(); if (drone.on) droneSet(false); showOff(true); glareTick(false);
+  if (surfer) endWipe(); walker = null; vPick(null); document.body.classList.remove('villa', 'riding', 'ranch-wait'); setHfov(50);
+  mode = m; setWeather(m); setSpot(m); audio.start(); audio.quiet(false); document.body.classList.toggle('reef', m !== 'ranch');
+  ui.start.style.display = 'none'; document.body.classList.add('playing', 'watching');
+  session = { waves: 0, total: 0, best: 0, scores: [], barrels: 0 };
+  for (const w of waves) w.dispose(scene); waves = [];
+  spec = { buf: [], t: null }; spawnRider(); endT = -1;
+  ui.cond.textContent = modeName(mode);
+}
+function specFeed(json) {
+  if (!spec) return; let o; try { o = JSON.parse(json); } catch (e) { return; }
+  if (!o || !o.r || !Array.isArray(o.w) || !isFinite(o.T)) return;
+  const B = spec.buf; if (B.length && o.T <= B[B.length - 1].T) { if (o.T < B[B.length - 1].T - 5) B.length = 0; else return; }   // (late or repeated: dropped; a restart on their side: begin again)
+  B.push(o); if (B.length > 40) B.shift();
+}
+function specApply(dt) {
+  const B = spec.buf; if (!B.length) return;
+  const want = B[B.length - 1].T - SPEC_LAG;
+  if (spec.t == null || Math.abs(spec.t - want) > 1.5) spec.t = want;   // (the first update, or after a stall: jump there)
+  else spec.t += dt + (want - spec.t) * Math.min(1, dt * 1.5);          // (otherwise run at the normal speed, drifting gently onto their clock)
+  while (B.length > 2 && B[1].T <= spec.t) B.shift();
+  const a = B[0], b = B[1] || B[0], f = b.T > a.T ? Math.max(0, Math.min(1, (spec.t - a.T) / (b.T - a.T))) : 1;
+  T = Math.max(a.T, Math.min(b.T, spec.t));
+  if (b.rk) ranchKind = b.rk;
+  // their waves, one for one
+  const keep = new Set();
+  for (const q of b.w) {
+    const id = q[0]; keep.add(id);
+    let w = waves.find((v) => v.sid === id); if (!w) { w = addWave(q[1]); w.sid = id; }
+    const p = a.w.find((v) => v[0] === id) || q, L = (i) => p[i] + (q[i] - p[i]) * f;
+    w.tBreak = q[1]; w.size = q[2]; w.pkX = q[3]; w.pkZ = q[4]; w.px = L(5); w.peelRate = q[6]; w.secK = q[7]; w.secA = q[8]; w.closing = !!q[9]; w.closeT = L(10); w.spat = !!q[11];
+    if (q[12] > 0 && !w.specSpit && w.spitT !== undefined) w.spitT = q[12]; w.specSpit = q[12] > 0;   // (the spit, once each time theirs spits)
+  }
+  for (let i = waves.length - 1; i >= 0; i--) if (!keep.has(waves[i].sid)) { waves[i].dispose(scene); waves.splice(i, 1); }
+  for (const pr of PROFILES.values()) pr.warm(24);
+  for (const pr of PROFILES_W.values()) pr.warm(12);
+  for (const w of waves) {   // (placed, faded and moved as updateWaves does it)
+    const C = w.cond, t = T - w.tBreak;
+    w.place(w.pkX + w.px, w.pkZ + C.speed * t);
+    const reefK = Math.min(1, Math.max(0, (REEF.xEnd - w.peelX) / 38)), beachK = Math.min(1, Math.max(0, (REEF.zBeach - w.zW) / 45));
+    w.endK = Math.min(reefK, beachK); w.endBy = beachK < reefK ? 'beach' : 'reef';
+    w.fade = (w.size || 1) * (w.closing ? 1 - 0.97 * smooth01((w.closeT - 1.5) / 5.5) : reefK) * Math.min(1, Math.max(0.15, 1 + (w.zW + 160) / 60));
+    if (isRanch()) w.fade = Math.min(1, Math.max(0.02, (w.zW - POOL.z0) / 22)) * w.endK;
+    w.update(dt, !globalThis.__slowMat && !(rider && rider.wave === w) && Math.hypot(w.peelX - camera.position.x, w.zW - camera.position.z) > 120);
+  }
+  // their surfer: everything as it was on their side, the moving parts eased between their updates
+  const R = b.r; for (const k in R) if (k !== 'waveId') rider[k] = R[k];
+  for (const k of SPEC_NUM) if (typeof a.r[k] === 'number' && typeof R[k] === 'number') rider[k] = a.r[k] + (R[k] - a.r[k]) * f;
+  rider.wave = waves.find((v) => v.sid === R.waveId) || null;
+  input.paddle = !!b.pad;
+}
+window.__g = { get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), useStance: (k) => useStance(k), get board() { return boardType; }, get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };

@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><title>show lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800&display=swap" rel="stylesheet">
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#l{position:fixed;left:10px;top:8px;font:13px sans-serif;color:#9ab}</style>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }</script></head>
+<body><div id="l"></div><script type="module">
+// The drone show on its own, as seen from the villa balcony (130 m out over a night sea), for checking: scrub with
+// __lab.at(seconds), play with __lab.play(), film with __lab.film(from, to, fps)
+import * as THREE from 'three';
+await document.fonts.load('800 150px "Barlow Condensed"');
+const { droneShow } = await import('../js/show.js?lab=' + Date.now());
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setPixelRatio(1); r.setSize(1280, 720, false); r.domElement.style.cssText = 'width:100vw;height:56.25vw'; document.body.appendChild(r.domElement);
+const sc = new THREE.Scene();
+const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, vertexShader: 'varying vec3 v; void main(){ v = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+  fragmentShader: 'varying vec3 v; void main(){ float h = clamp(v.y, 0., 1.); vec3 c = mix(vec3(.05,.07,.14), vec3(.01,.015,.04), pow(h, .5)); gl_FragColor = vec4(c, 1.); }' })); sc.add(sky);
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshBasicMaterial({ color: 0x03060c })); sea.rotation.x = -Math.PI / 2; sc.add(sea);
+const cam = new THREE.PerspectiveCamera(50, 16 / 9, 0.5, 3000);
+const eye = new THREE.Vector3(0, 27.65, 0); cam.position.copy(eye); cam.lookAt(0, 58, -130);   // (the villa floor is 26 m above the sea)
+const hfov = 50; cam.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(hfov)) / cam.aspect)); cam.updateProjectionMatrix();
+const show = droneShow(sc); show.start(new THREE.Vector3(0, 0, -130), new THREE.Vector3(1, 0, 0));
+const px = () => r.domElement.height / (2 * Math.tan(cam.fov * Math.PI / 360));
+const L = document.getElementById('l'); const lbl = () => { const s = show.state; L.textContent = `${s.t.toFixed(1)} s  ${s.scene}  / ${s.length.toFixed(0)} s`; };
+let playing = false, last = 0;
+function draw() { lbl(); r.render(sc, cam); }
+window.__lab = { sc,
+  show, at(t) { show.seek(t); show.update(0, px(), 0); draw(); return show.state; },
+  play() { playing = true; last = performance.now(); const f = (now) => { if (!playing) return; const dt = Math.min(0.05, (now - last) / 1000); last = now; show.update(dt, px(), 0); draw(); requestAnimationFrame(f); }; requestAnimationFrame(f); },
+  stop() { playing = false; },
+  async film(from, to, fps = 30, tag = 'show', budget = 38000) {   // (frames to the local receiver, one by one: resumable)
+    const t0 = performance.now(); let i = this.i ?? 0;
+    while (from + i / fps <= to && performance.now() - t0 < budget) {
+      show.seek(from + i / fps); show.update(0, px(), 0); draw();
+      const b = r.domElement.toDataURL('image/jpeg', 0.92);   // (synchronous: toBlob can crawl in a pane that isn't in front)
+      await fetch(`http://127.0.0.1:8799/frame?tag=${tag}&i=${i}`, { method: 'POST', body: b }); i++;
+    }
+    this.i = i; return from + i / fps > to ? 'done ' + i : i + ' frames';
+  },
+};
+show.update(0, px(), 0); draw();
+</script></body></html>

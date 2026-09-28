@@ -516,13 +516,32 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-1420</small>
+    <small id="build">build 260928-1709</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-28-droneshow', date: '28 Sep 2026', time: '5:08 pm', title: 'A new drone show', items: [
+      'The villa drone show is all new: a sea turtle, a manta ray, leaping dolphins, a humpback whale, a galloping Sumba horse and a sea eagle, then SUMBA in lights.',
+      'Smoother from start to finish: each animal flows into the next, and the lights never jump.',
+      'You stay where you are when the show starts. The balcony has the best view.',
+    ] },
+    { id: '2026-09-28-mpfast', wd: true, date: '28 Sep 2026', time: '4:36 pm', title: 'Multiplayer shows straight away', items: [
+      'The Multiplayer button now appears as soon as the menu opens, instead of a few seconds later.',
+    ] },
+    { id: '2026-09-28-rooms2', wd: true, date: '28 Sep 2026', time: '4:33 pm', title: 'Smoother contest rooms', items: [
+      'Everyone starts in their own spot in the villa, and you no longer walk inside each other.',
+      'The drone show no longer moves you to the balcony. In a room, the host starts it and the whole room watches it together.',
+      'In a room, the host picks the songs for everyone.',
+      'Fixed: leaving a room and joining again could show a blank screen.',
+    ] },
+    { id: '2026-09-28-contest', wd: true, date: '28 Sep 2026', time: '4:20 pm', title: 'Multiplayer surf contests', items: [
+      'Tap Multiplayer on the menu to start a room with up to 6 friends, or join one with a 5-letter code or from your friends\' rooms.',
+      'Hang out in the villa together: walk around, chat, and listen to the same song. Pick your character, board and stance, then tap Ready.',
+      'The host picks the spot and 3 or 5 waves each. One surfer at a time, everyone watches through their eyes, and your best 2 waves count.',
+    ] },
     { id: '2026-09-28-menu', date: '28 Sep 2026', time: '2:20 pm', title: 'A new menu', items: [
       'Spots are now a list on the left. Tap one to see it big on the right: what it is like, your level there, the best boards for it, and its wave drawn to scale next to you.',
       'Room for more spots: three new ones are coming soon.',
@@ -638,7 +657,7 @@
       'Real surfers out in the lineup and friends at your villa who breathe, look around and chat.',
       'Shows in front of the villa: whales breaching, dolphins, manta rays, a sea eagle and flying fish.',
       'Pantai Kuda has a Sumba village and horses on the beach; Gunung Laut has a huge island peak.' ] },
-  ].slice(0, 5);
+  ].filter((p) => !p.wd || globalThis.Wavedash).slice(0, 5);   // (wd: news for the Wavedash copy only)
   const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
   document.getElementById('pnList').innerHTML = PATCH.map((p) => `<div class="pnEntry"><div class="pnDate">${esc(p.date)}${p.time ? ` · ${esc(p.time)}` : ''}</div><div class="pnTitle">${esc(p.title)}</div><ul>${p.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('');
   const btn = document.getElementById('pnBtn'), dot = document.getElementById('pnDot'), pn = document.getElementById('pn'), KEY = 'sumbasurf.patchSeen';
@@ -689,6 +708,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=823"></script>
+<script type="module" src="js/game.js?v=828"></script>
 </body>
 </html>
