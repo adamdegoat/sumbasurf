@@ -517,6 +517,8 @@ const levelOf = (v) => { let k = -1; LEVELS.forEach(([, t], i) => { if (v >= t) 
 // (best5: the stricter judge of 28 Sep 2026 started everyone's bests afresh; the old best4 scores aren't comparable)
 const bestFor = (m) => { try { return +localStorage.getItem('balisurf.best5.' + m) || 0; } catch (e) { return 0; } };
 const saveBest = (m, v) => { try { localStorage.setItem('balisurf.best5.' + m, String(v)); } catch (e) {} showBests(); };
+// moments other code can listen for (the Wavedash copy's saves, badges and leaderboards; on sumbasurf.app nothing listens)
+const ssEvent = (n, d) => { try { dispatchEvent(new CustomEvent('ss:' + n, { detail: d })); } catch (e) {} };
 function showBests() {
   for (const b of document.querySelectorAll('[data-mode]')) {
     let el = b.querySelector('.best'); const v = bestFor(b.dataset.mode);
@@ -1712,19 +1714,24 @@ function updateHUD(dt) {
     if (r.t > 0 || st === 'WIPE') { session.waves++; session.total += r.score; session.best = Math.max(session.best, r.score); session.scores.push(r.score); if (r.barrel > 0.5) session.barrels++; }
     // heat total, like a contest: your best two waves count
     const two = [...session.scores].sort((a, b) => b - a).slice(0, 2), heat = two.reduce((a, b) => a + b, 0);
-    ui.msgT.textContent = rider.why;
+    // the score screen, trimmed (his call 28 Sep 2026): the score, how it ended (big after a wipeout: it says what went
+    // wrong), the three moves that counted most, then the level and your best. No heat total, no stats row.
+    ui.msgT.textContent = rider.why; ui.msgT.classList.toggle('big', st === 'WIPE');
     ui.msgN.innerHTML = r.t > 0 ? `${r.score.toFixed(1)}${newBest ? '<small>NEW BEST</small>' : ''}` : '';
-    const stat = (v, l) => `<div>${v}<span>${l}</span></div>`;
-    ui.msgS.innerHTML = r.t > 0 ? stat(`${r.t.toFixed(1)}s`, 'RIDE') + stat(`${Math.round(r.top)}`, 'TOP KM/H') + stat(r.turns, 'TURNS') + (r.cutbacks ? stat(r.cutbacks, r.cutbacks > 1 ? 'CUTBACKS' : 'CUTBACK') : '') + (r.snaps ? stat(r.snaps, r.snaps > 1 ? 'SNAPS' : 'SNAP') : '') + (r.barrel > 0.2 ? stat(`${r.barrel.toFixed(1)}s`, 'BARREL') : '') : '';
-    // the judges' sheet: the moves that counted and why (so you can see how to beat it)
-    { const J = r.t > 0 ? rider.liveScore(st === 'WIPE', true) : null, NM = { TURN: 'Turn', SNAP: 'Snap', CUTBACK: 'Cutback', FLOATER: 'Floater', AIR: 'Air', 'AIR 360': 'Air 360', BARREL: 'Barrel', VARIETY: 'Variety of moves', 'SPEED + CLEAN FINISH': 'Speed and a clean finish', SPEED: 'Speed' };
-      ui.msgJ.innerHTML = J && J.lines.length ? J.lines.slice(0, 6).map((l) => `<div><span><b>${NM[l.name] || l.name}${l.name === 'BARREL' ? ` ${l.dur.toFixed(1)}s` : ''}</b>${l.notes.length ? `<i>${l.notes.join(', ')}</i>` : ''}</span><em>${l.pts.toFixed(1)}</em></div>`).join('') + (J.fell ? '<div><span><i>fell at the end: moves in the last moment don\'t count</i></span><em></em></div>' : '') : ''; }
-    ui.sess.textContent = session.waves ? `Heat ${heat.toFixed(2)} / 20 ${session.waves > 1 ? `(your best two of ${session.waves} waves)` : '(your best two waves count)'}  ·  best wave ever ${Math.max(bestFor(mode), r.score).toFixed(1)}` : '';
-    // which level this wave reached, and how far the next one is; a new best level at this spot gets a banner
-    if (r.t > 0) { const lv = levelOf(r.score), nx = LEVELS[lv + 1], parts = [];
-      if (lv >= 0) parts.push(`${LEVELS[lv][0]} wave`); if (nx) parts.push(`${(nx[1] - r.score).toFixed(1)} more for ${nx[0]}`);
-      if (parts.length) ui.sess.textContent += `${ui.sess.textContent ? '  ·  ' : ''}${parts.join('  ·  ')}`;
+    ui.msgS.innerHTML = '';
+    { const J = r.t > 0 ? rider.liveScore(st === 'WIPE', true) : null, NM = { TURN: 'Turn', SNAP: 'Snap', CUTBACK: 'Cutback', FLOATER: 'Floater', AIR: 'Air', 'AIR 360': 'Air 360', BARREL: 'Barrel' };
+      const top = J ? J.lines.filter((l) => NM[l.name]).slice(0, 3) : [];
+      ui.msgJ.innerHTML = top.map((l) => `<div><span><b>${NM[l.name]}${l.name === 'BARREL' ? ` ${l.dur.toFixed(1)}<small>s</small>` : ''}</b>${l.notes.length ? `<i>${l.notes.join(', ')}</i>` : ''}</span><em>${l.pts.toFixed(1)}</em></div>`).join('') + (J && J.fell ? '<div><span><i>fell at the end: moves in the last second did not count</i></span></div>' : ''); }
+    // the level this wave reached stands out (amber, with the menu's three dots), then how far the next one is
+    const parts = []; let lvl = '';
+    if (r.t > 0) { const lv = levelOf(r.score), nx = LEVELS[lv + 1];
+      if (lv >= 0) lvl = `<span class="lvl"><i>${[0, 1, 2].map((i) => `<b${i <= lv ? ' class="on"' : ''}></b>`).join('')}</i>${LEVELS[lv][0]}</span>`;
+      if (nx) parts.push(`${(nx[1] - r.score).toFixed(1)} more for ${nx[0]}`);
+      if (!newBest && prevBest > 0 && !globalThis.Wavedash) parts.push(`your best ${prevBest.toFixed(1)}`); }   // (on Wavedash the leaderboard line under it gives your best)
+    ui.sess.innerHTML = lvl + parts.join('  \u00b7  ');
+    if (r.t > 0) { const lv = levelOf(r.score);
       if (lv > levelOf(prevBest)) { levelWin(LEVELS[lv][0]); levelDots(); } }
+    ssEvent('ride', { spot: mode, board: boardType, score: r.score, stood: r.t > 0, made: st === 'OUT', tube: r.moves.reduce((a, m) => m.name === 'BARREL' ? Math.max(a, m.dur || 0) : a, 0), best: Math.max(bestFor(mode), r.score) });
   }
   // a wipeout plays out first (you see yourself go over), then the summary fades in
   if (endT >= 0) {
@@ -1900,6 +1907,7 @@ function loadCrew() {
 function startVilla() {
   chalHide(); loadPeople();
   if (starting) return;
+  ssEvent('villa');
   hello('the villa');
   mode = 'villa'; setWeather('villa'); audio.start(); audio.quiet(false); audio.musicStart(MUSIC);
   prepVilla(); loadCrew();
@@ -1931,6 +1939,7 @@ const droneB = document.getElementById('vDrone'), droneAlt = document.getElement
 function droneSet(on) {
   if (!walker || on === drone.on) return; const W_ = walker;
   if (on) {
+    ssEvent('drone');
     // (press it anywhere: indoors or up the tree it would lift straight through the roof or the canopy, so from there it
     //  takes off from the east balcony by the radio instead, facing the surf; LAND still brings you back where you stood)
     const lx = 88 - W_.x, lz = W_.z - 31, inside = lx > VILLA.x0 && lx < VILLA.x1 && lz > VILLA.z0 && lz < VILLA.z1, up = W_.y - 1.65 > VILLA.Y + 1.5;
@@ -1986,6 +1995,7 @@ function showOff(now = false) {
 }
 function showStart() {
   const W_ = walker; if (!W_ || !villaW) return;
+  ssEvent('show');
   if (!showW) showW = droneShow(scene);
   if (drone.on) droneSet(false); if (W_.sit) vStand(); if (W_.watch) document.getElementById('vWatch').click(); if (W_.zoom) document.getElementById('vZoom').click();
   if (!dayEnv) dayEnv = { gold: ENV.uGold.value, sunVis: ENV.uSunVis.value, cloud: ENV.uCloud.value, hemi: hemi.intensity, sun: sunLight.intensity, exp: renderer.toneMappingExposure,

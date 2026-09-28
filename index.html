@@ -134,6 +134,7 @@
   #msg-s { margin-top: 10px; display: flex; gap: 18px; justify-content: center; font-variant-numeric: tabular-nums; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
   #msg-s div { font-size: 16px; font-weight: 600; } #msg-s span { display: block; font-size: 10px; font-weight: 500; color: var(--dim); letter-spacing: .06em; }
   #sess { margin-top: 14px; color: var(--dim); font-size: 12px; }
+  #msg-w { margin-top: 6px; color: var(--sand); font-size: 13px; } #msg-w:empty { display: none; }
   /* the judges' sheet: what earned the score, each line's share of it */
   #msg-j { margin-top: 12px; min-width: 250px; max-width: 360px; font-size: 13px; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
   #msg-j:empty { display: none; }
@@ -381,9 +382,15 @@
   #paddle.down, #stall.down { border-color: var(--amber) !important; color: #2a1a0c !important; background: radial-gradient(circle at 50% 35%, #ffd694, #f2ad52) !important; }
   #touch { border-color: rgba(246,236,220,.5) !important; } #touch b { background: rgba(255,214,148,.85) !important; }
   #cond { font-family: var(--disp); font-size: 14px !important; }
-  #msg-t { font: 600 17px var(--disp) !important; letter-spacing: .02em; } #msg-n { font-family: var(--disp) !important; font-size: 68px !important; }
+  #msg-t { font: 600 17px var(--disp) !important; letter-spacing: .02em; } #msg-t.big { font-size: 22px !important; color: #fff; max-width: 30em; }   /* (after a wipeout: what went wrong, readable) */ #msg-n { font-family: var(--disp) !important; font-size: 68px !important; }
   #msg-n small { font: 700 14px var(--disp) !important; letter-spacing: .06em !important; color: var(--amber) !important; } #msg-s div { font-family: var(--disp); font-size: 20px !important; } #msg-s span { font-family: var(--body); }
-  #sess { font: 500 13px var(--body) !important; }
+  #sess { font: 500 13px var(--body) !important; text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.55); }   /* (readable over the board and bright water) */
+  /* the score screen's moves in the same bold condensed capitals as the callouts during the ride; the level in amber */
+  #msg-j b { font: 700 16px var(--disp); letter-spacing: .04em; text-transform: uppercase; } #msg-j em { font: 700 18px var(--disp); } #msg-j b small { font-size: inherit; text-transform: none; }
+  #msg-j div { align-items: baseline; padding: 3px 0; }
+  #sess .lvl { display: inline-flex; align-items: center; gap: 7px; margin-right: 10px; font: 700 15px var(--disp); letter-spacing: .06em; text-transform: uppercase; color: var(--amber); }
+  #sess .lvl i { display: inline-flex; gap: 4px; } #sess .lvl b { width: 7px; height: 7px; border-radius: 50%; border: 1.3px solid rgba(255,201,120,.55); }
+  #sess .lvl b.on { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 6px rgba(255,201,120,.5); }
   #ranch span { font: 700 14px var(--disp) !important; letter-spacing: .04em !important; }
   #ranch button { border-radius: 14px !important; font-size: 15px !important; font-weight: 700 !important; padding: 8px 14px !important; border: 1px solid var(--line) !important; background: linear-gradient(180deg, rgba(40,28,18,.7), rgba(24,17,11,.78)) !important; box-shadow: inset 0 1px 0 rgba(255,236,200,.12); }
   #ranch button small { font-family: var(--body); font-size: 11px !important; } #ranch button:active { border-color: var(--amber) !important; background: linear-gradient(180deg, rgba(90,58,26,.72), rgba(44,29,14,.8)) !important; }
@@ -418,7 +425,7 @@
 <div class="vui" id="vPanel"><b id="vName"></b><span id="vDesc"></span><div id="vStats"></div><button id="vTake">TAKE THIS BOARD</button></div>
 <div class="ctl" id="ranch"><span>ORDER A WAVE</span><button data-wave="easy">MELLOW<small>5 m, slow</small></button><button data-wave="medium">BARREL<small>7.5 m, hollow</small></button><button data-wave="hard">HEAVY<small>10 m, fast</small></button></div>
 <div class="hud" id="chal"></div><div class="hud" id="chalDone"></div>
-<div id="msg"><div id="msg-t"></div><div id="msg-n"></div><div id="msg-s"></div><div id="msg-j"></div><div id="sess"></div></div>
+<div id="msg"><div id="msg-t"></div><div id="msg-n"></div><div id="msg-s"></div><div id="msg-j"></div><div id="sess"></div><div id="msg-w"></div></div>
 <div id="phoneOnly"><div class="card"><h1>SumbaSurf</h1><p class="lead">A surf game for your phone.</p><svg viewBox="0 0 27 27" shape-rendering="crispEdges" aria-label="QR code for sumbasurf.app"><rect width="27" height="27" fill="#f4efe6"/><path d="M1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM9 1h1v1h-1zM12 1h1v1h-1zM13 1h1v1h-1zM15 1h1v1h-1zM17 1h1v1h-1zM19 1h1v1h-1zM20 1h1v1h-1zM21 1h1v1h-1zM22 1h1v1h-1zM23 1h1v1h-1zM24 1h1v1h-1zM25 1h1v1h-1zM1 2h1v1h-1zM7 2h1v1h-1zM11 2h1v1h-1zM12 2h1v1h-1zM13 2h1v1h-1zM14 2h1v1h-1zM15 2h1v1h-1zM19 2h1v1h-1zM25 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM7 3h1v1h-1zM9 3h1v1h-1zM14 3h1v1h-1zM15 3h1v1h-1zM19 3h1v1h-1zM21 3h1v1h-1zM22 3h1v1h-1zM23 3h1v1h-1zM25 3h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM7 4h1v1h-1zM10 4h1v1h-1zM11 4h1v1h-1zM12 4h1v1h-1zM13 4h1v1h-1zM14 4h1v1h-1zM15 4h1v1h-1zM19 4h1v1h-1zM21 4h1v1h-1zM22 4h1v1h-1zM23 4h1v1h-1zM25 4h1v1h-1zM1 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM7 5h1v1h-1zM10 5h1v1h-1zM14 5h1v1h-1zM15 5h1v1h-1zM19 5h1v1h-1zM21 5h1v1h-1zM22 5h1v1h-1zM23 5h1v1h-1zM25 5h1v1h-1zM1 6h1v1h-1zM7 6h1v1h-1zM9 6h1v1h-1zM10 6h1v1h-1zM11 6h1v1h-1zM13 6h1v1h-1zM19 6h1v1h-1zM25 6h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1zM7 7h1v1h-1zM9 7h1v1h-1zM11 7h1v1h-1zM13 7h1v1h-1zM15 7h1v1h-1zM17 7h1v1h-1zM19 7h1v1h-1zM20 7h1v1h-1zM21 7h1v1h-1zM22 7h1v1h-1zM23 7h1v1h-1zM24 7h1v1h-1zM25 7h1v1h-1zM11 8h1v1h-1zM12 8h1v1h-1zM13 8h1v1h-1zM15 8h1v1h-1zM16 8h1v1h-1zM1 9h1v1h-1zM3 9h1v1h-1zM7 9h1v1h-1zM8 9h1v1h-1zM10 9h1v1h-1zM16 9h1v1h-1zM20 9h1v1h-1zM23 9h1v1h-1zM25 9h1v1h-1zM2 10h1v1h-1zM4 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM10 10h1v1h-1zM15 10h1v1h-1zM16 10h1v1h-1zM17 10h1v1h-1zM18 10h1v1h-1zM19 10h1v1h-1zM20 10h1v1h-1zM22 10h1v1h-1zM24 10h1v1h-1zM25 10h1v1h-1zM1 11h1v1h-1zM5 11h1v1h-1zM7 11h1v1h-1zM9 11h1v1h-1zM10 11h1v1h-1zM13 11h1v1h-1zM14 11h1v1h-1zM15 11h1v1h-1zM16 11h1v1h-1zM19 11h1v1h-1zM22 11h1v1h-1zM23 11h1v1h-1zM25 11h1v1h-1zM1 12h1v1h-1zM4 12h1v1h-1zM5 12h1v1h-1zM11 12h1v1h-1zM12 12h1v1h-1zM13 12h1v1h-1zM17 12h1v1h-1zM18 12h1v1h-1zM22 12h1v1h-1zM1 13h1v1h-1zM3 13h1v1h-1zM5 13h1v1h-1zM7 13h1v1h-1zM11 13h1v1h-1zM12 13h1v1h-1zM13 13h1v1h-1zM16 13h1v1h-1zM19 13h1v1h-1zM25 13h1v1h-1zM3 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM8 14h1v1h-1zM10 14h1v1h-1zM11 14h1v1h-1zM13 14h1v1h-1zM15 14h1v1h-1zM16 14h1v1h-1zM17 14h1v1h-1zM19 14h1v1h-1zM20 14h1v1h-1zM24 14h1v1h-1zM25 14h1v1h-1zM1 15h1v1h-1zM2 15h1v1h-1zM5 15h1v1h-1zM7 15h1v1h-1zM8 15h1v1h-1zM10 15h1v1h-1zM11 15h1v1h-1zM13 15h1v1h-1zM14 15h1v1h-1zM15 15h1v1h-1zM16 15h1v1h-1zM22 15h1v1h-1zM23 15h1v1h-1zM25 15h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM8 16h1v1h-1zM9 16h1v1h-1zM11 16h1v1h-1zM12 16h1v1h-1zM13 16h1v1h-1zM16 16h1v1h-1zM18 16h1v1h-1zM20 16h1v1h-1zM21 16h1v1h-1zM22 16h1v1h-1zM1 17h1v1h-1zM2 17h1v1h-1zM3 17h1v1h-1zM4 17h1v1h-1zM5 17h1v1h-1zM6 17h1v1h-1zM7 17h1v1h-1zM8 17h1v1h-1zM10 17h1v1h-1zM11 17h1v1h-1zM14 17h1v1h-1zM15 17h1v1h-1zM16 17h1v1h-1zM17 17h1v1h-1zM18 17h1v1h-1zM19 17h1v1h-1zM20 17h1v1h-1zM21 17h1v1h-1zM24 17h1v1h-1zM9 18h1v1h-1zM14 18h1v1h-1zM16 18h1v1h-1zM17 18h1v1h-1zM21 18h1v1h-1zM25 18h1v1h-1zM1 19h1v1h-1zM2 19h1v1h-1zM3 19h1v1h-1zM4 19h1v1h-1zM5 19h1v1h-1zM6 19h1v1h-1zM7 19h1v1h-1zM9 19h1v1h-1zM10 19h1v1h-1zM11 19h1v1h-1zM12 19h1v1h-1zM17 19h1v1h-1zM19 19h1v1h-1zM21 19h1v1h-1zM25 19h1v1h-1zM1 20h1v1h-1zM7 20h1v1h-1zM10 20h1v1h-1zM11 20h1v1h-1zM14 20h1v1h-1zM16 20h1v1h-1zM17 20h1v1h-1zM21 20h1v1h-1zM24 20h1v1h-1zM1 21h1v1h-1zM3 21h1v1h-1zM4 21h1v1h-1zM5 21h1v1h-1zM7 21h1v1h-1zM11 21h1v1h-1zM12 21h1v1h-1zM13 21h1v1h-1zM14 21h1v1h-1zM16 21h1v1h-1zM17 21h1v1h-1zM18 21h1v1h-1zM19 21h1v1h-1zM20 21h1v1h-1zM21 21h1v1h-1zM25 21h1v1h-1zM1 22h1v1h-1zM3 22h1v1h-1zM4 22h1v1h-1zM5 22h1v1h-1zM7 22h1v1h-1zM10 22h1v1h-1zM13 22h1v1h-1zM16 22h1v1h-1zM18 22h1v1h-1zM21 22h1v1h-1zM23 22h1v1h-1zM24 22h1v1h-1zM1 23h1v1h-1zM3 23h1v1h-1zM4 23h1v1h-1zM5 23h1v1h-1zM7 23h1v1h-1zM9 23h1v1h-1zM11 23h1v1h-1zM13 23h1v1h-1zM14 23h1v1h-1zM15 23h1v1h-1zM16 23h1v1h-1zM17 23h1v1h-1zM18 23h1v1h-1zM20 23h1v1h-1zM21 23h1v1h-1zM22 23h1v1h-1zM24 23h1v1h-1zM25 23h1v1h-1zM1 24h1v1h-1zM7 24h1v1h-1zM11 24h1v1h-1zM12 24h1v1h-1zM13 24h1v1h-1zM15 24h1v1h-1zM17 24h1v1h-1zM20 24h1v1h-1zM21 24h1v1h-1zM1 25h1v1h-1zM2 25h1v1h-1zM3 25h1v1h-1zM4 25h1v1h-1zM5 25h1v1h-1zM6 25h1v1h-1zM7 25h1v1h-1zM9 25h1v1h-1zM11 25h1v1h-1zM14 25h1v1h-1zM15 25h1v1h-1zM17 25h1v1h-1zM18 25h1v1h-1zM22 25h1v1h-1zM25 25h1v1h-1z" fill="#1b1714"/></svg><p>Point your phone camera at the code, or open this on your phone:</p><p class="url">sumbasurf.app</p><p style="margin-top:14px;color:rgba(246,236,220,.6);font-size:13px">Best held sideways. Free, no download.</p></div></div>
 <div id="start">
   <h1>SumbaSurf</h1>
@@ -441,13 +448,17 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-1001</small>
+    <small id="build">build 260928-1056</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-28-score', date: '28 Sep 2026', time: '10:55 am', title: 'A cleaner score screen', items: [
+      'After each wave you now see your score, the three moves that counted most, and your level with how far the next one is.',
+      'After a wipeout, what went wrong is shown bigger so you can learn from it.',
+    ] },
     { id: '2026-09-28-shift', date: '28 Sep 2026', time: '9:59 am', title: 'Stall on Shift', items: [
       'On a computer, stall is now the Shift key. The STALL button shows it while you surf.',
     ] },
@@ -598,6 +609,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=809"></script>
+<script type="module" src="js/game.js?v=815"></script>
 </body>
 </html>
