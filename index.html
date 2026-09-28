@@ -445,13 +445,13 @@
   #start .mmPicks .boardrow, #start .mmPicks .stancerow { display: flex; align-items: center; gap: 8px; margin: 0; }
   #start .mmPicks .stl { margin-left: 0 !important; }
   @media (max-height: 460px) {
-    #start .mm { height: calc(100vh - 58px); height: calc(100dvh - 58px); margin-top: 6px; gap: 12px; }   /* (dvh: the height you can see; on a phone 100vh counts the space under Safari's bar too) */ #start h1 { font-size: 22px !important; } #start .intro { display: none; }
+    #start .mm { height: calc(100vh - 86px); height: calc(100dvh - 86px); margin-top: 6px; gap: 12px; }   /* (dvh: the height you can see; on a phone 100vh counts the space under Safari's bar too) */ #start h1 { font-size: 22px !important; } #start .intro { display: none; }
     #start .spotList { gap: 3px; } #start .spotList > button { min-height: 26px; max-height: 30px; padding: 0 10px 0 6px; column-gap: 8px; border-radius: 9px; grid-template-columns: 26px 1fr auto; }
     #start .spotList small, #start .spotList .chd, #start .spotList #goVilla small { display: none !important; } #start .spotList .nm, #start .spotList #goVilla span { grid-row: 1 / span 2; align-self: center; font-size: 15px; }
     #start .spotList .best { grid-row: 1 / span 2; align-self: center; } #start .spotList .best b { font-size: 14px; } #start .spotList .wg { height: 13px; } #start .spotList #goVilla svg { width: 17px; height: 17px; }
     #start .mmPanel { padding: 10px 16px; } #start .mmBig { font-size: 38px; } #start .mmBB { display: none; } #start .mmActs #goSurf { min-height: 46px; } #start .mmActs #goSurf span { font-size: 22px; }
     #start .mmPicks { margin-top: 8px; padding-top: 8px; } #start .mmPicks .blabel { display: none; }
-    #pnBtn { top: max(7px, env(safe-area-inset-top)); bottom: auto; right: auto; left: calc(max(7vw, env(safe-area-inset-left)) + 118px); padding: 5px 10px 4px; font-size: 11px; }   /* (beside the title: bottom right sits on the panel) */
+    #pnBtn { bottom: max(5px, calc(env(safe-area-inset-bottom) + 3px)); right: max(10px, calc(env(safe-area-inset-right) + 8px)); padding: 5px 10px 4px; font-size: 11px; }   /* (back in its corner, his call 28 Sep 2026: the menu stops short of it, below) */
   }
   /* a narrow phone on its side (iPhone SE and the like, 667 wide): the drawing and the long line go, the name stays on
      one line, and boards and stance sit two to a row, so nothing piles up behind START SURFING */
@@ -528,13 +528,19 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260928-1928</small>
+    <small id="build">build 260928-1943</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-28-pncorner', date: '28 Sep 2026', time: '7:43 pm', title: 'Patch notes back in the corner', items: [
+      'On phones and smaller screens the Patch notes button is back at the bottom right, with the menu fitting neatly above it.',
+    ] },
+    { id: '2026-09-28-mpnow', wd: true, date: '28 Sep 2026', time: '7:37 pm', title: 'Multiplayer button right away', items: [
+      'The Multiplayer button now shows the moment the game opens. Tap it early and your rooms open as soon as the game is ready.',
+    ] },
     { id: '2026-09-28-judging', date: '28 Sep 2026', time: '7:28 pm', title: 'Scored like a real contest', items: [
       'Big snaps and cutbacks close to the curl now score much more: a wave of powerful turns can be very good or excellent, like in a real contest.',
       'Quality over quantity: your best three moves decide the wave. Repeating the same move adds less.',
