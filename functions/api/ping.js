@@ -52,10 +52,10 @@ export async function onRequestPost({ request, env }) {
     const mins = Math.round(num(b.mins, 0, 600)), waves = Math.round(num(b.waves, 0, 5000)), best = Math.round(num(b.best, 0, 10) * 10) / 10;
     const bestAt = SPOTS.includes(b.bestAt) ? b.bestAt : '', spots = list(b.spots, SPOTS), boards = list(b.boards, Object.keys(BOARDS)).map((k) => BOARDS[k]);
     // short, his call: "New player, Singapore, phone, from Instagram
-    //                   14 min, 23 waves, best 7.8 at Batu Hitam, longboard"
+    //                   14 min, 23 waves"
     const who = b.again ? 'Same player again' : back ? 'Returning player' : 'New player';
     const top = [who, country, dev, wd ? 'on Wavedash' : src ? `from ${src}` : ''].filter(Boolean).join(', ');
-    const did = [mins < 1 ? 'under 1 min' : `${mins} min`, waves ? plural(waves, 'wave') : 'no waves', waves && best > 0 ? `best ${best.toFixed(1)}${bestAt ? ` at ${bestAt}` : ''}` : '', boards.join(' and ')].filter(Boolean).join(', ');
+    const did = [mins < 1 ? 'under 1 min' : `${mins} min`, waves ? plural(waves, 'wave') : 'no waves'].join(', ');   // (play time and waves only: no score, no board, his call 30 Sep 2026)
     const text = `${test ? 'Claude testing: ' : ''}${top}\n${did}`;
     await tg(env, chat, text);
     if (!test) await note(env, { k: b.again ? 'again' : back ? 'back' : 'new', c: country, d: dev, s: wd ? 'Wavedash' : src, h: wd ? 'wavedash' : 'app', m: mins, n: waves, b: best, a: bestAt, p: spots });
