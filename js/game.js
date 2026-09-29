@@ -226,12 +226,11 @@ let surfer = null, mixer = null, clips = {}, curClip = null;
 const CUT = { value: 0.21 };   // just the neck and head (at 42 cm it cut your arms off at the elbow: floating hands)
 // which skeleton bones are "arm" (upper arm down to the fingertips): the cutaway never removes those, so you always see
 // whole arms, while your chest, shoulders and neck near the camera are hidden (they were showing as a stretched skin fin)
-const BODYHIDE = { value: 0 }; let bodyHideV = 0;   // your own body dissolved out of your view (0 shown .. 1 gone): up on the longboard's nose (29 Sep 2026, his call)
 const FADE = { value: new THREE.Vector3(0.32, 0.64, 0.25) };   // your own body right at the lens fades out between x and y metres (not a hard cut); inside faces nearer than z aren't drawn
 const ARMBONE = { value: new Float32Array(96) }, LEGBONE = { value: new Float32Array(96) }, HIDELEGS = { value: 0 }, ARMTH = { value: 0.12 }, ARMCUT = { value: 0 }, WATERY = { value: -99 };
 function cutaway(m) {
   m.onBeforeCompile = (sh) => {
-    sh.uniforms.uCut = CUT; sh.uniforms.uFade = FADE; sh.uniforms.uBodyHide = BODYHIDE; sh.uniforms.uArmBone = ARMBONE; sh.uniforms.uNear = { value: m.userData.near || 0 }; sh.uniforms.uArmCut = ARMCUT; sh.uniforms.uWaterY = WATERY; sh.uniforms.uLegBone = LEGBONE; sh.uniforms.uHideLegs = HIDELEGS; sh.uniforms.uArmTh = ARMTH;
+    sh.uniforms.uCut = CUT; sh.uniforms.uFade = FADE; sh.uniforms.uArmBone = ARMBONE; sh.uniforms.uNear = { value: m.userData.near || 0 }; sh.uniforms.uArmCut = ARMCUT; sh.uniforms.uWaterY = WATERY; sh.uniforms.uLegBone = LEGBONE; sh.uniforms.uHideLegs = HIDELEGS; sh.uniforms.uArmTh = ARMTH;
     sh.uniforms.uCap = { value: new THREE.Color(m.userData.cap || 0x7a4e36).convertSRGBToLinear() };
     sh.vertexShader = 'varying vec3 vCutW; varying float vArm; varying float vLeg; uniform float uArmBone[96]; uniform float uLegBone[96];\n' + sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
 vCutW = (modelMatrix * vec4(transformed, 1.0)).xyz;
@@ -241,8 +240,7 @@ vLeg = skinWeight.x * uLegBone[int(skinIndex.x)] + skinWeight.y * uLegBone[int(s
 #else
 vArm = 0.; vLeg = 0.;
 #endif`);
-    sh.fragmentShader = 'uniform float uCut, uNear, uArmCut, uWaterY, uHideLegs, uArmTh, uBodyHide; uniform vec3 uCap, uFade;\nvarying vec3 vCutW; varying float vArm; varying float vLeg;\n' + sh.fragmentShader.replace('void main() {', `void main() {
-  if (uBodyHide > 0. && fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453) < uBodyHide) discard;   // (up on the longboard's nose your own body dissolves out of your view: its trimmed edges were right at the lens)
+    sh.fragmentShader = 'uniform float uCut, uNear, uArmCut, uWaterY, uHideLegs, uArmTh; uniform vec3 uCap, uFade;\nvarying vec3 vCutW; varying float vArm; varying float vLeg;\n' + sh.fragmentShader.replace('void main() {', `void main() {
   vec3 cq = vCutW - cameraPosition; float cy = clamp(cq.y, -0.75, 0.);
   float armK = smoothstep(.3, .6, vArm), nearA = mix(smoothstep(mix(uFade.x, uFade.x * .5, armK) + uNear, mix(uFade.y, uFade.y * .55, armK) + uNear, length(cq)), 1., smoothstep(.7, .95, vArm));   // (forearm and hand always solid, the upper arm only fades right at the lens, the shoulder further out)   // (forearm and hand always solid: faded, the arm showed the sea through it as a band at the elbow)   // (the shorts fade further out: seen through a fading arm they showed as a teal ring)
   if (vArm < uArmTh && (length(cq - vec3(0., cy, 0.)) < uCut * 1.9 || length(cq) < uCut * 2.2)) discard;   // body near the eyes (any skin belonging to an arm or shoulder is kept whole: cutting it left holes)
@@ -806,7 +804,7 @@ function povCamera(dt) {
   // popping up, the head drives forward over the board (the eye ahead of the shoulders, which stay out of view), easing back as you rise
   const popFwd = st === 'POP' ? 0.15 : st === 'RIDE' ? 0.15 * Math.max(0, 1 - rider.stateT / 0.8) : 0;
   const sK = standing ? (st === 'POP' ? Math.min(1, popClock() / 0.25) : 1) : 0;   // (lying -> standing eye point blended over the start of the pop, not switched in a frame)
-  const ef = -0.05 + (POVCAM.fwd + popFwd + 0.05) * sK, eu = 0.2 + (POVCAM.up - 0.2) * sK;   // lying: eyes at the head, a bit up, so your paddling hands pass below them
+  const ef = -0.05 + (POVCAM.fwd + popFwd + 0.05 + 0.16 * noseV) * sK, eu = 0.2 + (POVCAM.up - 0.2) * sK;   // (walking to the nose you turn square to it and your shoulders come round beside the camera: the eyes sit a little further ahead, clear of them)   // lying: eyes at the head, a bit up, so your paddling hands pass below them
   _eye.x += Math.cos(yawT) * ef; _eye.z += Math.sin(yawT) * ef; _eye.y += eu - 0.08 * stallV;   // (sitting back in a stall: a little lower)   // camera just in front of the face, like a surfer's mouth-mounted camera
   // the nose starting to dig in on the longboard: you look at it (head turned and tipped down to the tip), so you see
   // the water coming over it even when a lean has carried your head out over the rail
@@ -1849,7 +1847,7 @@ function surfStance() {
     // pop-up: hands flat on the deck either side of the stringer, just ahead of your chest (placed on the board itself)
     if (popK > 0) { const sideSign = Math.sign(_cv.subVectors(bones['upperarm_' + s].getWorldPosition(_ik4), bones.spine_03.getWorldPosition(_ik1)).dot(_ik2.set(1, 0, 0).applyQuaternion(rig.quaternion))) || 1;
       P.lerp(rig.localToWorld(_aq.set(0.17 * sideSign, 0.1, 0.35)), popK); }
-    if (noseV > 0.01) P.lerp(at(_aq, front ? 0.15 : -0.05, 0.95, front ? 0.42 : -0.42), Math.min(1, noseV * 1.3));   // (on the nose: arms low and relaxed at your sides, the classic poise, out of your view)
+    if (noseV > 0.01) P.lerp(at(_aq, front ? 0.08 : -0.08, 0.6 + 0.03 * Math.sin(bodyT * 1.3 + (front ? 0 : 2)), (s === 'r' ? 0.88 : -0.88) * ws), Math.min(1, noseV * 1.4));   // (on the nose: arms out wide for balance, the noserider's poise, away from your eyes and just out of view; low at the hips they were trimmed into jagged shapes right at the lens, his report 29 Sep 2026)
     if (aw) P.addScaledVector(F, (front ? 0.6 : 0.25) * aw).addScaledVector(WORLD_UP, -(front ? 1 : 0.6) * aw);   // (the pump swing, on top of whatever the arms are doing)
     // smooth each hand's path (the pose blends above can jump between frames when the lean changes side)
     // (smoothed relative to your eyes: smoothing in the world would leave the hands trailing behind you at speed)
@@ -2527,7 +2525,6 @@ function tick(dt) {
 const _bwA = new THREE.Vector3(), _bwB = new THREE.Vector3(), _bwC = new THREE.Vector3(), _bwN = new THREE.Vector3(), _bwU = new THREE.Vector3(), _bwV = new THREE.Vector3();
 function boardWater(dt) {
   const U = BOARD_WATER; U.uBTime.value += dt;
-  { const want = rider && rider.standing && ((rider.nose || 0) > 0.005 || rider.stepDir > 0) ? 1 : 0; bodyHideV += (want - bodyHideV) * Math.min(1, dt * 12); if (!rider) bodyHideV = 0; BODYHIDE.value = camera.layers.isEnabled(1) || mode === 'villa' ? 0 : bodyHideV; }   // (your body out of your view on the longboard's walk: BODYHIDE)
   ENV.uBDim.value.z = 0;
   if (!rider || !rig.visible || mode === 'villa' || (W.on && rider.state === 'WIPE')) { U.uWOn.value = 0; return; }
   rig.updateMatrixWorld(); const L = BOARD_LENGTH(boardType) * 0.46, bw = BOARD_WIDTH(boardType) * 0.5;
@@ -2572,7 +2569,6 @@ renderer.setAnimationLoop(() => {
   // pass 1: the world; pass 2: your body through its own lens (skipped when a test view shows the body in the world cam)
   const mir = MIRROR; if (mir) flipProj(camera);   // (a right-hand spot: the picture drawn flipped left to right)
   HIDELEGS.value = camera.layers.isEnabled(1) || mode === 'villa' ? 0 : 1;
-  BODYHIDE.value = camera.layers.isEnabled(1) || mode === 'villa' ? 0 : bodyHideV;   // (fades out in about a sixth of a second as your first step starts, back as you step off the last one: on the walk the trimmed arms were in view too)
   for (const h of hairMeshes) h.visible = camera.layers.isEnabled(1);   // (walking round the villa, your legs are yours again)
   // the ride's over (the score is up): your body settling back onto the board moves faster than your eyes follow, and
   // from just behind it you'd see your own back; it isn't drawn in your view until you're back in the lineup
