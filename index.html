@@ -571,13 +571,16 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260929-1928</small>
+    <small id="build">build 260929-1937</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-29-seastacks', date: '29 Sep 2026', time: '7:37 pm', title: 'Each spot its own sea rocks', items: [
+      'The rock arch out at sea now belongs to Tanjung Uma alone. Batu Hitam has a dark basalt islet in its place, and Karang Hiu a low green islet.',
+    ] },
     { id: '2026-09-29-hitamlook', date: '29 Sep 2026', time: '7:28 pm', title: 'A volcanic Batu Hitam', items: [
       'Batu Hitam has its own look: a volcano behind the bay, black basalt cliffs in tall columns, dark windswept scrub, and waves booming against the cliffs.',
     ] },
@@ -822,6 +825,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=929"></script>
+<script type="module" src="js/game.js?v=931"></script>
 </body>
 </html>

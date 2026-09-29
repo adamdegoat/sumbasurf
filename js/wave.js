@@ -1073,12 +1073,27 @@ function seascape(group, O, mat) {
       pp.setXYZ(i, X * rx, Math.pow(Y, 0.6) * h * n - 2, Z * rz); }
     geo.computeVertexNormals(); color(geo, (X, Y) => Y < 3 ? [0.4, 0.38, 0.32] : [0.12, 0.2, 0.1]); geo.translate(x, 0, z); parts.push(geo);
   };
+  // a basalt islet (Batu Hitam), like Staffa: sheer sides of packed six-sided columns, all about the same height so they
+  // read as one rock, a few broken shorter at its edges; a cap of rough grass over the top
+  const columns = (x, z) => { const RX = 34, RZ = 20, H0 = 26;
+    for (let k = 0; k < 44; k++) { const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()), r = 3.2 + rnd() * 1.2, cx = Math.cos(a) * d * RX, cz = Math.sin(a) * d * RZ;
+      const h = H0 * (1 - 0.35 * Math.pow(Math.abs(cx) / RX, 3)) * (d > 0.85 ? 0.45 + rnd() * 0.4 : 0.94 + rnd() * 0.08);   // (lower toward the ends; the outer ones broken off short)
+      const geo = new THREE.CylinderGeometry(r, r * 1.03, h + 4, 6, 1).toNonIndexed(); geo.rotateY(rnd()); geo.translate(0, (h + 4) / 2 - 4, 0); geo.computeVertexNormals();
+      const kk = 0.6 + 0.35 * rnd(); color(geo, (X, Y) => Y < 2.5 ? WET : Y > h - 0.1 ? [rock[0] * 1.1, rock[1] * 1.1, rock[2] * 1.1] : [rock[0] * kk, rock[1] * kk, rock[2] * kk]);
+      geo.translate(x + cx, 0, z + cz); parts.push(geo); }
+    const cap = new THREE.SphereGeometry(1, 20, 6, 0, Math.PI * 2, 0, Math.PI / 2), cp = cap.attributes.position;
+    for (let i = 0; i < cp.count; i++) { const X = cp.getX(i), Y = cp.getY(i), Z = cp.getZ(i), n = 1 + 0.08 * Math.sin(X * 7 + Z * 5); cp.setXYZ(i, X * RX * 0.86 * n, H0 * (0.9 - 0.3 * X * X) + Y * 5 * n, Z * RZ * 0.8 * n); }
+    cap.computeVertexNormals(); color(cap, () => [0.12, 0.17, 0.09]); cap.translate(x, 0, z); parts.push(cap);
+    ring(x, z, 30, 10); };
   const jx = () => (rnd() - 0.5) * 40, jz = () => (rnd() - 0.5) * 30;
   if (O.stacks !== false) {   // (Gunung Laut has its own giant stacks)
     // each spot its own arrangement: which side the big stacks stand, where the arch is, or no arch but a second islet
     const L = [[-300, 330], [-360, 250], [-220, 420]][Math.floor(rnd() * 3)], f = rnd() < 0.5 ? -1 : 1, X = (x) => 100 + (x - 100) * f, form = rnd();
     stack(X(L[0]) + jx(), -335 + jz(), 50 + rnd() * 22, 15 + rnd() * 4); stack(X(L[0] + 45) + jx(), -375 + jz(), 28 + rnd() * 12, 9); if (rnd() < 0.7) stack(X(L[0] - 45) + jx(), -395 + jz(), 18 + rnd() * 8, 6);
-    if (O.arch || form < 0.7) arch(X(-80 + rnd() * 200), -420 + jz(), 54 + rnd() * 20, 44 + rnd() * 12, 14);
+    // (the arch is Tanjung Uma's alone, his call 29 Sep 2026: it had also turned up by chance at Batu Hitam and Karang
+    // Hiu, so the spots looked alike. Batu Hitam gets basalt columns in its place, the rest a low islet)
+    if (O.arch) arch(X(-80 + rnd() * 200), -420 + jz(), 54 + rnd() * 20, 44 + rnd() * 12, 14);
+    else if (O.columns) columns(X(-80 + rnd() * 200), -420 + jz());
     else islet(X(40 + rnd() * 80), -440 + jz(), 60, 34, 22);
     stack(X(L[1]) + jx(), -345 + jz(), 40 + rnd() * 16, 12 + rnd() * 4); if (rnd() < 0.6) stack(X(L[1] + 40) + jx(), -310 + jz(), 22 + rnd() * 6, 7);
     islet(X(560) + jx(), -430 + jz(), 44 + rnd() * 12, 28, 12 + rnd() * 6); }
