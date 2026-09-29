@@ -2,12 +2,12 @@
 // landmarks of its own. Distances are in the coast's own frame: the beach is ~185-225 m in from the break, and the
 // whole coast is pushed back by dz (a longer run to the sand makes a longer ride).
 import * as THREE from 'three';
-import { coast, landMaterial } from './wave.js?v=170';
+import { coast, landMaterial } from './wave.js?v=173';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const SPOTS = {
   // beginners: a wide white-sand bay, low green points, calm turquoise over a pale reef, a village of beach huts
-  easy: { name: 'Pantai Kuda', dz: 110, xEnd: 200, reefTint: [1.25, 1.2, 1.1], look: { sandWet: [0.62, 0.6, 0.52], sandDry: [0.33, 0.33, 0.3], land: [0.16, 0.27, 0.12], palms: 1, cliffH: 0.12, cliffGreen: 1, temple: false, mountain: [0.3, 0.38, 0.32], mountainScale: 0.55, jungle: 0.8 } },
+  easy: { name: 'Pantai Kuda', dz: 110, xEnd: 200, reefTint: [1.34, 1.3, 1.16], reefK: 0.56, look: { beachW: 48, beachRise: 2.7, stackRock: [0.42, 0.39, 0.34], sandWet: [0.62, 0.6, 0.52], sandDry: [0.33, 0.33, 0.3], land: [0.16, 0.27, 0.12], palms: 1, cliffH: 0.12, cliffGreen: 1, temple: false, mountain: [0.3, 0.38, 0.32], mountainScale: 0.55, jungle: 0.8 } },
   // the classic: limestone cliffs, the temple on the edge, golden sand (the original coast)
   medium: { name: 'Tanjung Uma', dz: 60, xEnd: 200, reefTint: [1, 1, 1], look: { rock: [0.7, 0.6, 0.46], arch: true } },   // (weathered honey limestone: the pale cream read as foam from the villa)
   // advanced: a black volcanic slab, basalt cliffs, black sand, a lighthouse on the point
@@ -44,6 +44,7 @@ export function spotGroup(scene, key) {
   if (key === 'hiu') palmPoint(g);
   if (key === 'bintang') ownDice(g, nightLights, 11);
   if (key === 'easy') ownDice(g, horseHead);
+  if (key === 'easy') ownDice(g, kudaNature, 29);
   if (key === 'extreme') ownDice(g, seaMountain);
   waterProps(g, key);
   if (key === 'hard') blackRock(g);
@@ -334,6 +335,28 @@ function waterProps(g, key) {
       part(new THREE.BoxGeometry(1.3, 0.3, 0.5), [0.1, 0.1, 0.1], -0.3, 0.52, 0), part(new THREE.BoxGeometry(0.1, 0.45, 0.8), [0.15, 0.15, 0.15], 0.6, 0.6, 0),
       part(new THREE.BoxGeometry(2.3, 0.14, 1.3), [0.95, 0.8, 0.12], -2.7, -0.05, 0)], 45, -335, 0.6, 0.35, 0.07, 1.5);
   }
+}
+
+// Pantai Kuda, the beginner's bay, made more of itself in nature (29 Sep 2026, his call: natural, no people or man-made
+// things): soft rounded green hills rolling up behind the beach (every other spot has cliffs or rock), and coconut
+// palms crowding the tips of the bay's two green arms, leaning out over the water
+function kudaNature(g) {
+  const hill = (x, z, rx, rz, h, depth = 0) => {
+    const geo = new THREE.SphereGeometry(1, 36, 12, 0, Math.PI * 2, 0, Math.PI / 2), pp = geo.attributes.position, c = new Float32Array(pp.count * 3);
+    for (let i = 0; i < pp.count; i++) { const X = pp.getX(i), Y = pp.getY(i), Z = pp.getZ(i), n = 1 + 0.07 * Math.sin(X * 5 + Z * 4) + 0.04 * Math.sin(X * 13 - Z * 11);
+      pp.setXYZ(i, X * rx * n, Math.pow(Y, 0.7) * h * n, Z * rz * n);
+      // trees all over them, a speckle of lighter and darker crowns; darker low down in the folds, lighter up top in the
+      // sun; and the further hills paler and bluer in the sea air (depth: 0 near, 1 far)
+      const tree = 0.78 + 0.34 * Math.abs(Math.sin(X * 91 + Z * 57) * Math.sin(X * 37 - Z * 73)) + (Math.random() - 0.5) * 0.12, t = Y, fold = 0.72 + 0.28 * t;
+      const r0 = (0.14 + 0.08 * t) * tree * fold, g0 = (0.3 + 0.14 * t) * tree * fold, b0 = (0.1 + 0.04 * t) * tree * fold, a = depth * 0.55;
+      c[i * 3] = r0 + (0.52 - r0) * a; c[i * 3 + 1] = g0 + (0.62 - g0) * a; c[i * 3 + 2] = b0 + (0.66 - b0) * a; }
+    geo.setAttribute('color', new THREE.BufferAttribute(c, 3)); geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, landMaterial()); m.position.set(x, -2, z); m.userData.prop = true; g.add(m); };
+  for (const [x, z, rx, rz, h, d] of [[-250, 380, 150, 90, 62, 0.1], [-60, 420, 170, 100, 78, 0.35], [140, 395, 150, 95, 58, 0.15], [330, 430, 180, 110, 84, 0.4], [520, 390, 140, 90, 55, 0.12], [-420, 440, 160, 100, 70, 0.45],
+    [60, 560, 260, 120, 118, 0.85], [-330, 590, 240, 110, 104, 0.9], [420, 580, 250, 120, 110, 0.88]]) hill(x, z, rx, rz, h, d);   // (a second, higher range further back, hazed blue)
+  // palms crowding each arm's tip, leaning out to sea
+  for (const [cx, cz, dir, y0] of [[-470, 55, 0, 25], [610, 70, Math.PI, 21]]) for (let k = 0; k < 11; k++) {   // (y0: the grass on each arm there)
+    const a = k * 2.4, r = 6 + (k % 4) * 7; palm(g, cx + Math.cos(a) * r, y0 + (k % 3), cz + Math.sin(a) * r * 0.6, 14 + (k % 5) * 2, 0.18 + (k % 3) * 0.07, dir + (k % 2 ? 0.4 : -0.4)); }
 }
 
 function blackRock(g) {

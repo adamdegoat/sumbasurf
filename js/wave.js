@@ -429,7 +429,7 @@ export const SUN_DIR = new THREE.Vector3(0.25, 0.1, -1).normalize();   // low su
 // Weather follows the difficulty. Every water/sky material shares these uniforms, so switching weather is instant.
 export const WEATHER = {
   // good weather on the three normal levels (his call): morning, midday, afternoon sun; the storm is Extreme only
-  easy:    { sun: [0.55, 0.24, 0.6],  zen: 0x5b8fc6, hor: 0xe6e4d6, sunCol: 0xffdcb4, fog: 0xe4e2d4, deep: 0x157f8a, turq: 0x5ee6c0, cloud: 0.2, chop: 0.4, fogFar: 340, rain: 0, sunVis: 1, light: 0xffe6c8, hemi: 0xf2e8da, wind: 0.3 },   // early morning: the sun low over the land, glassy green-turquoise water, hardly a breath of wind
+  easy:    { sun: [0.55, 0.24, 0.6],  zen: 0x4f8ccc, hor: 0xdde6e2, sunCol: 0xffdcb4, fog: 0xdce4de, deep: 0x1a929a, turq: 0x62ecc6, cloud: 0.6, chop: 0.4, fogFar: 470, rain: 0, sunVis: 1, light: 0xffe6c8, hemi: 0xf2e8da, wind: 0.3 },   // early morning: the sun low over the land, glassy green-turquoise water, hardly a breath of wind
   medium:  { sun: [0.6, 0.38, -0.7],  zen: 0x2c64b0, hor: 0xbfd8e2, sunCol: 0xffd8a0, fog: 0xc8d8dc, deep: 0x083e86, turq: 0x1f9fd0, cloud: 0.24, chop: 1.0, fogFar: 330, rain: 0, sunVis: 1, light: 0xffe2b8, hemi: 0xf0e4d2 },   // clear blue afternoon, deep sapphire water, the sun low and golden on the limestone
   hard:    { sun: [0.3, 0.6, -0.6],   zen: 0x56636e, hor: 0x98a4ab, sunCol: 0xc9ced2, fog: 0x8e9aa1, deep: 0x062f3c, turq: 0x1a7a72, cloud: 0.8, chop: 1.6, fogFar: 260, rain: 0, sunVis: 0.3, light: 0xc4ccd2, hemi: 0xa8b4bc, wind: 1.3 },   // grey overcast, dark heavy water off the black rock
   kanan:   { sun: [-0.5, 0.24, -0.85], zen: 0x3462a8, hor: 0xe8dcc4, sunCol: 0xffb878, fog: 0xead6ba, deep: 0x0c4f5e, turq: 0x2aa89a, cloud: 0.3, chop: 0.9, fogFar: 320, rain: 0, sunVis: 1, light: 0xffd6b0, hemi: 0xf2dcc8, hemiGround: 0x4a3a30, wind: 0.9 },   // late sun low over the sea, warm teal water, the red cliffs lit up
@@ -867,16 +867,17 @@ function buildCoast(scene, O, mat) {
   const sand = new THREE.PlaneGeometry(1600, 40, 60, 4); sand.rotateX(-Math.PI / 2);
   { const p = sand.attributes.position; for (let i = 0; i < p.count; i++) { const z = p.getZ(i); p.setY(i, (z + 20) / 40 * 2.2 - 0.2 + Math.sin(p.getX(i) * 0.05) * 0.2); } sand.computeVertexNormals(); }
   // golden reef-break sand (Bali's Bukit beaches): darker and wet at the water's edge, pale and dry up the beach
-  sand.dispose(); const sd = new THREE.PlaneGeometry(1600, 40, 160, 8); sd.rotateX(-Math.PI / 2);
+  const BW = O.beachW || 40, BR = O.beachRise || 2.2;   // (a spot can have a wider, higher beach: Pantai Kuda)
+  sand.dispose(); const sd = new THREE.PlaneGeometry(1600, BW, 160, 8); sd.rotateX(-Math.PI / 2);
   { const p = sd.attributes.position, c = new Float32Array(p.count * 3);
     for (let i = 0; i < p.count; i++) {
-      const z = p.getZ(i), x = p.getX(i); p.setY(i, (z + 20) / 40 * 2.2 - 0.2 + Math.sin(x * 0.05) * 0.2);
-      const dry = Math.min(1, Math.max(0, (z + 17) / 10)), k = 1 + (Math.random() - .5) * 0.06 + Math.sin(x * 0.21) * 0.03;
+      const z = p.getZ(i), x = p.getX(i); p.setY(i, (z + BW / 2) / BW * BR - 0.2 + Math.sin(x * 0.05) * 0.2);
+      const dry = Math.min(1, Math.max(0, (z + BW / 2 - 3) / 10)), k = 1 + (Math.random() - .5) * 0.06 + Math.sin(x * 0.21) * 0.03;
       c[i * 3] = (O.sandWet[0] + O.sandDry[0] * dry) * k; c[i * 3 + 1] = (O.sandWet[1] + O.sandDry[1] * dry) * k; c[i * 3 + 2] = (O.sandWet[2] + O.sandDry[2] * dry) * k;
     }
     sd.setAttribute('color', new THREE.BufferAttribute(c, 3)); sd.computeVertexNormals(); }
   const sandMat = mat.clone(); sandMat.uniforms = ENV; sandMat.defines = { SHORE: 1 };   // (the shore break is drawn on the sand)
-  group.add(at(new THREE.Mesh(sd, sandMat), 0, 0, 205));
+  group.add(at(new THREE.Mesh(sd, sandMat), 0, 0, 185 + BW / 2));
   // land behind, gently rolling
   const land = new THREE.PlaneGeometry(1800, 500, 90, 20); land.rotateX(-Math.PI / 2);
   { const p = land.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i); p.setY(i, 2 + 4 * Math.sin(x * 0.013) * Math.cos(z * 0.02) + (z + 250) * 0.03); } land.computeVertexNormals(); }
@@ -1008,7 +1009,7 @@ function foamMat() {
 }
 function seascape(group, O, mat) {
   let seed = 1 + Math.round(O.dz * 7.3 + O.rock[0] * 1000 + O.rock[2] * 333) % 997; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;   // (the same stacks every visit)
-  const rock = O.rock, parts = [], foam = [];
+  const rock = O.stackRock || O.rock, parts = [], foam = [];   // (stackRock: a spot's stacks in their own rock colour, without changing where they stand)
   const color = (geo, fn) => { const pp = geo.attributes.position, c = new Float32Array(pp.count * 3);
     for (let i = 0; i < pp.count; i++) { const col = fn(pp.getX(i), pp.getY(i), pp.getZ(i)), k = 0.9 + rnd() * 0.2; c[i * 3] = col[0] * k; c[i * 3 + 1] = col[1] * k; c[i * 3 + 2] = col[2] * k; }
     geo.setAttribute('color', new THREE.BufferAttribute(c, 3)); return geo; };
