@@ -36,6 +36,7 @@ export class SurfAudio {
     this.rain = layer('highpass', 4000, 0.3);     // rain on the water
     this.spray = layer('bandpass', 2600, 1.4);    // tail sliding: gritty sheet of spray, not the clean rail hiss
     this.drag = layer('bandpass', 750, 1.8);
+    this.falls = layer('bandpass', 1400, 0.45);   // a waterfall down the coast: a soft steady rush (Watu Kanan only)
     this.crowd = layer('bandpass', 1050, 0.9);    // a crowd round the pool: a soft murmur (Sumba Ranch only)      // stalling: your hand and tail dragging in the face (a gurgle)
     // inside the barrel everything rings: a short echo off the curtain, fed from the whole mix
     const dl = ctx.createDelay(0.5); dl.delayTime.value = 0.085;
@@ -112,6 +113,7 @@ export class SurfAudio {
   }
   // a wave slamming into the cliffs somewhere down the coast (Batu Hitam): a deep boom and the hiss of the water falling back
   boom(k = 1) { this.burst(0.34 * k, 85, 2.6, 'lowpass', 0); this.burst(0.16 * k, 260, 1.4, 'lowpass', 0.05); this.burst(0.07 * k, 1500, 2.2, 'bandpass', 0.35); }
+  fallsLevel(k) { if (this.ok && this._fk !== k) { this._fk = k; this.set(this.falls.g.gain, 0.03 * k, 1.5); } }
   crowdLevel(k) { if (this.ok) this.set(this.crowd.g.gain, 0.05 * k, 0.8); }
   // the crowd round the pool going up for a barrel or a big move: a swell of voices (noise shaped like a roar, and a
   // few rising whoops on top)

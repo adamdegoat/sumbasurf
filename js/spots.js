@@ -2,7 +2,7 @@
 // landmarks of its own. Distances are in the coast's own frame: the beach is ~185-225 m in from the break, and the
 // whole coast is pushed back by dz (a longer run to the sand makes a longer ride).
 import * as THREE from 'three';
-import { coast, landMaterial } from './wave.js?v=180';
+import { coast, landMaterial, ENV } from './wave.js?v=184';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const SPOTS = {
@@ -14,9 +14,9 @@ export const SPOTS = {
   hard: { name: 'Batu Hitam', dz: 110, xEnd: 290, reefTint: [0.55, 0.62, 0.6], look: { sandWet: [0.1, 0.1, 0.11], sandDry: [0.1, 0.1, 0.1], land: [0.08, 0.12, 0.07], plat: [0.07, 0.11, 0.06], palms: 0.2, cliffH: 1.25, rock: [0.15, 0.15, 0.16], columns: true, cliffGreen: 0.15, temple: false, mountain: [0.18, 0.2, 0.22], mountainScale: 0.01, jungle: 0.7 } },   // (basalt in columns; its own volcano behind instead of the usual far mountain: see hitamNature)
   // the rights (mirror: the whole place is drawn the other way round, so the wave peels to your right). Watu Kanan:
   // red sandstone bluffs, golden sand, a green valley behind; a temple on the headland
-  kanan: { name: 'Watu Kanan', mirror: true, dz: 80, xEnd: 220, reefTint: [1.05, 1.1, 1.0], look: { sandWet: [0.5, 0.4, 0.28], sandDry: [0.42, 0.33, 0.22], land: [0.13, 0.26, 0.1], palms: 0.9, cliffH: 0.75, rock: [0.64, 0.36, 0.24], cliffGreen: 1.2, temple: true, mountain: [0.24, 0.32, 0.26], mountainScale: 0.8, jungle: 1.1 } },
+  kanan: { name: 'Watu Kanan', mirror: true, dz: 80, xEnd: 220, reefTint: [1.05, 1.1, 1.0], look: { sandWet: [0.5, 0.4, 0.28], sandDry: [0.42, 0.33, 0.22], land: [0.11, 0.3, 0.1], plat: [0.11, 0.26, 0.09], palms: 0.9, cliffH: 0.75, rock: [0.64, 0.36, 0.24], sandstone: true, cliffGreen: 1.2, temple: true, mountain: [0.24, 0.32, 0.26], mountainScale: 0.8, jungle: 1.1 } },
   // Karang Hiu: a shallow coral shelf off a low grey reef-rock shore, bright white sand, windswept palms
-  hiu: { name: 'Karang Hiu', mirror: true, dz: 100, xEnd: 280, reefTint: [1.15, 1.3, 1.25], reefK: 0.45, look: { sandWet: [0.64, 0.62, 0.55], sandDry: [0.4, 0.39, 0.35], land: [0.14, 0.24, 0.12], palms: 0.7, cliffH: 0.45, rock: [0.5, 0.5, 0.47], cliffGreen: 0.6, temple: false, mountain: [0.28, 0.33, 0.33], mountainScale: 0.7, jungle: 0.6 } },
+  hiu: { name: 'Karang Hiu', mirror: true, dz: 100, xEnd: 280, reefTint: [1.15, 1.3, 1.25], reefK: 0.45, look: { sandWet: [0.64, 0.62, 0.55], sandDry: [0.4, 0.39, 0.35], land: [0.14, 0.24, 0.12], palms: 0.7, windy: true, cliffH: 0.45, rock: [0.5, 0.5, 0.47], karst: true, cliffGreen: 0.6, temple: false, mountain: [0.28, 0.33, 0.33], mountainScale: 0.7, jungle: 0.6 } },
   // Pantai Bintang (intermediate, breaks left): the night spot. Always night: a dark coast of palms and low cliffs under the
   // moon and the Milky Way, lamp boats out at sea, a fire on the beach, and plankton that glows wherever the water breaks
   bintang: { name: 'Pantai Bintang', dz: 160, xEnd: 320, reefTint: [0.45, 0.55, 0.7], reefK: 0.001, look: { sandWet: [0.34, 0.35, 0.37], sandDry: [0.5, 0.49, 0.46], land: [0.07, 0.13, 0.09], palms: 1, cliffH: 0.02, rock: [0.32, 0.32, 0.35], cliffGreen: 0.9, temple: false, stacks: false, boat: false, mountain: [0.1, 0.13, 0.18], mountainScale: 0.8, jungle: 1 } },   // (no cliffs and none of the usual offshore stacks: a low palm beach, and its own rock arch out to sea)
@@ -47,6 +47,8 @@ export function spotGroup(scene, key) {
   if (key === 'easy') ownDice(g, kudaNature, 29);
   if (key === 'medium') { jungleLook(g, 2, [0.17, 0.2, 0.09]); ownDice(g, umaNature, 31); }
   if (key === 'hard') { jungleLook(g, 3, [0.07, 0.11, 0.06]); ownDice(g, hitamNature, 37); }
+  if (key === 'kanan') { jungleLook(g, 5, [0.08, 0.25, 0.07]); ownDice(g, (h) => kananNature(h, g.userData.cliff), 41); }
+  if (key === 'hiu') ownDice(g, (h) => hiuNature(h, g.userData.cliff), 43);
   if (key === 'extreme') ownDice(g, seaMountain);
   waterProps(g, key);
   if (key === 'hard') blackRock(g);
@@ -233,7 +235,7 @@ function palm(g, x, y, z, h, lean, dir) {
 // Karang Hiu: a low point of grey reef rock at the end of the reef, bright sand in its lee, palms leaning out over it
 function palmPoint(g) {
   const at = headland(g, { x: 335, tipZ: 110, baseZ: 250, w: 26, h0: 6, h1: 12, rock: [0.42, 0.42, 0.4], grass: [0.5, 0.47, 0.38] });
-  for (let k = 0; k < 13; k++) { const u = 0.06 + k * 0.07, t = at(u), side = k % 2 ? 1 : -1; palm(g, 335 + side * (8 + (k % 3) * 5), t.y - 0.5, t.z, 15 + (k % 4) * 2.5, 0.22 + (k % 3) * 0.08, side > 0 ? Math.PI : 0); }
+  for (let k = 0; k < 13; k++) { const u = 0.06 + k * 0.07, t = at(u), side = k % 2 ? 1 : -1; palm(g, 335 + side * (8 + (k % 3) * 5), t.y - 0.5, t.z, 15 + (k % 4) * 2.5, 0.34 + (k % 3) * 0.07, Math.PI / 2 + side * 0.15); }   // (all bent out to sea by the wind)
 }
 
 // a Sumba clan house (uma mbatangu): a timber house on stilts under a wide thatch hip, with the tall thatch tower
@@ -414,6 +416,53 @@ function hitamNature(g) {
     geo.setAttribute('color', new THREE.BufferAttribute(c, 3)); geo.deleteAttribute('uv'); geo.translate(X, 0, Z); geos.push(geo.toNonIndexed()); }
   const geo = mergeGeometries(geos); geo.computeVertexNormals();
   const m = new THREE.Mesh(geo, landMaterial()); m.userData.prop = true; g.add(m);
+}
+
+// Watu Kanan, made more of itself in nature (29 Sep 2026, his call): a waterfall pours off the red cliffs from the
+// green valley above into the sea, and worn blocks of red sandstone lie along the foot of the cliffs
+function kananNature(g, C) {
+  if (!C) return;   // (C: the coast's cliff face, to set things against)
+  // fallen blocks of red sandstone strewn along the foot of the cliffs, worn round by the sea (sandstone pillars were
+  // tried here first: at this distance they read as posts, not rock)
+  const geos = [];
+  for (let k = 0; k < 34; k++) { const x = -110 - Math.random() * 520, r = 1.2 + Math.random() * 3.2, geo = new THREE.DodecahedronGeometry(1, 1), pp = geo.attributes.position;
+    for (let i = 0; i < pp.count; i++) { const n = 1 + 0.18 * Math.sin(pp.getX(i) * 5 + k) * Math.sin(pp.getZ(i) * 4 + k); pp.setXYZ(i, pp.getX(i) * n * 1.35, pp.getY(i) * n * 0.75, pp.getZ(i) * n); }
+    const st = Math.random(); tint(geo, st > 0.75 ? [0.78, 0.5, 0.36] : st < 0.25 ? [0.5, 0.26, 0.17] : [0.64, 0.36, 0.24], 0.12); geo.deleteAttribute('uv'); geo.rotateY(Math.random() * 6);
+    geo.scale(r, r, r); geo.translate(x, r * 0.35, C.z(x, 0) - 3 - Math.random() * 12); geos.push(geo.toNonIndexed()); }
+  // a white pool of churned water at the foot of the fall
+  const FX = -205, FW = 8, top = C.top(FX) - 1.5;
+  { const pool = new THREE.CircleGeometry(1, 16); pool.rotateX(-Math.PI / 2); pool.scale(FW * 0.9, 1, 4); tint(pool, [0.86, 0.9, 0.92], 0.05); pool.deleteAttribute('uv'); pool.translate(FX, 0.35, C.z(FX, 0) - 3.5); geos.push(pool.toNonIndexed()); }
+  const merged = mergeGeometries(geos); merged.computeVertexNormals();
+  const pm = new THREE.Mesh(merged, landMaterial()); pm.userData.prop = true; g.add(pm);
+  // the fall itself: a sheet of white water hugging the rock face, streaks of foam racing down it (drawn in its own
+  // see-through material, on the game's clock)
+  const fall = new THREE.PlaneGeometry(1, 1, 4, 30), fp = fall.attributes.position;
+  for (let i = 0; i < fp.count; i++) { const u = fp.getX(i) + 0.5, v = fp.getY(i) + 0.5, y = top * v, w = FW * (0.75 + 0.25 * v + 0.35 * (1 - v) * (1 - v)), x = FX + (u - 0.5) * w;   // (spreading a little as it falls)
+    fp.setXYZ(i, x, y, C.z(x, y) - 1.4 - 1.2 * (1 - v) * (1 - v)); }
+  { const ix = fall.index.array; for (let k = 0; k < ix.length; k += 3) { const t = ix[k + 1]; ix[k + 1] = ix[k + 2]; ix[k + 2] = t; } }   // (face the sea)
+  const mat = new THREE.ShaderMaterial({ uniforms: { uTime: ENV.uTime }, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    vertexShader: 'varying vec2 vU; void main(){ vU = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+    fragmentShader: `uniform float uTime; varying vec2 vU;
+      void main(){ float e = smoothstep(0., .18, vU.x) * smoothstep(1., .82, vU.x);
+        float s = fract(vU.y * 5. + uTime * 1.3 + sin(vU.x * 23.) * .35), s2 = fract(vU.y * 9. + uTime * 2.1 + sin(vU.x * 41. + 2.) * .4);
+        float f = .55 + .3 * smoothstep(.5, .9, s) + .2 * smoothstep(.6, .95, s2);
+        gl_FragColor = vec4(mix(vec3(.7, .77, .8), vec3(.9, .92, .92), f), e * (.45 + .35 * f) * smoothstep(0., .04, vU.y + .02)); }` });
+  const fm = new THREE.Mesh(fall, mat); fm.renderOrder = 2; g.add(fm);
+}
+
+// Karang Hiu, made more of itself in nature (29 Sep 2026, his call): a shore of raw reef rock. Jagged grey blocks of
+// old coral lie along the waterline, sharp-edged and pitted, dark where the sea wets them (the wind that bends every
+// palm the same way is in the coast's look: windy)
+function hiuNature(g, C) {
+  if (!C) return;
+  const geos = [];
+  for (let k = 0; k < 60; k++) { const x = -420 + Math.random() * 760, r = 0.8 + Math.random() * 2.6, geo = new THREE.IcosahedronGeometry(1, 0).toNonIndexed(), pp = geo.attributes.position;
+    for (let i = 0; i < pp.count; i++) { const n = 0.75 + 0.5 * Math.abs(Math.sin(pp.getX(i) * 7 + k) * Math.cos(pp.getZ(i) * 5 - k)); pp.setXYZ(i, pp.getX(i) * n * 1.5, pp.getY(i) * n * 0.6, pp.getZ(i) * n); }
+    const c = new Float32Array(pp.count * 3); for (let i = 0; i < pp.count; i++) { const y = pp.getY(i), kk = (y < -0.1 ? 0.45 : 0.85 + Math.random() * 0.2); c[i * 3] = 0.5 * kk; c[i * 3 + 1] = 0.5 * kk; c[i * 3 + 2] = 0.47 * kk; }
+    geo.setAttribute('color', new THREE.BufferAttribute(c, 3)); geo.deleteAttribute('uv'); geo.rotateY(Math.random() * 6); geo.scale(r, r, r);
+    const z = x < -70 ? C.z(x, 0) - 2 - Math.random() * 8 : 186 + Math.random() * 6; geo.translate(x, r * 0.15, z); geo.computeVertexNormals(); geos.push(geo); }   // (along the cliff foot, then scattered at the water's edge down the beach)
+  const merged = mergeGeometries(geos); merged.computeVertexNormals();
+  const m = new THREE.Mesh(merged, landMaterial()); m.userData.prop = true; g.add(m);
 }
 
 function blackRock(g) {
