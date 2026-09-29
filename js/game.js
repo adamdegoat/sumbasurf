@@ -543,6 +543,7 @@ function levelDots() {
   }
 }
 levelDots();
+globalThis.ssRefreshBests = () => { showBests(); levelDots(); if (typeof mmPanel === 'function') try { mmPanel(); } catch (e) {} };   // (the Wavedash copy's cloud save can come back after the menu is up)
 const chalBox = document.getElementById('chal'), chalBan = document.getElementById('chalDone');
 const TICK = '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4.8 8.3l2.2 2.2 4.2-4.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const RING = '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
