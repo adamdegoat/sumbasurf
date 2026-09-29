@@ -542,13 +542,19 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260929-1058</small>
+    <small id="build">build 260929-1136</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-29-tougher', date: '29 Sep 2026', time: '11:36 am', title: 'Tougher waves, fairer judging', items: [
+      'Batu Hitam and Karang Hiu bite back: sit too deep and the foam ball or the lip will get you.',
+      'Barrels last 3 to 5 seconds, then the wave spits you out onto the open face and you ride on.',
+      'Judges reward the harder waves: the same ride scores more at a heavy spot than on the beginner wave.',
+      'Best scores start fresh so everyone is judged the same way.',
+    ] },
     { id: '2026-09-29-stall', date: '29 Sep 2026', time: '1:03 am', title: 'A real stall', items: [
       'STALL now bites hard and you can see it: you sit back, the nose lifts and your hand drags in the wave.',
       'Stall too long and the board starts to wobble. Let go in time or the tail sinks and you fall.',
@@ -756,6 +762,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=855"></script>
+<script type="module" src="js/game.js?v=857"></script>
 </body>
 </html>

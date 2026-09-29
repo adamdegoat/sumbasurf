@@ -2,19 +2,19 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=166';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=167';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=167';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=168';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=16';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=91';
-import { villa, VILLA } from './villa.js?v=135';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=92';
+import { villa, VILLA } from './villa.js?v=136';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=49';
-import { wildlife } from './wildlife.js?v=53';
+import { crew } from './crew.js?v=50';
+import { wildlife } from './wildlife.js?v=54';
 import { droneShow } from './show.js?v=13';
 
 const Q = new URLSearchParams(location.search);
@@ -348,8 +348,8 @@ function updateWaves(dt) {
       // too deep by then, the foam ball gets you first). Real barrels last a few seconds; a perfectly even tube went on for
       // half a minute. A barrel spits after 4.5-6.5 s
       if (rider && rider.wave === w && rider.inBarrel) {
-        if (!rider.spitAt) rider.spitAt = 4.5 + Math.random() * 2;
-        if ((rider.ride.tubeT || 0) > rider.spitAt) { rider.spitAt += 3; if (rider.s > -1.5 * C.H || (C.tube || 0) >= 0.8) { rider.spitOut = 1.8; if (w.spitT !== undefined) w.spitT = 0.25; } }   // (at the heavy spots the spit only blows you out if you're near the mouth; the friendly tubes forgive a deeper line)   // (and again every 3 s if you hang on in there)
+        if (!rider.spitAt) rider.spitAt = 3.2 + Math.random() * 1.8;   // (29 Sep 2026, his call: most barrels 3 to 5 s, was 4.5 to 6.5)
+        if ((rider.ride.tubeT || 0) > rider.spitAt) { rider.spitAt += 2.5; if (rider.s > -1.5 * C.H || (C.tube || 0) >= 0.8) { rider.spitOut = 1.8; w.secT = Math.max(w.secT || 0, 3 + Math.random() * 2); if (w.spitT !== undefined) w.spitT = 0.25; } }   // (spat out onto the open face: the next section waits a few seconds, so you ride on and carve before another barrel)   // (at the heavy spots the spit only blows you out if you're near the mouth; the friendly tubes forgive a deeper line)   // (and again every 3 s if you hang on in there)
       } else if (rider && rider.wave === w && !(rider.ride.tubeT > 0)) rider.spitAt = 0;
       if (w.secK === undefined || w.secK <= 0) { w.secT -= dt; if (w.secT <= 0) { w.secK = 1.1; w.secA = w.secSoft ? C.softA : 1; w.secSoft = false; w.secT = 5 + Math.random() * 5; if (w.spitT !== undefined) w.spitT = 0.25; } }   // (a heavy wave's section throws hard over you: race it or it closes on you)
       else { w.secK -= dt; const ph = 1 - w.secK / 1.1, A = C.burst; rate *= ph < 0.75 ? 1 + A * (w.secA || 1) * Math.sin(Math.PI * ph / 0.75) : 1 - 0.4 * (w.secA || 1); }
@@ -521,9 +521,9 @@ function surfSteer(sx, stall) {
 const LEVELS = [['Amateur', 5, '5.0 to 6.9'], ['Advanced', 7, '7.0 to 8.4'], ['Pro Surfer', 8.5, '8.5 and up']];
 const levelOf = (v) => { let k = -1; LEVELS.forEach(([, t], i) => { if (v >= t) k = i; }); return k; };
 // your best ride per level, kept on this phone (quietly does nothing if storage is blocked)
-// (best5: the stricter judge of 28 Sep 2026 started everyone's bests afresh; the old best4 scores aren't comparable)
-const bestFor = (m) => { try { return +localStorage.getItem('balisurf.best5.' + m) || 0; } catch (e) { return 0; } };
-const saveBest = (m, v) => { try { localStorage.setItem('balisurf.best5.' + m, String(v)); } catch (e) {} showBests(); if (typeof mmPanel === 'function') mmPanel(); };
+// (best6: the wave-difficulty judging of 29 Sep 2026 started everyone's bests afresh again, his call; best5 before it, best4 before 28 Sep)
+const bestFor = (m) => { try { return +localStorage.getItem('balisurf.best6.' + m) || 0; } catch (e) { return 0; } };
+const saveBest = (m, v) => { try { localStorage.setItem('balisurf.best6.' + m, String(v)); } catch (e) {} showBests(); if (typeof mmPanel === 'function') mmPanel(); };
 // moments other code can listen for (the Wavedash copy's saves, badges and leaderboards; on sumbasurf.app nothing listens)
 const ssEvent = (n, d) => { try { dispatchEvent(new CustomEvent('ss:' + n, { detail: d })); } catch (e) {} };
 function showBests() {

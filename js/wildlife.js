@@ -7,7 +7,7 @@
 // Everything is in the world frame (the waves' frame), low-poly and instanced, and only runs while the villa is shown.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { heightAt } from './surf.js?v=167';
+import { heightAt } from './surf.js?v=168';
 
 const clean = (g) => { g = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); if (!g.attributes.normal) g.computeVertexNormals(); return g; };   // (every piece the same attributes, or they won't merge)
 // colour a geometry: dark on top, pale underneath (countershading, like the real animals)

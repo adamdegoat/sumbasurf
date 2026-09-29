@@ -172,6 +172,7 @@ export function scoreRide(r, fell = false, detail = false, old = false) {
   const flow = Math.min(0.4, r.speed * 0.015), finish = r.end && !fell ? 0.4 : 0;
   raw += variety + flow + finish;
   if (fell) raw *= 0.85;
+  raw *= r.judge ?? 1;   // (29 Sep 2026, his call: the harder the wave, the more the same ride is worth, like real judging: see CONDITIONS judge)
   let score = 10 * (1 - Math.exp(-raw / JUDGE_K));
   const strong = ms.filter((m) => m.strong && m.name !== 'TURN'), strongKinds = new Set(strong.map((m) => m.name.replace('AIR 360', 'AIR'))).size;
   const excellentOk = old || strongKinds >= 2 || strong.length >= 3;
@@ -325,6 +326,7 @@ export class Rider {
       // once you've slowed right down and the board stops planing: the tail sinks under you (a wobble first, then you fall)
       this.stalling = inp.stall || 0;
       this.stallT = this.stalling ? (this.stallT || 0) + h : 0;
+      if (this.spitOut > 0 && this.inBarrel) this.stalling = 0;   // (the spit blows you out: no braking against it)
       if (this.stalling) { const bite = 1 + (P.stallBite ?? 1.1) * Math.exp(-this.stallT / 0.45), sd = P.stallDrag * bite * this.stalling * Math.min(1, Math.abs(along) / 2) * Math.sign(along); ax -= sd * dx; az -= sd * dz; }
       { const vr = Math.hypot(rx, rz); if (this.stalling && vr < (P.planeV ?? 3.6)) this.bogT = (this.bogT || 0) + h; else this.bogT = Math.max(0, (this.bogT || 0) - 2.5 * h);
         this.bogK = Math.min(1, this.bogT / BOG_FALL);
@@ -337,7 +339,7 @@ export class Rider {
         const want = (-1.3 * C.H - this.s) * 0.6, vT = Math.hypot((w.peelRate || C.peel) + want, cw);
         // (for the first few seconds only: a real tube doesn't hold anyone forever. It fades out from 3 s to 6 s in there,
         //  then staying in is all your own pumping and stalling: with it for good, barrels lasted 20-35 s)
-        const hold = C.tube * Math.max(0, 1 - Math.max(0, (this.ride.tubeT || 0) - 3) / 3) * (1 - 0.85 * (this.stalling || 0));   // (a stall overrides the tube's hold: you really do drop back deeper)
+        const hold = C.tube * Math.max(0, 1 - Math.max(0, (this.ride.tubeT || 0) - 2) / 2.5) * (1 - 0.85 * (this.stalling || 0));   // (29 Sep 2026: fades from 2 s to 4.5 s, was 3 to 6: shorter, truer barrels)   // (a stall overrides the tube's hold: you really do drop back deeper)
         const sp = Math.hypot(this.vx, this.vz) || 1, push = Math.max(-5, Math.min(5, 2 * hold * (vT - sp)));
         ax += push * this.vx / sp; az += push * this.vz / sp;   // along your line, like the push of a pump (a sideways shove, the fins would just cancel)
       }
@@ -499,7 +501,7 @@ export class Rider {
       }
       if (this.trick) { this.trick.t += h; if (this.trick.t > 1.4) this.trick = null; }
       // the end of the wave: it backs off and the barrel breathes out (the spit), shooting whoever's inside out onto the shoulder
-      if (this.spitOut > 0) { this.spitOut -= h; if (this.inBarrel && this.v < 1.9 * C.speed) { const k = 1 + 1.4 * h; this.vx *= k; this.vz *= k; } }
+      if (this.spitOut > 0) { this.spitOut -= h; if (this.inBarrel && this.v < 2.1 * C.speed) { const k = 1 + 2.4 * h; this.vx *= k; this.vz *= k; } }   // (29 Sep 2026: a stronger blow, and a stall can't hold you in against it: see the stall above)
       // the close-out reaches you: the lip comes down on the section you're riding and it all turns to whitewater. The
       // ride's over (you rode it right to the end: full credit)
       if (w.closing && w.closeMask && w.closeMask(s) > 0.5) { this.ride.end = 1; return this.out('Closed out: you rode it right to the end'); }
@@ -512,6 +514,7 @@ export class Rider {
   lostSpeed(h) {
     this.lowT = (this.v < 2.2 || (!this.onFace && this.v < 3.2)) ? this.lowT + h : 0;
     if (this.lowT > 0.6) { if (this.ride.t > 0 && this.wave && (this.wave.closing || (this.wave.endBy === 'beach' && this.wave.endK < 0.8))) { this.ride.end = 1; return this.out('It closed out behind you: you rode it to the end'); }   // (out ahead of it on the flats in the last stretch before the sand, as it closes out: you did ride it to the end)
+      if (this.ride.t >= 12) { this.ride.end = 1; return this.out('The wave backed off: you rode it out'); }   // (29 Sep 2026: after a long ride, the wave leaving you is the end of the line, not a miss)
       this.out(this.ride.t > 0 ? 'Lost speed: the wave left you' : 'Missed it'); }
   }
 
@@ -586,7 +589,7 @@ export class Rider {
   // move again is worth less and less (the third turn of a kind is worth a quarter of the first), different kinds of
   // big move earn a variety bonus, a clean finish a little. 9s are rare, a 10 needs everything. detail = the judges'
   // sheet: what counted, each line's share of the score (they add up to it).
-  liveScore(fell = false, detail = false) { return scoreRide(this.ride, fell, detail); }
+  liveScore(fell = false, detail = false) { if (this.wave && this.ride.judge === undefined) this.ride.judge = this.wave.cond.judge ?? 1; return scoreRide(this.ride, fell, detail); }
   wipe(why) {
     // taken by the closeout at the very end, still on your feet: that's riding the wave to its end, not a fall
     if (this.state === 'RIDE' && this.wave && this.wave.closing && /whitewater|foam ball|lip|tube/.test(why)) { this.ride.end = 1; return this.out('Closed out: you rode it right to the end'); }   // (once it closes out the whole section throws at once: whatever it does to you then is the wave ending, not a mistake)
