@@ -1857,7 +1857,8 @@ function updateHUD(dt) {
   if (endT >= 0) {
     endT += dt;
     const showAt = st === 'WIPE' ? 1.4 : rider.ride && rider.ride.t > 0 ? FIN_HOLD + 0.35 : 0.2;   // (after a ride, once you've kicked out and are settling onto the board)
-    if (endT >= showAt && ui.msg.style.display !== 'flex') { ui.msg.style.opacity = 0; ui.msg.style.display = 'flex'; requestAnimationFrame(() => (ui.msg.style.opacity = 1)); }
+    if (endT >= showAt && ui.msg.style.display !== 'flex') { if (chalBan) { chalBan.classList.remove('on'); clearTimeout(chalBanT); }   // (the new-level banner steps aside as the score comes up: it sat on top of the score, and the score screen shows the level anyway)
+      ui.msg.style.opacity = 0; ui.msg.style.display = 'flex'; requestAnimationFrame(() => (ui.msg.style.opacity = 1)); }
     if (endT > showAt + (st === 'WIPE' ? 4.6 : 4.0) && !spec && !contestHold) spawnRider();   // (in a contest, contest.js says what comes next)   // (long enough to read the judges' sheet)
   }
 }
