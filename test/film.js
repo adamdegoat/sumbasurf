@@ -8,6 +8,7 @@ const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const G = () => window.__g;
 const NATIVE_RANDOM = window.__nativeRandom || (window.__nativeRandom = Math.random);   // (the browser's own, kept the first time this loads: a take seeds Math.random and must hand the real one back)
 let W = 1080, H = 1920; const FPS = 30;
+const NOHINT = { on: false }; export const setHints = (on) => { NOHINT.on = !on; };   // (a trailer can leave the warning line out)
 const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const cx = cv.getContext('2d');
 let saved = null;
 export function setup(w = 1080, h = 1920) {
@@ -55,7 +56,7 @@ function draw(fov, body, crop, chase) {
       cx.fillStyle = 'rgba(246,236,220,.7)'; cx.fillRect(cxm - u, cy - 3 * u, 2 * u, 14 * u);
       cx.beginPath(); cx.arc(cxm + k * 60 * u, cy + bh / 2, 7 * u, 0, Math.PI * 2); cx.fillStyle = Math.abs(k) > 0.55 ? '#ff8e6e' : '#f6ecdc'; cx.fill(); cx.lineWidth = 2 * u; cx.strokeStyle = '#15110c'; cx.stroke(); cx.restore(); } }
   const hr = G().rider, ht = !body || !hr || hr.state !== 'RIDE' ? '' : (hr.pearlK || 0) > 0.25 ? (hr.noseHard ? 'Turning too hard on the nose: ease off, walk back' : 'Nose digging in: walk back') : (hr.shoulderK || 0) > 0.4 ? 'Out on the shoulder: walk back, STALL to the curl' : '';
-  if (ht) {   // the game's nose-ride warning line (#hint in index.html: top centre, white, semibold), on your view only
+  if (ht && !NOHINT.on) {   // the game's nose-ride warning line (#hint in index.html: top centre, white, semibold), on your view only
     const fs = Math.round(H * 0.036); cx.save(); cx.font = `600 ${fs}px "Barlow", "Helvetica Neue", sans-serif`; cx.textAlign = 'center'; cx.textBaseline = 'top';
     cx.shadowColor = 'rgba(0,0,0,.6)'; cx.shadowBlur = fs * 0.3; cx.fillStyle = '#fff'; cx.fillText(ht, W / 2, H * 0.035); cx.restore(); }
 }

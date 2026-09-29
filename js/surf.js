@@ -41,7 +41,7 @@ export const RIDE = {
 //             drift early; less grip on steep heavy waves
 //   longboard 9'2": paddles fast and catches waves early; very stable and glides; slow, wide turns; no snaps or airs
 //   gun       9'6" big-wave board: paddles into huge waves early; holds a line at high speed with lots of grip; stiff turns
-const BASE = { ...RIDE };
+const BASE = { ...RIDE, walk: false };   // (walk: false here, or a longboard picked earlier left every board walking to the nose on PUMP, found 29 Sep 2026)
 const BOG_FALL = 1.1;
 const NOSE_STEP = 0.38, NOSE_BACK = 0.24, PEARL_T = 0.8, WOB_MAX = 0.3, WOB_STEER = 3.2;   // (the rock at the nose: how far it can tip before you fall, rad; how hard your thumb pushes it back)   // (one cross-step up or down the longboard, s; how long the nose can be out of the pocket before it digs in)   // seconds a board can sit below planing speed in a stall before the tail sinks and you fall
 export const BOARDS = {
