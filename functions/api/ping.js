@@ -31,6 +31,20 @@ export async function onRequestPost({ request, env }) {
   let b = {}; try { b = JSON.parse(await request.text()) || {}; } catch (e) {}   // (sent as plain text: the Wavedash copy lives on another address, and plain text needs no extra permission round trip)
   if (!b || typeof b !== 'object') b = {};
   const ip = request.headers.get('cf-connecting-ip') || '';
+  if (b.kind === 'fb') {   // feedback from the menu: the player's own words (and any name they like) do reach the chat, cut to size, one a minute each
+    if (env.KV && ip) { if (await env.KV.get('fb:' + ip)) return none; await env.KV.put('fb:' + ip, '1', { expirationTtl: 60 }); }
+    const clean = (v, n) => String(v || '').replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, '').trim().slice(0, n);
+    const text = clean(b.text, 500), name = clean(b.name, 40).replace(/\n/g, ' ');
+    if (text.length < 2) return none;
+    try {
+      const chat = await chatId(env); if (!chat) return none;
+      let country = request.cf && request.cf.country || '';
+      try { country = new Intl.DisplayNames(['en'], { type: 'region' }).of(country) || country; } catch (e) {}
+      const dev = DEV.includes(b.dev) ? b.dev : '', where = [country, dev, b.host === 'wavedash' ? 'on Wavedash' : ''].filter(Boolean).join(', ');
+      await tg(env, chat, `Feedback from ${name || 'someone'}${where ? ` (${where})` : ''}:\n${text}`);
+    } catch (e) {}
+    return none;
+  }
   if (env.KV && ip) { if (await env.KV.get('ip:' + ip)) return none; await env.KV.put('ip:' + ip, '1', { expirationTtl: 60 }); }
   try {
     const chat = await chatId(env); if (!chat) return none;

@@ -104,14 +104,32 @@
     padding: 14px 18px 12px; color: var(--sand); font-family: var(--body); -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
   .pnHead { display: flex; justify-content: space-between; align-items: center; }
   .pnHead b { font: 700 24px/1 var(--disp); letter-spacing: .01em; }
-  #pnClose { width: 48px; height: 48px; margin: -10px -12px -6px 0; display: grid; place-items: center; color: var(--sand); background: none; border: 0; cursor: pointer; touch-action: manipulation; }
-  #pnClose svg { width: 20px; height: 20px; }
+  #pnClose, #fbClose { width: 48px; height: 48px; margin: -10px -12px -6px 0; display: grid; place-items: center; color: var(--sand); background: none; border: 0; cursor: pointer; touch-action: manipulation; }
+  #pnClose svg, #fbClose svg { width: 20px; height: 20px; }
   .pnTabs { display: flex; gap: 6px; margin: 6px 0 2px; } .pnTabs button { min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(253,247,238,.2); background: none; color: rgba(246,236,220,.75); font: 600 14px/1 var(--disp); letter-spacing: .02em; cursor: pointer; touch-action: manipulation; }
   .pnTabs button.on { border-color: #ffcf8a; color: #ffcf8a; background: rgba(255,207,138,.12); }
   .pnEntry { margin-top: 14px; } .pnEntry:first-of-type { margin-top: 8px; }
   .pnDate { font: 700 13px/1 var(--disp); letter-spacing: .08em; text-transform: uppercase; color: #ffcf8a; }
   .pnTitle { font: 600 16px/1.2 var(--disp); margin: 3px 0 4px; }
   .pnEntry ul { margin: 0; padding-left: 18px; } .pnEntry li { font-size: 13px; line-height: 1.4; color: rgba(246,236,220,.86); margin: 2px 0; }
+  /* feedback: a second quiet link beside the patch notes; the player's name (anything they like) and a message go to
+     the owner's Telegram through /api/ping (his call 30 Sep 2026) */
+  #fbBtn { position: fixed; z-index: 9; right: max(116px, calc(env(safe-area-inset-right) + 112px)); bottom: max(12px, calc(env(safe-area-inset-bottom) + 8px));
+    font: 600 12px/1 var(--disp); letter-spacing: .08em; text-transform: uppercase; color: rgba(253,247,238,.78); background: rgba(10,20,26,.38);
+    border: 1px solid rgba(253,247,238,.24); border-radius: 13px; padding: 7px 12px 6px; cursor: pointer; touch-action: manipulation; }
+  body.playing #fbBtn, body.playing #fb { display: none !important; }
+  #fb { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgba(5,10,14,.6);
+    padding: max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  #fb[hidden] { display: none; }
+  #fb label { display: block; margin: 10px 0 5px; font: 600 13px/1 var(--disp); letter-spacing: .08em; text-transform: uppercase; color: rgba(246,236,220,.7); }
+  #fb input, #fb textarea { width: 100%; box-sizing: border-box; background: rgba(253,247,238,.07); border: 1px solid rgba(253,247,238,.22); border-radius: 10px;
+    color: var(--sand); font: 500 16px/1.35 var(--body); padding: 10px 12px; outline: none; user-select: text; -webkit-user-select: text; touch-action: manipulation; }
+  #fb input:focus, #fb textarea:focus { border-color: #ffcf8a; }
+  #fb textarea { height: 110px; resize: none; }
+  .fbFoot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 12px; }
+  #fbNote { font-size: 13px; color: rgba(246,236,220,.7); }
+  #fbSend { min-height: 44px; padding: 0 22px; border-radius: 999px; border: 0; background: #ffcf8a; color: #15110c; font: 700 16px/1 var(--disp); letter-spacing: .04em; text-transform: uppercase; cursor: pointer; touch-action: manipulation; }
+  #fbSend:disabled { opacity: .45; cursor: default; }
   #build { display: block; margin-top: 14px; color: rgba(253,247,238,.38); font-size: 10px; }
   #fps { bottom: 4px; left: 50%; transform: translateX(-50%); color: var(--dim); font-size: 10px; }
   body:not(.playing) .ctl { display: none !important; }
@@ -318,7 +336,7 @@
   body.live #rotate::before { opacity: 0; }
   @media (orientation: portrait) and (max-width: 900px) {
     body:not(.desk) #rotate { display: flex; }   /* (a computer's narrow window just plays) */
-    body:not(.desk) :is(#start, .hud, .ctl, .vui, #msg, #fBubble, #soundTip, #pnBtn, #pn) { visibility: hidden !important; }
+    body:not(.desk) :is(#start, .hud, .ctl, .vui, #msg, #fBubble, #soundTip, #pnBtn, #pn, #fbBtn, #fb) { visibility: hidden !important; }
   }
   body.phoneonly #rotate { display: none !important; }
   #rotate .rtName { font: 800 46px/.9 var(--disp); letter-spacing: -.01em; text-shadow: 0 2px 16px rgba(0,0,0,.35); }
@@ -495,7 +513,8 @@
     #start .spotList .best { grid-row: 1 / span 2; align-self: center; } #start .spotList .best b { font-size: 14px; } #start .spotList .wg { height: 13px; } #start .spotList #goVilla svg { width: 22px; height: 22px; padding: 4px; }
     #start .mmPanel { padding: 10px 16px; margin-bottom: 28px; }   /* (only the right panel stops short: Patch notes sits below it; the spot list keeps its full height) */ #start .mmBig { font-size: 38px; } #start .mmBB { display: none; } #start .mmActs #goSurf { min-height: 46px; } #start .mmActs #goSurf span { font-size: 22px; }
     #start .mmPicks { margin-top: 8px; padding-top: 8px; } #start .mmPicks .blabel { display: none; }
-    #pnBtn { bottom: max(5px, calc(env(safe-area-inset-bottom) + 3px)); right: max(10px, calc(env(safe-area-inset-right) + 8px)); padding: 5px 10px 4px; font-size: 11px; }   /* (back in its corner, his call 28 Sep 2026: the menu stops short of it, below) */
+    #pnBtn { bottom: max(5px, calc(env(safe-area-inset-bottom) + 3px)); right: max(10px, calc(env(safe-area-inset-right) + 8px)); padding: 5px 10px 4px; font-size: 11px; }
+    #fbBtn { bottom: max(5px, calc(env(safe-area-inset-bottom) + 3px)); right: max(101px, calc(env(safe-area-inset-right) + 99px)); padding: 5px 10px 4px; font-size: 11px; }   /* (back in its corner, his call 28 Sep 2026: the menu stops short of it, below) */
   }
   /* a narrow phone on its side (iPhone SE and the like, 667 wide): the drawing and the long line go, the name stays on
      one line, and boards and stance sit two to a row, so nothing piles up behind START SURFING */
@@ -570,18 +589,30 @@
   <p id="homeTip" hidden>For full screen: tap <b>Share</b>, then <b>Add to Home Screen</b>, and play from the icon.</p>
 </div>
 <button id="pnBtn" type="button" aria-haspopup="dialog" aria-controls="pn">Patch notes<i id="pnDot" hidden></i></button>
+<button id="fbBtn" type="button" aria-haspopup="dialog" aria-controls="fb">Feedback</button>
+<div id="fb" role="dialog" aria-modal="true" aria-label="Feedback" hidden>
+  <div class="pnBox">
+    <div class="pnHead"><b>Feedback</b><button id="fbClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
+    <label for="fbName">Your name</label><input id="fbName" maxlength="40" autocomplete="off" placeholder="Anything you like">
+    <label for="fbText">Your feedback</label><textarea id="fbText" maxlength="500" placeholder="What should we fix or add?"></textarea>
+    <div class="fbFoot"><span id="fbNote"></span><button id="fbSend" type="button" disabled>Send</button></div>
+  </div>
+</div>
 <div id="pn" role="dialog" aria-modal="true" aria-label="Patch notes" hidden>
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260930-0012</small>
+    <small id="build">build 260930-0047</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-30-feedback', date: '30 Sep 2026', time: '12:46 am', title: 'Send us feedback', items: [
+      'New Feedback button in the menu corner. Tell us what to fix or add, with any name you like. We read every one.',
+    ] },
     { id: '2026-09-29-noseview', date: '29 Sep 2026', time: '10:49 pm', title: 'Fix: a clear view on the nose', items: [
       'Walking up the longboard and on a Hang Ten, your own shoulders no longer cut into your view, even when you lean and wobble. On the nose you keep your head up and look ahead at the wave, like a real longboarder.',
     ] },
@@ -821,6 +852,22 @@
   for (const b of document.querySelectorAll('.pnTabs button')) onTap(b, () => pnShow(b.dataset.look === '1'));
   onTap(pn, (e) => { if (e.target === pn) close(); });   // (outside the box; a scroll inside it moves too far to count as a tap)
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pn.hidden) close(); });
+  // feedback (see #fbBtn): sent as plain text so the Wavedash copy, on another address, can send it too
+  const fb = document.getElementById('fb'), fbBtn = document.getElementById('fbBtn'), fbName = document.getElementById('fbName'), fbText = document.getElementById('fbText'), fbSend = document.getElementById('fbSend'), fbNote = document.getElementById('fbNote');
+  const fbOpen = () => { fb.hidden = false; fbNote.textContent = ''; fbText.focus(); }, fbClose = () => { fb.hidden = true; fbBtn.focus(); };
+  const fbCheck = () => { fbSend.disabled = fbText.value.trim().length < 2; };
+  fbText.addEventListener('input', fbCheck);
+  fb.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Escape') fbClose(); });   // (typing never reaches the game's keys)
+  onTap(fbBtn, fbOpen); onTap(document.getElementById('fbClose'), fbClose);
+  onTap(fb, (e) => { if (e.target === fb) fbClose(); });
+  onTap(fbSend, () => {
+    if (fbSend.disabled) return; fbSend.disabled = true;
+    const wd = /\.wavedashcdn\.com$/.test(location.hostname), ua = navigator.userAgent, touch = navigator.maxTouchPoints > 1;
+    const dev = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && touch) || (/Android/i.test(ua) && !/Mobile/i.test(ua)) ? 'tablet' : /iPhone|Android|Mobile/i.test(ua) ? 'phone' : touch ? 'touchscreen computer' : 'computer';
+    const body = JSON.stringify({ kind: 'fb', name: fbName.value.trim(), text: fbText.value.trim(), dev, host: wd ? 'wavedash' : 'app' });
+    fetch((wd ? 'https://sumbasurf.app' : '') + '/api/ping', { method: 'POST', body, mode: wd ? 'no-cors' : 'same-origin' })
+      .then(() => { fbText.value = ''; fbNote.textContent = 'Sent. Thank you!'; }, () => { fbNote.textContent = 'Could not send. Try again in a moment.'; fbCheck(); });
+  });
 })();
 </script>
 <div id="rotate">
