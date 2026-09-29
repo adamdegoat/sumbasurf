@@ -708,21 +708,58 @@ function toMenu() {
 }
 document.getElementById('menu').addEventListener('touchstart', (e) => { e.preventDefault(); toMenu(); }, { passive: false });
 document.getElementById('menu').addEventListener('click', toMenu);
-// someone's playing: a note to the owner's Telegram (through /api/ping on Cloudflare), once per visit: 'new player' the
-// first time a phone or computer plays, 'back again' on a later day. Never for the owner's own devices (open the game
-// once with ?me=1 to mark one), never from localhost or GitHub Pages. Nothing personal is sent: which spot, that's all.
-let helloSent = false;
+// someone played: ONE note to the owner's Telegram (through /api/ping on Cloudflare) when they leave, i.e. when the page
+// is hidden after they started surfing (his call 29 Sep 2026: nothing when they come in). It says new or returning,
+// the device, where they came from, how long, waves, best, spots and boards. A second note only if they come back after
+// a break and play on ('Same player again'). Never for the owner's own devices (open the game once with ?me=1 to mark
+// one), never from localhost or GitHub Pages. Nothing personal: no names, no addresses, only names from fixed lists.
+const PING_OK = /(^|\.)sumbasurf\.app$|\.pages\.dev$|\.wavedashcdn\.com$/.test(location.hostname), ON_WD = /\.wavedashcdn\.com$/.test(location.hostname);
+let visit = null;
 try { const me = (location.search.match(/[?&]me=(1|0|claude)\b/) || [])[1]; if (me === '0') localStorage.removeItem('sumbasurf.me'); else if (me) localStorage.setItem('sumbasurf.me', me); } catch (e) {}   // (?me=claude: the owner's assistant testing the live site: still sends, marked as such)
-function hello(where) {
-  if (helloSent || !/(^|\.)sumbasurf\.app$|\.pages\.dev$/.test(location.hostname)) return; helloSent = true;
-  let kind = 'new', who = '';
-  try { const me = localStorage.getItem('sumbasurf.me'); if (me === '1') return; if (me === 'claude') { who = 'claude'; kind = 'test'; throw 0; } const last = localStorage.getItem('sumbasurf.seen');
-    kind = last ? 'back' : 'new'; localStorage.setItem('sumbasurf.seen', new Date().toISOString().slice(0, 10)); } catch (e) {}   // (every visit is an alert, not once a day; the server still lets one device through only once every few minutes)
-  // (the device, as the game sees it: an iPad's browser says it's a Mac, so the server alone called iPads computers)
-  const ua = navigator.userAgent, touch = navigator.maxTouchPoints > 1;
-  const dev = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && touch) || (/Android/i.test(ua) && !/Mobile/i.test(ua)) ? 'tablet' : /iPhone|Android|Mobile/i.test(ua) ? 'phone' : touch ? 'touchscreen computer' : 'computer';
-  fetch('/api/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind, where, who, dev }), keepalive: true }).catch(() => {});
+// where this player came from, as a name from a fixed list: the app they tapped the link in (Instagram's own browser
+// names itself), else the page that sent them, else a link typed, saved or opened from the home screen
+function cameFrom() {
+  if (ON_WD) return 'Wavedash';
+  const ua = navigator.userAgent, q = (location.search.match(/[?&]utm_source=([a-z]+)/i) || [])[1] || '';
+  if (/Instagram/.test(ua) || /^ig|instagram/i.test(q)) return 'Instagram';
+  if (/FBAN|FBAV|FB_IAB/.test(ua) || /^fb|facebook/i.test(q)) return 'Facebook';
+  if (/musical_ly|TikTok|Bytedance/i.test(ua) || /tiktok/i.test(q)) return 'TikTok';
+  let h = ''; try { h = document.referrer ? new URL(document.referrer).hostname.replace(/^www\.|^m\.|^l\./, '') : ''; } catch (e) {}
+  if (h && h !== location.hostname) {
+    for (const [re, n] of [[/instagram\.com$/, 'Instagram'], [/facebook\.com$|fb\.com$|fb\.me$/, 'Facebook'], [/tiktok\.com$/, 'TikTok'], [/^google\.|\.google\./, 'Google'], [/bing\.com$|duckduckgo\.com$|yahoo\.|baidu\.com$|yandex\./, 'another search engine'],
+      [/youtube\.com$|youtu\.be$/, 'YouTube'], [/^x\.com$|^t\.co$|twitter\.com$/, 'X'], [/reddit\.com$/, 'Reddit'], [/t\.me$|telegram\.(org|me)$/, 'Telegram'], [/whatsapp\.com$|wa\.me$/, 'WhatsApp'], [/wavedash\.com$/, 'Wavedash']]) if (re.test(h)) return n;
+    return 'another website';
+  }
+  if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) return 'home screen app';
+  return 'a direct link';
 }
+function hello(where) {   // (called each time they start somewhere: the first time sets the visit up)
+  if (!PING_OK) return;
+  if (!visit) {
+    let kind = 'new', who = '';
+    try { const me = localStorage.getItem('sumbasurf.me'); if (me === '1') { visit = false; return; } if (me === 'claude') who = 'claude';
+      kind = localStorage.getItem('sumbasurf.seen') ? 'back' : 'new'; localStorage.setItem('sumbasurf.seen', new Date().toISOString().slice(0, 10)); } catch (e) {}
+    // (the device, as the game sees it: an iPad's browser says it's a Mac, so the server alone called iPads computers)
+    const ua = navigator.userAgent, touch = navigator.maxTouchPoints > 1;
+    const dev = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && touch) || (/Android/i.test(ua) && !/Mobile/i.test(ua)) ? 'tablet' : /iPhone|Android|Mobile/i.test(ua) ? 'phone' : touch ? 'touchscreen computer' : 'computer';
+    visit = { kind, who, dev, src: cameFrom(), ms: 0, since: performance.now(), waves: 0, best: 0, bestAt: '', spots: new Set(), boards: new Set(), sentAt: -1, sentMs: 0, sent: 0 };
+  }
+  if (visit) visit.spots.add(where);
+}
+function visitWave(score, where) { if (!visit) return; visit.waves++; visit.boards.add(boardType); if (score > visit.best) { visit.best = score; visit.bestAt = where; } }
+function bye() {
+  if (!visit || document.visibilityState !== 'hidden' || !visit.since) return;
+  visit.ms += performance.now() - visit.since; visit.since = 0;
+  if (visit.waves === visit.sentAt && visit.ms - visit.sentMs < 60e3) return;   // (nothing new since the last note: a quick look at another app)
+  const body = JSON.stringify({ kind: visit.kind, who: visit.who, dev: visit.dev, src: visit.src, host: ON_WD ? 'wavedash' : 'app', again: visit.sent > 0, mins: visit.ms / 60e3, waves: visit.waves, best: visit.best, bestAt: visit.bestAt, spots: [...visit.spots], boards: [...visit.boards] });
+  const url = (ON_WD ? 'https://sumbasurf.app' : '') + '/api/ping';
+  // (a beacon still goes out while the page is being closed; plain text, so the Wavedash copy needs no extra permission)
+  let ok = false; try { ok = navigator.sendBeacon(url, body); } catch (e) {}
+  if (!ok) fetch(url, { method: 'POST', body, keepalive: true, mode: ON_WD ? 'no-cors' : 'same-origin' }).catch(() => {});
+  visit.sentAt = visit.waves; visit.sentMs = visit.ms; visit.sent++;
+}
+addEventListener('visibilitychange', () => { if (!visit) return; if (document.visibilityState === 'hidden') bye(); else if (!visit.since) visit.since = performance.now(); });
+addEventListener('pagehide', bye);
 async function start(m, quick = false) {
   if (starting) return; starting = true; if (window.__g) window.__g.paused = false;
   hello(m === 'ranch' ? 'Sumba Ranch' : (SPOTS[m] && SPOTS[m].name) || m);
@@ -1971,7 +2008,7 @@ function updateHUD(dt) {
     const r = rider.ride;
     const prevBest = bestFor(mode), newBest = !spec && r.t > 0 && r.score > prevBest && prevBest > 0;   // (a friend's wave you watched is never yours: no best, no level, no leaderboard)
     if (!spec && r.t > 0 && r.score > prevBest) saveBest(mode, r.score);
-    if (!spec && (r.t > 0 || st === 'WIPE')) { session.waves++; session.total += r.score; session.best = Math.max(session.best, r.score); session.scores.push(r.score); if (r.barrel > 0.5) session.barrels++; }
+    if (!spec && (r.t > 0 || st === 'WIPE')) { visitWave(r.score, mode === 'ranch' ? 'Sumba Ranch' : (SPOTS[mode] && SPOTS[mode].name) || ''); session.waves++; session.total += r.score; session.best = Math.max(session.best, r.score); session.scores.push(r.score); if (r.barrel > 0.5) session.barrels++; }
     // heat total, like a contest: your best two waves count
     const two = [...session.scores].sort((a, b) => b - a).slice(0, 2), heat = two.reduce((a, b) => a + b, 0);
     // the score screen, trimmed (his call 28 Sep 2026): the score, how it ended (big after a wipeout: it says what went
