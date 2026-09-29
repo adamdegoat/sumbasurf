@@ -779,6 +779,7 @@ const POVCAM = { fwd: 0.1, up: 0.14, pitch: -0.5, drop: 0.08 };   // eye point a
 const _pq2 = new THREE.Quaternion(), popEye0 = new THREE.Vector3(), lastEye = new THREE.Vector3(), eyeCarry = new THREE.Vector3(); let lastEyeSt = ''; let tubeLook = 0, roofOff = 0, curtOff = 0, wallOff = 0;
 const pov = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0, pitch: -0.2, roll: 0, ready: false }, _eye = new THREE.Vector3(), _pe = new THREE.Euler(0, 0, 0, 'YXZ');
 const _gl = new THREE.Vector3();
+const walkEye = { p: new THREE.Vector3(), v: new THREE.Vector3(), n: 0, t: 0, k: 0 }, _weL = new THREE.Vector3(), _weA = new THREE.Vector3();
 function povCamera(dt) {
   if (!bones.head && surfer) surfer.traverse((o) => { if (o.isBone) bones[o.name] = o; });
   const standing = rider.standing || finishing(), st = rider.state;   // (kicking out at the end you're still on your feet: eyes on the water ahead, not up at the next wave)
@@ -828,6 +829,16 @@ function povCamera(dt) {
   if (st === 'RIDE' && lastEyeSt === 'POP') eyeCarry.subVectors(lastEye, _eye);
   if (st === 'RIDE' && rider.stateT < 0.4) _eye.addScaledVector(eyeCarry, Math.exp(-rider.stateT * 14)); else eyeCarry.set(0, 0, 0);
   lastEye.copy(_eye); lastEyeSt = st;
+  // walking up the longboard (29 Sep 2026, his report): the feet step four times but the head glides. The steps move
+  // you up the board in stop-start surges and the body's step clip bobs the head, so the eye (in the board's own frame)
+  // runs through a soft spring while you walk: a smooth glide up to the nose with a small bob, not jolt-stop-jolt
+  { const nv = noseV, moved = Math.abs(nv - walkEye.n) > 1e-4; walkEye.n = nv; walkEye.t = moved ? 0.35 : Math.max(0, walkEye.t - dt);
+    walkEye.k += ((standing && walkEye.t > 0 ? 1 : 0) - walkEye.k) * Math.min(1, dt * 12);
+    _pq2.copy(rig.quaternion).invert(); const L = _weL.copy(_eye).applyQuaternion(_pq2);
+    if (walkEye.k < 0.001 || snapCam || !pov.ready) { walkEye.p.copy(L); walkEye.v.set(0, 0, 0); }
+    else { const w = 7, h = Math.min(dt, 0.05); _weA.subVectors(L, walkEye.p).multiplyScalar(w * w).addScaledVector(walkEye.v, -2 * w); walkEye.v.addScaledVector(_weA, h); walkEye.p.addScaledVector(walkEye.v, h);
+      walkEye.p.x = L.x;   // (side to side as before: only the glide up the board and the bob are softened)
+      L.lerp(walkEye.p, walkEye.k); _eye.copy(L.applyQuaternion(rig.quaternion)); } }
   if (!pov.ready || snapCam) { pov.pos.copy(_eye); pov.vel.set(0, 0, 0); pov.yaw = yawT; pov.ready = true; }
   else {
     // (a plain exponential follow: stays glued to your head through the pop-up, just takes the jitter off; the old
