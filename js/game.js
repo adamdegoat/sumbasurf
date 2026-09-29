@@ -226,11 +226,12 @@ let surfer = null, mixer = null, clips = {}, curClip = null;
 const CUT = { value: 0.21 };   // just the neck and head (at 42 cm it cut your arms off at the elbow: floating hands)
 // which skeleton bones are "arm" (upper arm down to the fingertips): the cutaway never removes those, so you always see
 // whole arms, while your chest, shoulders and neck near the camera are hidden (they were showing as a stretched skin fin)
+const BODYHIDE = { value: 0 }; let bodyHideV = 0;   // your own body dissolved out of your view (0 shown .. 1 gone): up on the longboard's nose (29 Sep 2026, his call)
 const FADE = { value: new THREE.Vector3(0.32, 0.64, 0.25) };   // your own body right at the lens fades out between x and y metres (not a hard cut); inside faces nearer than z aren't drawn
 const ARMBONE = { value: new Float32Array(96) }, LEGBONE = { value: new Float32Array(96) }, HIDELEGS = { value: 0 }, ARMTH = { value: 0.12 }, ARMCUT = { value: 0 }, WATERY = { value: -99 };
 function cutaway(m) {
   m.onBeforeCompile = (sh) => {
-    sh.uniforms.uCut = CUT; sh.uniforms.uFade = FADE; sh.uniforms.uArmBone = ARMBONE; sh.uniforms.uNear = { value: m.userData.near || 0 }; sh.uniforms.uArmCut = ARMCUT; sh.uniforms.uWaterY = WATERY; sh.uniforms.uLegBone = LEGBONE; sh.uniforms.uHideLegs = HIDELEGS; sh.uniforms.uArmTh = ARMTH;
+    sh.uniforms.uCut = CUT; sh.uniforms.uFade = FADE; sh.uniforms.uBodyHide = BODYHIDE; sh.uniforms.uArmBone = ARMBONE; sh.uniforms.uNear = { value: m.userData.near || 0 }; sh.uniforms.uArmCut = ARMCUT; sh.uniforms.uWaterY = WATERY; sh.uniforms.uLegBone = LEGBONE; sh.uniforms.uHideLegs = HIDELEGS; sh.uniforms.uArmTh = ARMTH;
     sh.uniforms.uCap = { value: new THREE.Color(m.userData.cap || 0x7a4e36).convertSRGBToLinear() };
     sh.vertexShader = 'varying vec3 vCutW; varying float vArm; varying float vLeg; uniform float uArmBone[96]; uniform float uLegBone[96];\n' + sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
 vCutW = (modelMatrix * vec4(transformed, 1.0)).xyz;
@@ -240,7 +241,8 @@ vLeg = skinWeight.x * uLegBone[int(skinIndex.x)] + skinWeight.y * uLegBone[int(s
 #else
 vArm = 0.; vLeg = 0.;
 #endif`);
-    sh.fragmentShader = 'uniform float uCut, uNear, uArmCut, uWaterY, uHideLegs, uArmTh; uniform vec3 uCap, uFade;\nvarying vec3 vCutW; varying float vArm; varying float vLeg;\n' + sh.fragmentShader.replace('void main() {', `void main() {
+    sh.fragmentShader = 'uniform float uCut, uNear, uArmCut, uWaterY, uHideLegs, uArmTh, uBodyHide; uniform vec3 uCap, uFade;\nvarying vec3 vCutW; varying float vArm; varying float vLeg;\n' + sh.fragmentShader.replace('void main() {', `void main() {
+  if (uBodyHide > 0. && fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453) < uBodyHide) discard;   // (up on the longboard's nose your own body dissolves out of your view: its trimmed edges were right at the lens)
   vec3 cq = vCutW - cameraPosition; float cy = clamp(cq.y, -0.75, 0.);
   float armK = smoothstep(.3, .6, vArm), nearA = mix(smoothstep(mix(uFade.x, uFade.x * .5, armK) + uNear, mix(uFade.y, uFade.y * .55, armK) + uNear, length(cq)), 1., smoothstep(.7, .95, vArm));   // (forearm and hand always solid, the upper arm only fades right at the lens, the shoulder further out)   // (forearm and hand always solid: faded, the arm showed the sea through it as a band at the elbow)   // (the shorts fade further out: seen through a fading arm they showed as a teal ring)
   if (vArm < uArmTh && (length(cq - vec3(0., cy, 0.)) < uCut * 1.9 || length(cq) < uCut * 2.2)) discard;   // body near the eyes (any skin belonging to an arm or shoulder is kept whole: cutting it left holes)
@@ -1208,7 +1210,7 @@ function updateRig(dt, t) {
     setStance();
     surfer.position.set(0, -0.04 * clips.crouch.weight, -0.1);       // hips drop a little as the feet spread
     if (noseV > 0.001 || rider.stepDir) {   // cross-stepping up the longboard: forward a step at a time, the body rising a little and rocking side to side with each step
-      const run = board.position.z + BOARD_LENGTH(boardType) / 2 - 0.5, u = rider.stepU || 0, lift = Math.sin(Math.PI * u), sideS = (rider.noseStep || 0) % 2 ? 1 : -1;
+      const run = board.position.z + BOARD_LENGTH(boardType) / 2 - 0.2, u = rider.stepU || 0   /* (right out at the tip on a hang ten, toes over the nose: was 0.5 m short, his call 29 Sep 2026) */, lift = Math.sin(Math.PI * u), sideS = (rider.noseStep || 0) % 2 ? 1 : -1;
       surfer.position.z += noseV * run; surfer.position.y += 0.07 * lift; surfer.position.x += 0.04 * lift * sideS;
     }
   } else if (st === 'WIPE') {
@@ -2525,6 +2527,7 @@ function tick(dt) {
 const _bwA = new THREE.Vector3(), _bwB = new THREE.Vector3(), _bwC = new THREE.Vector3(), _bwN = new THREE.Vector3(), _bwU = new THREE.Vector3(), _bwV = new THREE.Vector3();
 function boardWater(dt) {
   const U = BOARD_WATER; U.uBTime.value += dt;
+  { const want = rider && rider.standing && ((rider.nose || 0) > 0.005 || rider.stepDir > 0) ? 1 : 0; bodyHideV += (want - bodyHideV) * Math.min(1, dt * 12); if (!rider) bodyHideV = 0; BODYHIDE.value = camera.layers.isEnabled(1) || mode === 'villa' ? 0 : bodyHideV; }   // (your body out of your view on the longboard's walk: BODYHIDE)
   ENV.uBDim.value.z = 0;
   if (!rider || !rig.visible || mode === 'villa' || (W.on && rider.state === 'WIPE')) { U.uWOn.value = 0; return; }
   rig.updateMatrixWorld(); const L = BOARD_LENGTH(boardType) * 0.46, bw = BOARD_WIDTH(boardType) * 0.5;
@@ -2569,6 +2572,7 @@ renderer.setAnimationLoop(() => {
   // pass 1: the world; pass 2: your body through its own lens (skipped when a test view shows the body in the world cam)
   const mir = MIRROR; if (mir) flipProj(camera);   // (a right-hand spot: the picture drawn flipped left to right)
   HIDELEGS.value = camera.layers.isEnabled(1) || mode === 'villa' ? 0 : 1;
+  BODYHIDE.value = camera.layers.isEnabled(1) || mode === 'villa' ? 0 : bodyHideV;   // (fades out in about a sixth of a second as your first step starts, back as you step off the last one: on the walk the trimmed arms were in view too)
   for (const h of hairMeshes) h.visible = camera.layers.isEnabled(1);   // (walking round the villa, your legs are yours again)
   // the ride's over (the score is up): your body settling back onto the board moves faster than your eyes follow, and
   // from just behind it you'd see your own back; it isn't drawn in your view until you're back in the lineup
