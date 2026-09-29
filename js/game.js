@@ -101,8 +101,8 @@ let stance = 'goofy'; try { if (localStorage.getItem('sumbasurf.stance') === 're
 const stanceName = () => (stance === 'regular' ? 'Regular' : 'Goofy');
 const BOARD_INFO = {
   // name, how it feels, what it's best for, and 1-5 ratings (paddling, speed, turning, stability, airs)
-  short: ['Shortboard', "6'2\" thruster. The high-performance board: sharp, snappy turns, snaps off the lip and airs. It's small, so it paddles slowly and you have to take off late and steep, and it loses speed if you stop pumping.", 'Tanjung Uma, Batu Hitam, Pantai Bintang, the Ranch', [2, 4, 5, 2, 5]],
-  fish: ['Fish', "5'8\" wide twin fin with a swallow tail. Loose and fast: planes easily, paddles well and flies down the line on soft or slow waves with little pumping. Turns are skatey and the tail drifts early; on steep, heavy waves it's twitchy and loses grip.", 'Pantai Kuda, Pantai Bintang, the Ranch', [4, 5, 4, 3, 4]],
+  short: ['Shortboard', "6'2\" thruster. The high-performance board: sharp, snappy turns, snaps off the lip and airs. It's small, so it paddles slowly and you have to take off late and steep, and it loses speed if you stop pumping.", 'Tanjung Uma, Batu Hitam, Watu Kanan, Karang Hiu, Pantai Bintang, the Ranch', [2, 4, 5, 2, 5]],
+  fish: ['Fish', "5'8\" wide twin fin with a swallow tail. Loose and fast: planes easily, paddles well and flies down the line on soft or slow waves with little pumping. Turns are skatey and the tail drifts early; on steep, heavy waves it's twitchy and loses grip.", 'Pantai Kuda, Watu Kanan, Pantai Bintang, the Ranch', [4, 5, 4, 3, 4]],
   long: ['Longboard', "9'2\" single fin. Smooth and relaxed: paddles fast and catches waves early, rock steady, glides forever. Turns are slow, wide arcs, like steering a boat, and it can't do snaps or airs. Clumsy in steep barrels.", 'Pantai Kuda (learning)', [5, 3, 1, 5, 0]],
   gun: ['Gun', "9'6\" big-wave board with a pointed nose and pin tail. Paddles into giant waves early, before they get too steep, and holds its line at high speed with lots of grip. Stiff, long turns; sluggish on small waves.", 'Gunung Laut', [5, 4, 2, 5, 2]],
 };
@@ -118,6 +118,7 @@ function boardPicker() {
     b.innerHTML = `<svg viewBox="0 0 120 34"><path d="${d}" fill="${fill}" stroke="${rail}" stroke-width="2.5"/><path d="M${t === 'gun' ? 8 : 26} 17 H${t === 'long' ? 112 : 96}" stroke="${rail}" stroke-width="1" opacity=".6"/></svg><span>${BOARD_INFO[t][0]}</span><small>${BOARD_INFO[t][2]}</small>`;
     const pick = (e) => { e.preventDefault(); e.stopPropagation(); useBoard(t); }; b.addEventListener('click', pick); b.addEventListener('touchend', pick, { passive: false }); box.appendChild(b); }
   for (const b of box.children) b.classList.toggle('on', b.dataset.board === boardType); document.getElementById('boardName').textContent = BOARD_INFO[boardType][0];
+  try { mmPanel(); } catch (e) {}   // (the BEST tags for the spot already chosen)
 }
 // the stance picker, next to Your villa on the start screen
 function stancePicker() {
@@ -657,8 +658,9 @@ function mmPanel() {
   $('mmKick').textContent = lvl; $('mmBig').textContent = name; $('mmKick').classList.toggle('nite', m === 'bintang'); $('mmDesc').textContent = desc ? desc + '.' : '';
   const v = bestFor(m), lv = levelOf(v), nx = LEVELS[lv + 1], dots = `<i>${[0, 1, 2].map((i) => `<b${i <= lv ? ' class="on"' : ''}></b>`).join('')}</i>`;
   $('mmLvl').innerHTML = v ? `<span class="chip">${dots}${lv >= 0 ? LEVELS[lv][0] : 'No level yet'}</span><span>Your best ${v.toFixed(1)}${nx ? `  \u00b7  ${(nx[1] - v).toFixed(1)} more for ${nx[0]}` : ''}</span>` : '<span>No waves here yet</span>';
-  const bb = Object.keys(BOARD_INFO).filter((t) => BOARD_INFO[t][2].includes(name) || (m === 'ranch' && /Ranch/.test(BOARD_INFO[t][2]))).map((t) => BOARD_INFO[t][0]);
+  const best = Object.keys(BOARD_INFO).filter((t) => BOARD_INFO[t][2].includes(name) || (m === 'ranch' && /Ranch/.test(BOARD_INFO[t][2]))), bb = best.map((t) => BOARD_INFO[t][0]);
   $('mmBB').innerHTML = bb.length ? `Best boards here: <b>${bb.join(', ')}</b>` : '';
+  for (const k of document.querySelectorAll('#boards [data-board]')) k.classList.toggle('best', best.includes(k.dataset.board));   // (and a BEST tag on those boards in the picker: seen on a phone too, where the line above is hidden)
   const hm = desc.match(/([\d.]+) m\b/), h = hm ? +hm[1] : 0;
   if (m === 'ranch' || !h) { $('mmScale').innerHTML = '<svg viewBox="0 0 200 240" aria-hidden="true"><text x="100" y="128" text-anchor="middle" fill="rgba(246,236,220,.55)" font-family="Barlow Condensed" font-weight="700" font-size="20" letter-spacing="2">YOU PICK THE WAVE</text></svg>'; return; }
   // one wave shape, the 15 m one, shrunk evenly for smaller spots: the size you see is the real size next to you
