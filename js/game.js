@@ -2,13 +2,13 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=185';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=187';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=186';
-import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=16';
+import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER } from './board.js?v=19';
 import { SurfAudio } from './audio.js?v=23';
 import { ranch, POOL } from './ranch.js?v=9';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=118';
-import { villa, VILLA } from './villa.js?v=150';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=120';
+import { villa, VILLA } from './villa.js?v=154';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
@@ -90,7 +90,7 @@ fit();
 
 // ---------- surfer on a board
 const rig = new THREE.Group(); scene.add(rig);           // board frame: +z along the board, +y out of the deck
-let board = makeBoard(); rig.add(board);
+let board = makeBoard('short', true); rig.add(board);
 // your board: the shortboard unless you've picked another (remembered on this phone). A longer board sits further forward
 // under you, so the nose reaches out ahead of your feet as on the real thing
 let boardType = 'short', boardTail = -0.9;
@@ -140,7 +140,7 @@ function applyStance() { stanceQ.setFromAxisAngle(WORLD_UP, physStance() === 're
 setTimeout(stancePicker, 0);
 function useBoard(t) {
   boardType = t; try { localStorage.setItem('sumbasurf.board', t); } catch (e) {}
-  rig.remove(board); board.geometry.dispose(); board = makeBoard(t); board.position.z = Math.max(0, (BOARD_LENGTH(t) - 1.88) * 0.33); board.scale.x = MIRROR ? -1 : 1; rig.add(board);   // (at a mirrored spot, mirrored back: the logo reads right)
+  rig.remove(board); board.geometry.dispose(); board = makeBoard(t, true); board.position.z = Math.max(0, (BOARD_LENGTH(t) - 1.88) * 0.33); board.scale.x = MIRROR ? -1 : 1; rig.add(board);   // (at a mirrored spot, mirrored back: the logo reads right)
   boardTail = board.position.z - BOARD_LENGTH(t) / 2 + 0.04; setBoard(t);
   for (const b of document.querySelectorAll('[data-board]')) b.classList.toggle('on', b.dataset.board === t);
   document.getElementById('boardName').textContent = BOARD_INFO[t][0]; if (document.body.classList.contains('playing') && mode !== 'villa') ui.cond.textContent = modeName(mode) + '  \u00b7  ' + BOARD_INFO[t][0] + '  \u00b7  ' + stanceName();
@@ -2506,7 +2506,24 @@ function tick(dt) {
     camera.lookAt(CX + M_SIT.lookX + 2 * sw, ey + M_SIT.lookY + 0.4 * Math.sin(T * 0.31), CZ - 40);
   }
   if (rider && tick.demo) { tick.demo.dispose(scene); tick.demo = null; }
+  boardWater(dt);
   fx.update(dt, camera.position);
+}
+// the water's surface under your board, for the board's foam line and its see-through underwater part (board.js
+// BOARD_WATER): three points of the sea under the nose, the tail and a rail, as a plane in world space
+const _bwA = new THREE.Vector3(), _bwB = new THREE.Vector3(), _bwC = new THREE.Vector3(), _bwN = new THREE.Vector3(), _bwU = new THREE.Vector3(), _bwV = new THREE.Vector3();
+function boardWater(dt) {
+  const U = BOARD_WATER; U.uBTime.value += dt;
+  ENV.uBDim.value.z = 0;
+  if (!rider || !rig.visible || mode === 'villa' || (W.on && rider.state === 'WIPE')) { U.uWOn.value = 0; return; }
+  rig.updateMatrixWorld(); const L = BOARD_LENGTH(boardType) * 0.46, bw = BOARD_WIDTH(boardType) * 0.5;
+  board.localToWorld(_bwA.set(0, 0, L)); board.localToWorld(_bwB.set(0, 0, -L)); board.localToWorld(_bwC.set(bw, 0, 0));
+  for (const p of [_bwA, _bwB, _bwC]) p.y = heightAt(waves, p.x, p.z);
+  _bwN.crossVectors(_bwU.subVectors(_bwB, _bwA), _bwV.subVectors(_bwC, _bwA)).normalize(); if (_bwN.y < 0) _bwN.negate();
+  if (!(_bwN.y > 0.2)) { U.uWOn.value = 0; return; }   // (a degenerate or silly plane: no effect rather than a wrong one)
+  board.localToWorld(_bwU.set(0, -0.01, 0));   // (the sea's slope from the physics, its height from the board's own hull amidships: where the board is seen to sit on the drawn water)
+  ENV.uBInv.value.copy(board.matrixWorld).invert(); ENV.uBDim.value.set(BOARD_LENGTH(boardType) * 0.5, BOARD_WIDTH(boardType) * 0.5 * Math.abs(board.scale.x || 1), 1, 0);   // (the water's foam round the board)
+  U.uWP.value.set(_bwN.x, _bwN.y, _bwN.z, _bwN.dot(_bwU)); U.uWOn.value = 1; U.uWCol.value.copy(ENV.uTurq.value).lerp(ENV.uDeep.value, 0.35);
 }
 // flipping the picture: the camera's projection mirrored left to right, and every triangle's facing with it (done at
 // the GL call, so the renderer's own bookkeeping stays as it is)

@@ -180,6 +180,7 @@ function proTake(name, mode, seed, n, boardT, plan, cbo, cam) {
         const pov = [c.position.clone(), c.quaternion.clone()];   // (the game lines your body up under its own camera next frame: it gets its camera back after the shot)
         c.position.copy(CH.p); c.lookAt(CH.l); c.updateMatrixWorld(); return { fov: cam.fov, chase: pov }; }
       const fov = gameFov(W / H);
+      if (cam && cam.noBody) return { fov, body: 0 };   // (just the board: no hands or legs in shot)
       if (cam && cam.line && r.wave) {   // in the tube, your eyes turn down the line: the lip over your head, the way out ahead (still your own view)
         const c = g.camera, want = r.inBarrel || (r.state === 'RIDE' && r.stateT > cam.line && r.spitOut > 0) ? 1 : 0; LN.k += (want - LN.k) * 0.05;
         if (LN.k > 0.01) { const Lh = r.wave.lipAt(r.s + 14), d = new THREE.Vector3(Lh[0] - c.position.x, 0, Lh[2] + 3 - c.position.z); if (Number.isFinite(d.x + d.z) && d.lengthSq() > 0.04) { d.normalize(); LN.dir = LN.dir ? LN.dir.lerp(d, 0.07).normalize() : d; }   // (the lip ahead can be off the end of the wave: then keep the last way)

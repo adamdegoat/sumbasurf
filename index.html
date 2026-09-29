@@ -575,13 +575,16 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260929-2059</small>
+    <small id="build">build 260929-2145</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-29-boardwater', look: true, date: '29 Sep 2026', time: '9:45 pm', title: 'Your board in the water', items: [
+      'When the nose goes under, you now see it through the water instead of it vanishing, with foam fizzing where the water meets your board.',
+    ] },
     { id: '2026-09-29-pumpfix', date: '29 Sep 2026', time: '8:59 pm', title: 'Fix: pumping on every board', items: [
       'After riding the longboard, other boards walked to the nose when you pressed PUMP. Every board pumps properly again; only the longboard walks.',
     ] },
@@ -842,6 +845,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=945"></script>
+<script type="module" src="js/game.js?v=949"></script>
 </body>
 </html>

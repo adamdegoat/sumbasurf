@@ -90,10 +90,26 @@ function paintSheet(type, S) {
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.generateMipmaps = true;
   return (SHEETS[type] = t);
 }
+// where the board meets the water (29 Sep 2026, his call: looks only). The game sets the water's surface under the
+// board each frame as a plane (normal, height) in world space; a see-through copy draws the part under the water (only
+// where the water covers it) tinted and fading with depth, instead of the water slicing it off like a solid wall. (The
+// foam where the water meets the board is drawn by the water itself: wave.js uBInv/uBDim)
+export const BOARD_WATER = { uWP: { value: new THREE.Vector4(0, 1, 0, -99) }, uWOn: { value: 0 }, uBTime: { value: 0 }, uWCol: { value: new THREE.Color(0x1f9fd0) } };
+const BW_VERT = (sh) => { Object.assign(sh.uniforms, BOARD_WATER); sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vBW;').replace('#include <project_vertex>', '#include <project_vertex>\nvBW = (modelMatrix * vec4(transformed, 1.)).xyz;'); };
+const BW_HEAD = 'uniform vec4 uWP; uniform float uWOn, uBTime; uniform vec3 uWCol; varying vec3 vBW;\n';
+function underwater(map) {
+  const m = new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, side: THREE.FrontSide, depthFunc: THREE.GreaterDepth, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });   // (drawn only where something is in front of the board: the water over it)
+  m.onBeforeCompile = (sh) => { BW_VERT(sh); sh.fragmentShader = BW_HEAD + sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+    float bh = dot(uWP.xyz, vBW) - uWP.w; if (uWOn < .5 || bh > .15) discard;
+    float dd = clamp(-bh / .45, 0., 1.);
+    diffuseColor.rgb = mix(diffuseColor.rgb * .75, uWCol, .58 + .32 * dd); diffuseColor.a *= .62 * (1. - .8 * dd);`); };
+  m.customProgramCacheKey = () => 'bwunder';
+  return m;
+}
 export const BOARD_LENGTH = (type) => (SHAPES[type] || SHAPES.short).L;
 export const BOARD_WIDTH = (type) => (SHAPES[type] || SHAPES.short).W;
 
-export function makeBoard(type = 'short') {
+export function makeBoard(type = 'short', water = false) {   // (water: your own board, which meets the water: see BOARD_WATER)
   const S = SHAPES[type] || SHAPES.short;
   const L = S.L, W = S.W, T = S.T, NL = 90, NW = 24;
   // outline from real shortboard proportions (share of max half-width along the board, tail 0 -> nose 1):
@@ -136,6 +152,7 @@ export function makeBoard(type = 'short') {
   g.setAttribute('uv', new THREE.Float32BufferAttribute(col, 2));
   g.setIndex(idx); g.computeVertexNormals();
   const board = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: paintSheet(type, S), roughness: 0.2, side: THREE.DoubleSide })   /* (a wet glossy deck: the sun catches it) */);
+  if (water) { const sheet = board.material.map; const under = new THREE.Mesh(g, underwater(sheet)); under.renderOrder = 20; under.frustumCulled = false; board.add(under); board.userData.under = under; }   // (the part under the water, seen through it)
   // three fins under the tail
   const fin = new THREE.Shape(); fin.moveTo(0, 0); fin.quadraticCurveTo(0.02, -0.1, 0.07, -0.11); fin.lineTo(0.09, 0); fin.lineTo(0, 0);
   const fg = new THREE.ExtrudeGeometry(fin, { depth: 0.006, bevelEnabled: false });

@@ -445,7 +445,8 @@ export const ENV = {
   uFog: { value: new THREE.Color() }, uDeep: { value: new THREE.Color() }, uTurq: { value: new THREE.Color() },
   uTime: { value: 0 },                                // one clock for every water surface, so the sea and the wave match
   uCloud: { value: 0.3 }, uChop: { value: 1 }, uFogFar: { value: 260 }, uSunVis: { value: 1 }, uFlash: { value: 0 },
-  uPool: { value: new THREE.Vector4(-1e6, 1e6, -1e6, 1e6) },   // water only inside this box (x0, x1, z0, z1): the wave pool
+  uPool: { value: new THREE.Vector4(-1e6, 1e6, -1e6, 1e6) },
+  uBInv: { value: new THREE.Matrix4() }, uBDim: { value: new THREE.Vector4(1, 0.25, 0, 0) },   // your board (its world matrix inverted; half length, half width, on): the water foams where it meets it   // water only inside this box (x0, x1, z0, z1): the wave pool
   uReef: { value: 1 },
   uGold: { value: 0 },                                // golden hour (the villa's evening): 0 = plain day
   uNight: { value: 0 },
@@ -514,7 +515,7 @@ export function waterMaterial({ wave = false } = {}) {
       }`,
     fragmentShader: /* glsl */`
       precision highp float;
-      uniform float uTime, uH, uCloud, uChop, uFogFar, uSunVis, uFlash, uReef, uReefEnd, uReefK, uGold, uBio; uniform vec3 uReefTint; uniform vec3 uSun, uZen, uHor, uSunCol, uFog, uDeep, uTurq; uniform vec4 uPool;
+      uniform float uTime, uH, uCloud, uChop, uFogFar, uSunVis, uFlash, uReef, uReefEnd, uReefK, uGold, uBio; uniform vec3 uReefTint; uniform vec3 uSun, uZen, uHor, uSunCol, uFog, uDeep, uTurq; uniform vec4 uPool; uniform mat4 uBInv; uniform vec4 uBDim;
       varying vec3 vW; varying vec3 vN; varying vec2 vFT; varying float vAge;
       ${NOISE}${SUNSET}
       vec3 sky(vec3 d){
@@ -665,6 +666,14 @@ export function waterMaterial({ wave = false } = {}) {
           float pt = 1. - smoothstep(.02, .07, length(bf - vec2(hash(bi + 2.1), hash(bi + 4.7)) * .7 - .15));
           col += vec3(.1, .6, 1.) * pt * tw * step(${wave ? '.5' : '.82'}, bh) * where * uBio * 1.6 * smoothstep(70., 12., d);
         }
+        // where the water meets your board (29 Sep 2026): a fizzing line of foam round the rails and wherever the surface cuts
+        // across the deck, and paler churned water over any part of the board that's gone under (the nose digging in)
+        if (uBDim.z > .5 && d < 14.) { vec3 bl = (uBInv * vec4(vW, 1.)).xyz; float u = clamp(bl.z / uBDim.x, -1., 1.), hw = uBDim.y * sqrt(max(0., 1. - pow(abs(u), 2.6)));
+          float edge = max(abs(bl.x) - hw, abs(bl.z) - uBDim.x);   // (how far outside the board's outline, in metres)
+          float fz = fbm(vW.xz * 14. + vec2(uTime * 1.3, -uTime * .9)), fn = smoothstep(.38, .62, fz) * (.7 + .3 * vnoise(vW.xz * 45. - uTime * 2.));   // (foam in clumps and bubbles, drifting)
+          float line = smoothstep(.06, -.005, edge) * smoothstep(.07, .0, abs(bl.y - .015));
+          float over = smoothstep(.02, -.03, edge) * smoothstep(.03, .12, bl.y) * smoothstep(.6, .1, bl.y);
+          col = mix(col, vec3(.92, .96, .97) * (.8 + .2 * uSunVis), clamp(line * (.25 + .75 * fn) * .9 + over * .18 * fn, 0., .9)); }
         col = mix(col, uFog, smoothstep(uFogFar * .25, uFogFar, d) * .9);   // (from a quarter of the way out: from 15% the whole mid-distance went milky)
         gl_FragColor = vec4(col, 1.);
         #include <tonemapping_fragment>
