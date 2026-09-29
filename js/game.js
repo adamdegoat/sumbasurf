@@ -698,7 +698,8 @@ function toMenu() {
   // clear the session: the menu gets its slow drifting wave behind it again (and nothing of the old ride keeps running)
   if (surfer) endWipe(); rider = null; rig.visible = false; endT = -1;
   for (const w of waves) w.dispose(scene); waves = [];
-  setWeather('medium'); setSpot('medium'); ui.cond.textContent = '';
+  setWeather(menuSpot()); setSpot(menuSpot()); ui.cond.textContent = '';
+  if (tick.demo) { tick.demo.dispose(scene); tick.demo = null; }   // (the menu's wave made afresh in the light it's shown in: a night wave's glow never carried into the day)
   underK = 0; underWas = false; clearLens(); underEl.style.opacity = 0; underEl.style.display = 'none'; hudSpeed(-1); hudScore(-1, 0); hudCallOff(true); setText(ui.hint, '');
   input.paddleBtn = false; input.stallBtn = false; input.stick = null; padTouch = null; padX = padY = 0;
   keys.clear(); steerF = stickY = 0; ui.paddle.classList.remove('down'); ui.stall.classList.remove('down');
@@ -2519,6 +2520,11 @@ const flipProj = (cam) => { cam.projectionMatrix.elements[0] *= -1; cam.projecti
 // on sumbasurf.app) the same; and 30 when you can't be playing: the contest board open over the villa, or the game's
 // window in the background on a computer (you're in another app or tab beside it)
 const M_SIT = { x: 40, z: 0, ahead: -40, lookX: -14, lookY: 0.6 };   // the menu's seat: where you sit, how far down the wave the break is as it passes you, where you look
+// behind the menu (his call 29 Sep 2026): Tanjung Uma by day, Pantai Bintang's moonlit night from 7 pm to 7 am on the
+// player's own clock (wherever they are). Decided when the game opens and each time you come back to the menu, never
+// switched while you're looking at it
+function menuSpot() { const h = new Date().getHours(); return h >= 19 || h < 7 ? 'bintang' : 'medium'; }
+if (menuSpot() !== 'medium') { setWeather(menuSpot()); setSpot(menuSpot()); }   // (by day the menu is already Tanjung Uma, as the game starts)
 let drawnT = 0, menuWas = false;
 renderer.setAnimationLoop(() => {
   const now0 = performance.now(), menu = ui.start.style.display !== 'none' && !starting, B = document.body.classList;

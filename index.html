@@ -575,13 +575,16 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260929-2027</small>
+    <small id="build">build 260929-2036</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-29-nightmenu', look: true, date: '29 Sep 2026', time: '8:36 pm', title: 'A night view on the menu', items: [
+      'From 7 pm to 7 am your time, the menu shows a moonlit night at Pantai Bintang, with glowing waves rolling in. By day it stays at Tanjung Uma.',
+    ] },
     { id: '2026-09-29-spotlooks2', look: true, date: '29 Sep 2026', time: '8:27 pm', title: 'Every spot its own place', items: [
       'Pantai Kuda: soft green hills behind the bay, clearer turquoise shallows, and gulls over the beach.',
       'Tanjung Uma: golden dry-season hills with lone trees, bigger clouds, and warm gusts over the grass.',
@@ -836,6 +839,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=942"></script>
+<script type="module" src="js/game.js?v=944"></script>
 </body>
 </html>
