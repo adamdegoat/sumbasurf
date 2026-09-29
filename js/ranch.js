@@ -1,4 +1,4 @@
-// The Surf Ranch: a huge wave pool in open country. A long concrete basin with a machine running on a rail along the
+// The Sumba Ranch (the Surf Ranch till 29 Sep 2026): a huge wave pool in open country. A long concrete basin with a machine running on a rail along the
 // deep wall (it pulls the wave along the pool, so it sits right at the breaking point), light towers, palms along the
 // deck, a clubhouse and a small grandstand. The water and the wave are the same as the ocean's, clipped to the pool.
 import * as THREE from 'three';
@@ -44,7 +44,6 @@ export function ranch(scene) {
   g.add(hou, cap, lights);
   box(P.x1 - P.x0, 1.2, 0.3, 0x2b3640, (P.x0 + P.x1) / 2, D + 1.4, P.z0 - 0.05);   // the wall face below the lights
   // big lettering on the machine roof you can read from the pool: a painted band
-  box(60, 1.6, 0.2, 0xf2b705, P.x0 + 60, D + 6.3, P.z0 - 0.1);
   // the shallow end: a sandy beach the waves run up onto, so you can see which way they're going
   { const bw = 28, geo = new THREE.PlaneGeometry(P.x1 - P.x0, bw, 40, 6); geo.rotateX(-Math.PI / 2);
     const pp = geo.attributes.position, c = new Float32Array(pp.count * 3);
@@ -95,5 +94,66 @@ export function ranch(scene) {
   const COP = 0xf4f2ec, cw = 0.6;
   box(P.x1 - P.x0 + 2 * cw, 0.25, cw, COP, (P.x0 + P.x1) / 2, D + 0.12, P.z0 - cw / 2); box(P.x1 - P.x0 + 2 * cw, 0.25, cw, COP, (P.x0 + P.x1) / 2, D + 0.12, P.z1 + cw / 2);
   box(cw, 0.25, P.z1 - P.z0, COP, P.x0 - cw / 2, D + 0.12, (P.z0 + P.z1) / 2); box(cw, 0.25, P.z1 - P.z0, COP, P.x1 + cw / 2, D + 0.12, (P.z0 + P.z1) / 2);
-  return { group: g, lights, NC, CH };
+
+  // ---- which way is which (29 Sep 2026): the pool's name over the machine right in front of where you wait, a band of
+  // arrows along the machine roof pointing the way the wave runs (+x), a line of buoys between you and the machine
+  // showing the line the wave comes along, and distance boards on the beach deck counting up the way you ride
+  const tex = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
+  const panel = (w, h, t, x, y, z, ry = 0) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t })); m.position.set(x, y, z); m.rotation.y = ry; g.add(m); return m; };
+  const FONT = (px) => `900 ${px}px "Barlow Condensed", "Helvetica Neue", Arial, sans-serif`;
+  const WAIT_X = 4;   // (you wait about here: see spawnRider)
+  // the name, big, over the machine in front of you
+  panel(46, 5.2, tex(1840, 208, (c, w, h) => { c.fillStyle = '#f2b705'; c.fillRect(0, 0, w, h); c.fillStyle = '#15110c'; c.font = FONT(150); c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('SUMBA RANCH', w / 2, h / 2 + 10); }), WAIT_X, D + 8.4, P.z0 - 1.2);
+  for (const x of [WAIT_X - 21, WAIT_X + 21]) box(0.5, 3, 0.5, 0x2b3640, x, D + 6.3, P.z0 - 1.4);   // (its legs on the machine roof)
+  // arrows along the roof, pointing down the pool the way you ride
+  { const t = tex(1024, 128, (c, w, h) => { c.fillStyle = '#15110c'; c.fillRect(0, 0, w, h); c.fillStyle = '#ffc978'; for (let i = 0; i < 8; i++) { const x0 = i * 128 + 30; c.beginPath(); c.moveTo(x0, 18); c.lineTo(x0 + 44, 18); c.lineTo(x0 + 88, 64); c.lineTo(x0 + 44, 110); c.lineTo(x0, 110); c.lineTo(x0 + 44, 64); c.closePath(); c.fill(); } });
+    t.wrapS = THREE.RepeatWrapping; const len = P.x1 - (WAIT_X + 26) - 10; t.repeat.set(len / 16, 1);
+    panel(len, 2, t, WAIT_X + 26 + len / 2, D + 6.6, P.z0 - 0.6); }
+  // the buoys: orange floats with a white band, 12 m out from the machine, every 12 m along the pool (they ride up and
+  // over each wave: the game moves them, see ranchBuoys)
+  const buoyX = []; for (let x = P.x0 + 14; x < P.x1 - 8; x += 12) buoyX.push(x);
+  const BZ = P.z0 + 22;   // (between you and the machine: you never ride through them)
+  const buoyG = new THREE.SphereGeometry(0.55, 12, 8); buoyG.scale(1, 0.8, 1);
+  const buoys = new THREE.InstancedMesh(buoyG, lam(0xf06a22), buoyX.length), bands = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.57, 0.57, 0.16, 12), lam(0xf6f2ea), buoyX.length);
+  buoys.frustumCulled = false; bands.frustumCulled = false; g.add(buoys, bands);   // (moved every frame: their bounds would be stale)
+  // distance boards along the beach deck, facing the pool: 50 m, 100 m ... from where you wait
+  const board = (label, x) => { const t = tex(512, 224, (c, w, h) => { c.fillStyle = '#ffc978'; c.fillRect(0, 0, w, h); c.strokeStyle = '#15110c'; c.lineWidth = 14; c.strokeRect(7, 7, w - 14, h - 14); c.fillStyle = '#15110c'; c.font = FONT(150); c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(label, w / 2, h / 2 + 8); });
+    const pn = panel(13, 5.7, t, x, D + 8.5, P.z1 + 3, -Math.PI * 0.72); for (const s of [-1, 1]) box(0.45, 11.4, 0.45, 0x3b3f42, x + s * 5.6 * Math.cos(Math.PI * 0.28), D + 5.7, P.z1 + 3.2 + s * 5.6 * Math.sin(Math.PI * 0.28)); };   // (big enough to read from out in the pool)   // (turned toward you as you ride down the pool, not edge-on)
+  for (let d = 50; WAIT_X + d < P.x1 - 20; d += 50) board(d + ' m', WAIT_X + d);
+  // flags on poles along the beach deck, and umbrellas and loungers in groups (where the people watch from)
+  { const n = Math.floor((P.x1 - P.x0) / 22), poleI = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.06, 0.08, 6, 5), lam(0xd8d4cc), n);
+    const fg = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0, 0, -1.4, 0, 2.2, -0.7, 0]), 3)); fg.computeVertexNormals();
+    const flagI = new THREE.InstancedMesh(fg, new THREE.MeshLambertMaterial({ side: THREE.DoubleSide }), n), cols = [0xffc978, 0x1f6f6a, 0xff8e6e, 0xf6f2ea];
+    for (let i = 0; i < n; i++) { const x = P.x0 + 11 + i * 22; poleI.setMatrixAt(i, mm.makeTranslation(x, D + 3, P.z1 + 10.5)); flagI.setMatrixAt(i, mm.makeTranslation(x, D + 6, P.z1 + 10.5)); flagI.setColorAt(i, new THREE.Color(cols[i % 4])); }
+    g.add(poleI, flagI); }
+  const seats = [];   // (where people sit or stand to watch: the game puts them there, see ranchPeople)
+  { const U = [], canopyG = new THREE.ConeGeometry(1.7, 0.7, 10, 1, true); canopyG.translate(0, 2.55, 0);
+    const groups = [60, 118, 176, 234, 292, 350, 408];
+    for (const gx of groups) for (let k = 0; k < 2; k++) U.push([gx + k * 7 + (Math.random() - 0.5) * 2, P.z1 + 4.2 + (Math.random() - 0.5) * 1.2]);
+    const pole = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.04, 0.04, 2.6, 5), lam(0xe8e4dc), U.length), can = new THREE.InstancedMesh(canopyG, new THREE.MeshLambertMaterial({ side: THREE.DoubleSide }), U.length);
+    const lounge = new THREE.InstancedMesh(new THREE.BoxGeometry(0.7, 0.3, 1.9), lam(0xf4f1ea), U.length * 2), cc = [0xf06a22, 0x1f6f6a, 0xffc978, 0xf6f2ea, 0xc8423a];
+    U.forEach(([x, z], i) => { pole.setMatrixAt(i, mm.makeTranslation(x, D + 1.3, z)); can.setMatrixAt(i, mm.makeTranslation(x, D, z)); can.setColorAt(i, new THREE.Color(cc[i % cc.length]));
+      for (const s of [-1, 1]) lounge.setMatrixAt(i * 2 + (s > 0), mm.makeTranslation(x + s * 0.9, D + 0.35, z + 1.4)); seats.push([x + 1.6, P.z1 + 1.4]); });
+    g.add(pole, can, lounge); }
+  // a snack kiosk and a board rack at the start end, by where you paddle out from
+  { const kx = P.x0 - 7, kz = P.z0 + 22; box(4.5, 2.6, 3.2, 0xf4f1ea, kx, D + 1.3, kz); box(5.2, 0.25, 4, 0xf06a22, kx, D + 2.75, kz + 0.2);
+    for (let i = 0; i < 5; i++) box(0.6, 0.06, 0.8, i % 2 ? 0xf6f2ea : 0xf06a22, kx + 2.3, D + 2.55 - i * 0.02, kz - 1.6 + i * 0.8);
+    const rx = P.x0 - 7, rz = P.z0 + 38; box(0.15, 2.4, 3.6, 0x6b4a2a, rx - 0.6, D + 1.2, rz); box(0.15, 2.4, 3.6, 0x6b4a2a, rx + 0.6, D + 1.2, rz);
+    const bc = [0xf6f2ea, 0xffc978, 0x9fd3d0, 0xf06a22, 0xf6f2ea]; for (let i = 0; i < 5; i++) { const b = box(1.1, 2.2, 0.08, bc[i], rx, D + 1.3, rz - 1.4 + i * 0.7); b.rotation.z = 0.08; }
+    seats.push([P.x0 - 5, P.z0 + 30], [P.x0 - 4.5, P.z0 + 44], [P.x0 - 6, P.z0 + 52]); }
+  // the far end, where rides finish: a low stand people watch from
+  { const fx = P.x1 + 7; for (let i = 0; i < 4; i++) box(2.2, 0.7, 60, 0x9aa2a8, fx + i * 2.2, D + 0.35 + i * 0.7, P.z0 + 150); seats.push([P.x1 + 5, P.z0 + 136], [P.x1 + 5, P.z0 + 144], [P.x1 + 5, P.z0 + 158], [P.x1 + 5, P.z0 + 166]); }
+  // the big stand along the beach side, halfway down the pool: rows of people you can see from out on the water
+  const SX0 = 110, SX1 = 370, SZ = P.z1 + 16, ROWS = 6;
+  for (let i = 0; i < ROWS; i++) box(SX1 - SX0, 0.8, 2.3, i % 2 ? 0x8f979c : 0x9aa2a8, (SX0 + SX1) / 2, D + 0.4 + i * 0.8, SZ + i * 2.3);
+  box(SX1 - SX0 + 4, 0.5, ROWS * 2.3 + 3, 0xf3f1ec, (SX0 + SX1) / 2, D + ROWS * 0.8 + 6.5, SZ + ROWS * 1.15); for (let x = SX0; x <= SX1; x += 26) box(0.5, 6.5, 0.5, 0x8e959a, x, D + ROWS * 0.8 + 3.2, SZ + ROWS * 2.3);   // (a shade roof)
+  panel(60, 5, tex(1536, 128, (c, w, h) => { c.fillStyle = '#15110c'; c.fillRect(0, 0, w, h); c.fillStyle = '#ffc978'; c.font = FONT(104); c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('SUMBA RANCH', w / 2, h / 2 + 6); }), (SX0 + SX1) / 2, D + ROWS * 0.8 + 8.2, SZ - 1.6, Math.PI);   // (its name along the roof edge)
+  // where the crowd stands behind the front row (the game draws them cheaply, as cut-outs of the same people):
+  // [x, z, yaw] facing the water
+  const back = [];
+  for (const gx of [60, 118, 176, 234, 292, 350, 408]) for (let k = 0; k < 9; k++) back.push([gx - 6 + k * 2.2 + (Math.random() - 0.5) * 0.8, P.z1 + 7 + (k % 3) * 1.3 + Math.random() * 0.6, Math.PI]);
+  for (let r = 0; r < ROWS; r++) for (let x = SX0 + 1; x < SX1 - 1; x += 1.25) if (Math.random() < 0.62) back.push([x + (Math.random() - 0.5) * 0.4, SZ + r * 2.3 + 0.3, Math.PI, 0.8 * (r + 1)]);   // (the big stand: seated rows seen from the pool)
+  for (let r = 0; r < 4; r++) for (let k = 0; k < 16; k++) if (Math.random() < 0.8) back.push([P.x1 + 7 + r * 2.2 + 1, P.z0 + 124 + k * 3.4 + Math.random(), -Math.PI / 2, 0.7 * (r + 1)]);
+  for (let k = 0; k < 7; k++) back.push([P.x0 - 4 - (k % 2) * 1.5, P.z0 + 28 + k * 3.2 + Math.random(), Math.PI / 2]);
+  return { group: g, lights, NC, CH, buoys, bands, buoyX, BZ, seats, back };
 }

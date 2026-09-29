@@ -155,6 +155,7 @@ function proTake(name, mode, seed, n, boardT, plan, cbo, cam) {
           } else { o = cb(r); o.pump = r.v < w.cond.speed * 0.85; }
         }
         g.input.stick = stick; g.input.test = stick ? null : o.steer; g.input.paddleBtn = r.standing ? !!o.pump : !!o.paddle;
+        if (cbo && cbo.ranch && r.state === 'LIE') g.ranchSend(cbo.ranch);   // (at the Sumba Ranch: order a wave whenever the pool is ready for one)
         // (cbo.walk = [from, to] seconds into the ride: a longboarder trims in the pocket and holds WALK to go up to the nose; trimAt/trimY2: from then on aims for another height on the face, a mistake on purpose to film the warning)
         if (cbo && cbo.walk && r.state === 'RIDE' && r.wave && r.stateT > cbo.walk[0] - 1.5 && r.stateT < cbo.walk[1] + 2) {
           const w = r.wave, Hh = w.cond.H, err = r.y / Hh - (cbo.trimAt && r.stateT > cbo.trimAt && !(cbo.react && r._warnAt != null) ? cbo.trimY2 : (cbo.trimY || 0.45)) - 0.35 * Math.max(0, r.s / Hh - 0.6), sn = Math.max(-0.6, Math.min(0.97, w.cond.speed / Math.max(r.v, 1) + err * 0.9));
@@ -309,3 +310,4 @@ export function addWhaleShot(name, n, fov = 10, kind = 'breach') {
       c.position.set(169, 28.4, 119); c.lookAt(this.aim); return { fov }; } };
   return name;
 }
+export const takes = T;   // (the takes themselves: test/beauty.js steps one to the moment it wants and renders its own still)

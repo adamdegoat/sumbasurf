@@ -35,7 +35,8 @@ export class SurfAudio {
     this.wind = layer('bandpass', 700, 0.4);      // wind, stronger in the storm
     this.rain = layer('highpass', 4000, 0.3);     // rain on the water
     this.spray = layer('bandpass', 2600, 1.4);    // tail sliding: gritty sheet of spray, not the clean rail hiss
-    this.drag = layer('bandpass', 750, 1.8);      // stalling: your hand and tail dragging in the face (a gurgle)
+    this.drag = layer('bandpass', 750, 1.8);
+    this.crowd = layer('bandpass', 1050, 0.9);    // a crowd round the pool: a soft murmur (Sumba Ranch only)      // stalling: your hand and tail dragging in the face (a gurgle)
     // inside the barrel everything rings: a short echo off the curtain, fed from the whole mix
     const dl = ctx.createDelay(0.5); dl.delayTime.value = 0.085;
     const fb = ctx.createGain(); fb.gain.value = 0.42;
@@ -97,7 +98,14 @@ export class SurfAudio {
   // an air: the rush of wind as you leave the lip, rising; the landing: a hard slap and a burst of spray
   air() { this.burst(0.2, 900, 0.7); this.burst(0.12, 2200, 0.5, 'highpass', 0.1); }
   land(k = 1) { this.burst(0.4 * k, 500, 0.35, 'lowpass'); this.burst(0.3 * k, 1600, 0.5); this.burst(0.2 * k, 3500, 0.4, 'highpass', 0.05); }
-  // the Surf Ranch machine: a deep whoosh as the chambers fire, with a metallic clank
+  // the Sumba Ranch machine: a deep whoosh as the chambers fire, with a metallic clank
+  crowdLevel(k) { if (this.ok) this.set(this.crowd.g.gain, 0.05 * k, 0.8); }
+  // the crowd round the pool going up for a barrel or a big move: a swell of voices (noise shaped like a roar, and a
+  // few rising whoops on top)
+  cheer(k = 1) {
+    this.burst(0.28 * k, 1150, 2.2); this.burst(0.18 * k, 2300, 1.8, 'bandpass', 0.08); this.burst(0.12 * k, 600, 2.0, 'bandpass', 0.05);
+    for (let i = 0; i < 5; i++) { const f = 330 + Math.random() * 260; this.tone(f, 0.022 * k, 0.5 + Math.random() * 0.4, { type: 'sawtooth', delay: 0.1 + Math.random() * 0.8, to: f * (1.25 + Math.random() * 0.2), band: 900 + Math.random() * 700 }); }
+  }
   machine() { this.burst(0.5, 160, 2.2, 'lowpass'); this.burst(0.3, 420, 1.8); this.burst(0.12, 2600, 0.25, 'bandpass', 0.05); }
   // iOS only lets sound restart from a tap: call this from touch handlers
   // a one-off tone: chimes, birdsong, distant hoots (a glide from f to 'to', optionally through a band filter)

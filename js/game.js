@@ -5,13 +5,13 @@ import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=168';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=185';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=16';
-import { SurfAudio } from './audio.js?v=17';
-import { ranch, POOL } from './ranch.js?v=4';
+import { SurfAudio } from './audio.js?v=18';
+import { ranch, POOL } from './ranch.js?v=9';
 import { SPOTS, spotGroup, builtSpots } from './spots.js?v=93';
 import { villa, VILLA } from './villa.js?v=137';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
-import { lifeLib } from './life.js?v=1';
+import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
 import { crew } from './crew.js?v=52';
 import { wildlife } from './wildlife.js?v=56';
@@ -287,15 +287,15 @@ let REEF = { xEnd: 190, zBeach: 150 }; const PROFILES = new Map(), PROFILES_W = 
 const OCEAN_REEF = REEF, RANCH_REEF = { xEnd: POOL.x1 - 60, zBeach: POOL.z1 - 20 };
 const POOL_PLANES = [new THREE.Plane(new THREE.Vector3(1, 0, 0), -POOL.x0), new THREE.Plane(new THREE.Vector3(-1, 0, 0), POOL.x1), new THREE.Plane(new THREE.Vector3(0, 0, 1), -POOL.z0), new THREE.Plane(new THREE.Vector3(0, 0, -1), POOL.z1)];
 renderer.localClippingEnabled = true;
-let ranchKind = 'medium';   // the wave you last ordered at the Surf Ranch
+let ranchKind = 'medium';   // the wave you last ordered at the Sumba Ranch
 const isRanch = () => mode === 'ranch';
-const modeName = (m) => m === 'villa' ? 'Your villa' : m === 'ranch' ? 'Surf Ranch' : m === 'random' ? 'Random' : SPOTS[m] ? SPOTS[m].name : CONDITIONS[m].name;
+const modeName = (m) => m === 'villa' ? 'Your villa' : m === 'ranch' ? 'Sumba Ranch' : m === 'random' ? 'Random' : SPOTS[m] ? SPOTS[m].name : CONDITIONS[m].name;
 // which world you're in: the Bali coast, or the wave pool (same water and waves, clipped to the pool, no reef under it)
 function setSpot(m) {
   const r = m === 'ranch', key = SPOTS[m] ? m : 'medium', S = SPOTS[key];
   for (const g of builtSpots()) g.visible = false;
   if (!r) { const sg = spotGroup(scene, key); sg.visible = true; if (sg.userData.farVilla) sg.userData.farVilla.visible = m !== 'villa'; }   // (at the villa itself the real house is drawn, not the stand-in seen from the water)
-  ranchW.group.visible = r;
+  ranchW.group.visible = r; audio.crowdLevel(r ? 1 : 0); if (r) loadPeople();   // (the people round the pool are your villa friends' bodies: fetched now if they aren't in yet)
   if (villaW) villaW.group.visible = m === 'villa'; if (crewW) crewW.group.visible = m === 'villa'; if (wildW) wildW.group.visible = m === 'villa'; if (friendsW) { friendsW.group.visible = m === 'villa'; if (m !== 'villa') friendsW.hide(); }
   { const warm = m === 'villa', W = ENV.weather || {}; hemi.color.set(warm ? 0xfff0dc : W.hemi || 0xcfe6ff); hemi.groundColor.set(warm ? 0x5a4030 : W.hemiGround || 0x3a4a48); sunLight.color.set(warm ? 0xffdcb0 : W.light || 0xfff0dd); }
   hemi.intensity = W.night && !(m === 'villa') ? 0.8 : 1.3; sunLight.intensity = W.night && !(m === 'villa') ? 0.9 : 2.0;   // (the night spot: people, boards and the land lit only by the moon)   // (a spot's own light on the land: its weather can warm it or grey it)   // (the villa in warm evening light, reflected off the wood; the surf spots keep their clear daylight)
@@ -323,7 +323,7 @@ function updateWaves(dt) {
   for (const pr of PROFILES_W.values()) pr.warm(12);
   // keep the next wave lined up out to sea; a swell period apart, give or take
   // swell arrives in sets: 3-4 waves one period apart, the bigger ones in the middle, then a lull (shortened for play)
-  while (!isRanch() && nextBreak - T < 150 / 6) {   // (the Surf Ranch only makes a wave when you order one)
+  while (!isRanch() && nextBreak - T < 150 / 6) {   // (the Sumba Ranch only makes a wave when you order one)
     const w = addWave(nextBreak);
     if (setLeft <= 0) { setLeft = 3 + (Math.random() < 0.5 ? 1 : 0); setPos = 0; }
     const n = setPos / Math.max(1, setLeft + setPos - 1);
@@ -402,11 +402,14 @@ function spawnRider() {
   ui.msg.style.display = 'none';
 }
 
-// ---------- the Surf Ranch: you order each wave. The machine starts it at the deep end a few seconds out, it runs down
+// ---------- the Sumba Ranch: you order each wave. The machine starts it at the deep end a few seconds out, it runs down
 // the pool past you, and you can order the next one once it has gone by.
 const ranchWaiting = () => isRanch() && rider && !rider.standing && rider.state === 'LIE' && !waves.some((w) => w.zW < rider.z + 4);
+let ranchLock = null;   // (a multiplayer contest at the pool: the host picked the wave, so every order is that wave)
+function lockRanch(k) { ranchLock = k || null; if (ranchLock) ranchKind = ranchLock; for (const b of document.querySelectorAll('#ranch button')) b.style.display = ranchLock && b.dataset.wave !== ranchLock ? 'none' : ''; }
 function ranchSend(kind) {
   if (!ranchWaiting()) return;
+  if (ranchLock) kind = ranchLock;
   ranchKind = kind; audio.machine();
   // the wave leaves the machine wall 1.5 s after you order it (the lights pulse first), then runs down the pool to you
   const C = RANCH_CONDITIONS[kind], zStart = POOL.z0 + 1;
@@ -432,10 +435,73 @@ function updateRanch(dt) {
   }
   L.instanceColor.needsUpdate = true;
   document.body.classList.toggle('ranch-wait', !!ranchWaiting());
+  // the buoys ride up and over each wave as it runs past them
+  { const B = ranchW.buoys, N = ranchW.bands; for (let i = 0; i < ranchW.buoyX.length; i++) { const x = ranchW.buoyX[i], y = heightAt(waves, x, ranchW.BZ);
+      _rm.makeTranslation(x, y + 0.12, ranchW.BZ); B.setMatrixAt(i, _rm); _rm.makeTranslation(x, y + 0.2, ranchW.BZ); N.setMatrixAt(i, _rm); }
+    B.instanceMatrix.needsUpdate = true; N.instanceMatrix.needsUpdate = true; }
+  // the crowd goes up for a barrel or a big move
+  if (rider && rider.trick && rider.trick !== cheerFor && /^(BIG|DEEP) |BARREL|ROUNDHOUSE|HANG TEN|AIR/.test(rider.trick.name)) { cheerFor = rider.trick; audio.cheer(/^(BIG|DEEP) |ROUNDHOUSE|AIR 360/.test(rider.trick.name) ? 1 : 0.7); }
+  try { ranchPeople(dt); } catch (e) { if (!ranchPeople.err) { ranchPeople.err = 1; console.error('ranch people', e); } }
   // the pool walls: you can't paddle through them
   if (rider) { const m = 3; rider.x = Math.min(POOL.x1 - m, Math.max(POOL.x0 + m, rider.x)); rider.z = Math.min(POOL.z1 - m, Math.max(POOL.z0 + m, rider.z)); }
 }
-const _rc = new THREE.Color();
+const _rc = new THREE.Color(), _rm = new THREE.Matrix4(); let cheerFor = null;
+// people round the pool: your villa friends' bodies (Rocketbox, see loadPeople), standing about the deck in groups,
+// facing the water, with their small idle movements. Never near the camera: they're scenery, 20 m and more away
+let crowd = null;
+// Rocketbox people come in their modelling pose, arms out from the sides: let them hang down, a little forward, the
+// elbows soft (turned in world space, from the shoulder toward the elbow and the elbow toward the wrist)
+const _rkA = new THREE.Vector3(), _rkB = new THREE.Vector3(), _ranchQ = new THREE.Quaternion(), _rkP = new THREE.Quaternion(), _rkW = new THREE.Quaternion();
+function aimRanch(bone, child, want) {
+  bone.updateMatrixWorld(true); bone.getWorldPosition(_rkA); child.getWorldPosition(_rkB); const d = _rkB.sub(_rkA).normalize();
+  _ranchQ.setFromUnitVectors(d, want); bone.getWorldQuaternion(_rkW); _rkW.premultiply(_ranchQ); bone.parent.getWorldQuaternion(_rkP); bone.quaternion.copy(_rkP.invert().multiply(_rkW)); bone.updateMatrixWorld(true);
+}
+function relaxArms(body, B) {
+  body.updateMatrixWorld(true); const g = (n) => B['Bip01_' + n] || B['Bip01 ' + n.replace(/_/g, ' ')];
+  const fq = body.getWorldQuaternion(new THREE.Quaternion()), side = new THREE.Vector3(1, 0, 0).applyQuaternion(fq), fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(fq);
+  for (const [s, sg] of [['L', 1], ['R', -1]]) { const up = g(s + '_UpperArm'), fo = g(s + '_Forearm'), ha = g(s + '_Hand'); if (!up || !fo || !ha) continue;
+    // (which way is 'out' for this arm: from the spine toward the shoulder)
+    const out = fo.getWorldPosition(new THREE.Vector3()).sub(up.getWorldPosition(new THREE.Vector3())); const k = Math.sign(out.dot(side)) || sg;
+    aimRanch(up, fo, new THREE.Vector3(0, -1, 0).addScaledVector(side, 0.17 * k).addScaledVector(fwd, 0.06).normalize());
+    aimRanch(fo, ha, new THREE.Vector3(0, -1, 0).addScaledVector(side, 0.08 * k).addScaledVector(fwd, 0.28).normalize()); }
+}
+// the rows behind the front one: cut-outs of the same people (each drawn once, from the front, into a texture), stood
+// on the deck facing the water. At 20 m and more across the pool they read as a crowd, for next to nothing
+function crowdBack(ids) {
+  const back = ranchW.back; if (!back || !back.length) return;
+  const s2 = new THREE.Scene(); s2.add(new THREE.HemisphereLight(0xfff4e6, 0x6d6252, 1.6)); const dl = new THREE.DirectionalLight(0xffffff, 1.4); dl.position.set(0.6, 1.4, 1.2); s2.add(dl);
+  const cam = new THREE.OrthographicCamera(-0.56, 0.56, 1.98, -0.06, 0.1, 10); cam.position.set(0, 0.96, 4); cam.lookAt(0, 0.96, 0);
+  const prevRT = renderer.getRenderTarget(), prevC = renderer.getClearColor(new THREE.Color()), prevA = renderer.getClearAlpha();
+  const geo = new THREE.PlaneGeometry(1.12, 2.04); geo.translate(0, 0.96, 0); const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
+  const per = ids.map(() => []); back.forEach((b, i) => per[i % ids.length].push(b));
+  ids.forEach((id, n) => {
+    const body = cloneSkinned(people[id]); const B = {}; body.traverse((o) => { if (o.isBone) B[o.name] = o; if (o.isMesh) o.frustumCulled = false; }); s2.add(body); body.updateMatrixWorld(true);
+    const hd = B.Bip01_Head, le = B.Bip01_LEye, re = B.Bip01_REye; if (hd && le && re) { const hp = hd.getWorldPosition(new THREE.Vector3()), ep = le.getWorldPosition(new THREE.Vector3()).add(re.getWorldPosition(new THREE.Vector3())).multiplyScalar(0.5).sub(hp); body.rotation.y = -Math.atan2(ep.x, ep.z); }
+    relaxArms(body, B);
+    const rt = new THREE.WebGLRenderTarget(160, 290); renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(s2, cam); s2.remove(body);
+    const list = per[n]; if (!list.length) return;
+    const inst = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ map: rt.texture, alphaTest: 0.5 }), list.length);
+    list.forEach(([x, z, yaw, lift], i) => { q.setFromAxisAngle(Y, yaw + (Math.random() - 0.5) * 0.4); sc.setScalar(0.94 + Math.random() * 0.1); pos.set(x, POOL.deck + (lift || 0), z); inst.setMatrixAt(i, m4.compose(pos, q, sc)); });
+    ranchW.group.add(inst);
+  });
+  renderer.setRenderTarget(prevRT); renderer.setClearColor(prevC, prevA);
+}
+function ranchPeople(dt) {
+  if (!crowd) { if (!people) return; crowd = [];
+    const ids = Object.keys(people), CL = { kai: ['m_idle_neutral_01', 'm_idle_look_around_01'], wayan: ['m_idle_neutral_02'], nando: ['m_idle_neutral_03'], rudi: ['m_idle_neutral_02', 'm_idle_look_around_01'], putu: ['m_idle_neutral_01'], belle: ['f_idle_neutral_01', 'f_idle_look_around_01'] };
+    ranchW.seats.forEach(([x, z], i) => { const id = ids[i % ids.length], body = cloneSkinned(people[id]), root = new THREE.Group(); root.add(body); ranchW.group.add(root);
+      const B = {}; body.traverse((o) => { if (o.isMesh) o.castShadow = false; if (o.isBone) B[o.name] = o; });   // (left to frustum culling: they barely move, so their bounds hold, and the ones behind you cost nothing)
+      body.updateMatrixWorld(true); const hd = B.Bip01_Head || B['Bip01 Head'], le = B.Bip01_LEye || B['Bip01 LEye'], re = B.Bip01_REye || B['Bip01 REye'];
+      if (hd && le && re) { const hp = hd.getWorldPosition(new THREE.Vector3()), ep = le.getWorldPosition(new THREE.Vector3()).add(re.getWorldPosition(new THREE.Vector3())).multiplyScalar(0.5).sub(hp); body.rotation.y = -Math.atan2(ep.x, ep.z); }   // (turned to face +z, as the villa does it)
+      relaxArms(body, B);
+      const rest = []; body.traverse((o) => { if (o.isBone) rest.push([o, o.position.clone(), o.quaternion.clone()]); });
+      const yaw = x < POOL.x0 ? Math.PI / 2 : x > POOL.x1 ? -Math.PI / 2 : Math.PI;   // (facing the water: from the start end, the far end or the beach deck)
+      root.position.set(x, POOL.deck, z); root.rotation.y = yaw + (Math.random() - 0.5) * 0.5;
+      crowd.push({ root, rest, lf: life ? lifeIdle(life, B, CL[id] || ['m_idle_neutral_01']) : null }); });
+    crowdBack(ids); renderer.compile(scene, camera); }
+  for (const P of crowd) { if (!P.lf) continue; if (P.root.position.distanceToSquared(camera.position) > 160 * 160 && P.posed) continue; P.posed = true;
+    for (const [b, p, q] of P.rest) { b.position.copy(p); b.quaternion.copy(q); } P.lf.update(dt); P.lf.apply(1, 1); }
+}
 
 // ---------- controls: PADDLE/PUMP (hold, left) and a thumb pad (right half). Keyboard for testing.
 const input = { paddle: false, steer: 0 };
@@ -478,13 +544,19 @@ addEventListener('mouseup', () => { if (padTouch && padTouch.id === 'm') padTouc
 function readInput(dt) {
   if (!padTouch) { padX *= Math.max(0, 1 - dt * 10); padY *= Math.max(0, 1 - dt * 10); }   // let go and the board runs straight
   const kraw = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
-  // keys are on or off, a thumb isn't: standing, a press starts at a third of a lean (a quick tap trims ~7 deg on a
-  // shortboard) and holding builds to a full carve by ~0.6 s; letting go
+  // keys are on or off, a thumb isn't: standing, a press eases in to a third of a lean in 0.1 s (a quick tap trims ~7 deg
+  // on a shortboard) and holding builds to a full carve by ~0.6 s; letting go
   // straightens in ~0.4 s. Long and gun stay slow because the boards are (the keys match the thumb on them too).
   // Lying down the keys still turn the board at once, as before
   const kStand = !!(rider && rider.standing);
   if (!kStand || !kraw) keyLean = kStand ? keyLean * Math.max(0, 1 - dt * 8) : kraw;   // (let go: back to straight in ~0.4 s, was ~0.3)
-  else { const k0 = KEY_START, kf = KEY_FULL; if (Math.sign(keyLean) !== kraw || Math.abs(keyLean) < k0) keyLean = kraw * k0; keyLean = Math.max(-1, Math.min(1, keyLean + kraw * dt * (1 - k0) / kf)); }
+  else {   // (29 Sep 2026, his call: no jolt. A press eases in to that first third over 0.1 s instead of jumping there, and a
+    // change of side swings back through straight at the same quick rate instead of snapping across; still full by ~0.6 s)
+    const k0 = KEY_START, EASE = 0.1, ramp = (1 - k0) / (KEY_FULL - EASE);
+    if (Math.sign(keyLean) !== kraw) keyLean += kraw * dt * (k0 / EASE) * 2;   // (coming back from the other side: through straight in a blink)
+    else if (Math.abs(keyLean) < k0) keyLean += kraw * dt * (k0 / EASE);
+    else keyLean += kraw * dt * ramp;
+    keyLean = Math.max(-1, Math.min(1, keyLean)); }
   const kx = Math.abs(keyLean) < 0.02 ? 0 : keyLean;
   // thumb feel: a small dead zone (a resting thumb wobbles), fine control near the centre, full lean at the edge,
   // and a light filter so the board answers smoothly instead of twitching with every pixel
@@ -564,7 +636,7 @@ function levelWin(name) {
 
 // the spots only select (the one you'll surf lights up and is remembered); START SURFING takes you there
 let spotSel = 'easy'; try { const v = localStorage.getItem('sumbasurf.spot'); if (v && document.querySelector(`[data-mode="${v}"]`)) spotSel = v; } catch (e) {}
-const spotLabel = (m) => m === 'ranch' ? 'Surf Ranch' : (SPOTS[m] && SPOTS[m].name) || m;
+const spotLabel = (m) => m === 'ranch' ? 'Sumba Ranch' : (SPOTS[m] && SPOTS[m].name) || m;
 function selSpot(m) { spotSel = m; try { localStorage.setItem('sumbasurf.spot', m); } catch (e) {}
   for (const b of document.querySelectorAll('[data-mode]')) b.classList.toggle('sel', b.dataset.mode === m);
   document.getElementById('goSpot').textContent = spotLabel(m); mmPanel(); }
@@ -642,7 +714,7 @@ function hello(where) {
 }
 async function start(m, quick = false) {
   if (starting) return; starting = true; if (window.__g) window.__g.paused = false;
-  hello(m === 'ranch' ? 'Surf Ranch' : (SPOTS[m] && SPOTS[m].name) || m);
+  hello(m === 'ranch' ? 'Sumba Ranch' : (SPOTS[m] && SPOTS[m].name) || m);
   showOff(true); mode = m; setWeather(m); setSpot(m); audio.start(); audio.quiet(false); audio.musicStart(MUSIC); document.body.classList.toggle('reef', m !== 'ranch');
   // fullscreen + landscape lock must be asked for inside the tap, before any waiting (Android); iOS ignores both safely
   if (!DESK) try { document.documentElement.requestFullscreen?.({ navigationUI: 'hide' })?.then(() => screen.orientation?.lock?.('landscape')).catch(() => {}); } catch (e) {}
@@ -768,7 +840,7 @@ function povCamera(dt) {
     }
   }
   if (pitchLook > pitchT) pitchT = pitchLook;
-  if (!standing && isRanch()) pitchT = Math.max(pitchT, -0.2);   // at the Surf Ranch, eyes up on the machine wall where your wave comes from
+  if (!standing && isRanch()) pitchT = Math.max(pitchT, -0.2);   // at the Sumba Ranch, eyes up on the machine wall where your wave comes from
   pitchT += 0.14 * tubeEase + 0.07 * stallV + 0.035 * bogV * Math.sin(T * 7.3) - 0.16 * noseV + (standing && noseV > 0.01 ? 0.85 * noseV * Math.min(0, Math.asin(Math.max(-1, Math.min(1, pose.fwd.y)))) : 0); if (glK > 0.001) pitchT += (glP - pitchT) * glK;   // (on the nose your eyes follow the board's slope: heading down the face you look down it, so the tip stays in view)   // (up on the nose your eyes drop a little; when it starts to dig in you glance down at it, so you see the tip going under)   // (a stall: you sit back and your eyes tip up a little; sinking, they bob)   // (in the barrel your eyes lift ~8 deg, so you see the tube arching over you)   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
   pov.pitch += (pitchT - pov.pitch) * Math.min(1, dt * (st === 'POP' ? 4 + 20 * Math.min(1, popClock() / 0.3) : st === 'RIDE' ? 5 + 19 * Math.max(0, 1 - rider.stateT / 0.4) : 5));   // (and out of it without a kink: the rates hand over gradually when you're up)   // (the pop: eyes snap down to the board between your hands)
   pov.roll += ((standing ? -rider.lean * 0.2 - 0.55 * (rider.wob || 0) + 0.05 * bogV * Math.sin(T * 9.1) : 0) - pov.roll) * Math.min(1, dt * 6);   // (the wobble of a sinking tail rocks the horizon)   // you feel the lean: the horizon tips as you lay into a carve (less than the board: people hold their head nearer level)
@@ -1854,7 +1926,7 @@ function updateHUD(dt) {
   if (ui.paddle.dataset.l !== lbl) { ui.paddle.dataset.l = lbl; ui.paddle.innerHTML = DESK ? `${lbl}<small>SPACE</small>` : lbl; }
   // coaching for the first few waves: read the sea like a surfer would
   let hint = '';
-  if (st === 'LIE' && ranchWaiting()) hint = session.waves < 3 ? 'Order a wave: it comes out of the machine wall in front of you' : '';
+  if (st === 'LIE' && ranchWaiting()) hint = session.waves < 3 ? 'Order a wave: it comes out of the machine, then ride it the way the arrows point' : '';
   else if (st === 'LIE') {
     const inc = incoming(), facingIn = Math.sin(rider.th) > 0.5;
     const onWave = rider.y > 0.3 && rider.onFace;
@@ -1975,7 +2047,7 @@ let last = performance.now(), T = 0, strokeT = 0, lastState = '', lastTrick = nu
 const _wl = new THREE.Vector3();
 const vSitB = document.getElementById('vSit');
 // music: OpenMindAudio (Pixabay): all 14 reggae songs plus three island calypso and two dancehall tracks, shuffled. From the villa radio (quieter and duller the further you are from it), under the
-// menu, loud at the Surf Ranch like a pool speaker; never on the reef
+// menu, loud at the Sumba Ranch like a pool speaker; never on the reef
 const SONGS = {
   'stand-firm-like-a-tree': ['Stand Firm Like a Tree', 'OpenMindAudio'], 'barefoot-in-the-breeze': ['Barefoot in the Breeze', 'OpenMindAudio'], 'streets-still-singing': ['Streets Still Singing', 'OpenMindAudio'],
   'drop-of-peace': ['Drop of Peace', 'OpenMindAudio'], 'generational-stew': ['Generational Stew', 'OpenMindAudio'], 'shelter-in-the-storm': ['Shelter in the Storm', 'OpenMindAudio'],
@@ -2535,4 +2607,4 @@ function specApply(dt) {
   rider.wave = waves.find((v) => v.sid === R.waveId) || null;
   input.paddle = !!b.pad;
 }
-window.__g = { get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), useStance: (k) => useStance(k), get board() { return boardType; }, get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };
+window.__g = { lockRanch, get ranchDbg() { return { people: !!people, loading: peopleLoading, failed: peopleFailed, crowd: crowd && crowd.length, life: !!life }; }, get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), useStance: (k) => useStance(k), get board() { return boardType; }, get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };

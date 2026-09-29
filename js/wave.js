@@ -35,7 +35,7 @@ export const CONDITIONS = {
   extreme: { judge: 1.08, nose: 0.6, H: 15,   speed: 13.5, peel: 11,   angle: 45, period: 20, hollow: 1.0,  forgive: 0.85, len: 4,   width: 1.25, fat: 1.1, tube: 0.2,  wobble: 0.3,  burst: 2.1, softA: 0.8,  name: 'Extreme' },  // a 15 m mountain of water; a giant reef wave breaks in shallower water (H/d ~1.1) and runs ~13-14 m/s, like Jaws
 };
 
-// The Surf Ranch's machine waves: the pool's own settings (a machine makes the same wave every time), so tuning a reef
+// The Sumba Ranch's machine waves: the pool's own settings (a machine makes the same wave every time), so tuning a reef
 // spot never changes the pool. The same numbers the pool has always had.
 export const RANCH_CONDITIONS = {
   easy:   { judge: 0.92, nose: 1.25, H: 5,   speed: 6.4,  peel: 3.4, angle: 62, period: 12, hollow: 0.72, forgive: 0.6,  len: 1,   width: 1.3,  fat: 1.3, tube: 1.3, wobble: 0.06, burst: 1.1, softA: 0.35, name: 'Easy' },

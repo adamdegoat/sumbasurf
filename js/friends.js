@@ -69,7 +69,7 @@ const LINES = {
     'Gunung Laut, the mountain in the sea. She only wakes up in a storm. Fifteen metres. Take the gun and say a small prayer.',
     'Watu Kanan goes right, off those red cliffs. Hollow but kind. Regular foot? That one is made for you.',
     'Karang Hiu, the shark reef. Just the name, relax. Fast right, white sand, water so clear you see every coral.',
-    'Surf Ranch is the wave pool. You order the wave you want, same one again and again. Best place to practise airs.',
+    'Sumba Ranch is the wave pool. You order the wave you want, same one again and again. Best place to practise airs.',
     'Sumba is not Bali, you know. No crowds, no traffic. Just you, the horses and perfect waves.',
     'My favourite? Tanjung Uma at sunset. Gold water, nobody out, the uma roof glowing up here.',
     'First time? Start at Pantai Kuda, then come home to Tanjung Uma. The others will wait for you.'],
