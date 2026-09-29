@@ -2482,18 +2482,19 @@ function tick(dt) {
   } else if (mode === 'villa' && walker) {
     villaTick(dt);
   } else {
-    // behind the start screen: a slow drift along a peeling wave
-    if (!tick.demo) { tick.demo = new Wave(scene, CONDITIONS.medium); tick.demo.peelX = -30; }
-    tick.demo.update(dt);
+    // behind the start screen (his call, 29 Sep 2026): sitting on your board out the back, looking out to sea as the
+    // sets come in. Each wave rises out of the distance, the peak pitching off to one side and peeling toward you, and
+    // lifts you up and over its shoulder before it breaks behind you; then the next
+    if (!tick.demo) { tick.demo = new Wave(scene, CONDITIONS.medium); tick.demo.t0 = T; tick.demo.prof = new Profile(tick.demo); }   // (its shape, for the sea under your board)
+    const w = tick.demo, C = w.cond, P = 24, ARR = 18, CX = M_SIT.x, CZ = M_SIT.z, t = (T - w.t0) % P;   // (a wave every 24 s, under you 18 s in)
+    w.place(CX + M_SIT.ahead - C.peel * (ARR - t), CZ - C.speed * (ARR - t));   // (the break reaches M_SIT.ahead m short of you as it passes: you're on its shoulder)
+    w.fade = Math.min(1, Math.max(0.15, 1 + (w.zW + 160) / 60)); w.update(dt);
     railSpray.update(dt); bowGlow.update(dt); wake.update(dt); track.update(dt);   // (let any spray left from the last ride fall and fade)
-    rig.visible = false; leash.visible = false; jukung.visible = false; for (const L of locals) L.grp.visible = false; for (const b of birds) b.visible = false;   // the menu shows only the sea
-    // ...seen from inside the barrel: tucked in under the lip, looking out down the line through the opening
-    const w = tick.demo, H = w.cond.H, px = w.peelX, sw = Math.sin(T * 0.6);
-    if (!w.prof) w.prof = new Profile(w);
-    const ak = Math.min(1, Math.max(0, (camera.aspect - 1) / 1.2)), M = { s: -1.8, y: 0.3, off: 0.75, ahead: 2.5, ly: 0.8 + 0.55 * ak, lz: -2.0 - 1.8 * ak };   // (deep under the lip; the opening framed low right, clear of the menu, on a phone on its side and a squarer screen alike)
-    const s0 = M.s * H, y0 = M.y * H + 0.12 * sw, zl = w.prof.frontZAt(s0, y0) + M.off + 0.25 * Math.sin(T * 0.37);
-    camera.position.set(px + s0, y0, w.zW + w.bend(s0) + zl);
-    camera.lookAt(px + M.ahead * H, M.ly * H, w.zW + w.bend(M.ahead * H) + zl + M.lz);
+    leash.visible = false; jukung.visible = false; for (const L of locals) L.grp.visible = false; for (const b of birds) b.visible = false;   // the menu shows only the sea
+    const sw = Math.sin(T * 0.45), y = heightAt([w], CX, CZ), ty = heightAt([w], CX, CZ - 3);   // (the sea under you, and a board length out: the board tips up the face as it lifts you)
+    rig.visible = true; board.visible = true; rig.position.set(CX, y + 0.05, CZ); rig.quaternion.setFromEuler(new THREE.Euler(-0.12 - Math.atan2(ty - y, 3) + 0.02 * sw, Math.PI + 0.35, 0.03 * Math.sin(T * 0.7), 'YXZ'));
+    const ey = Math.max(y, ty - 0.6, heightAt([w], CX, CZ - 1.5) - 0.3) + 0.95; camera.position.set(CX, ey, CZ + 0.45);   // (your eyes, sitting up just behind the middle of the board: kept clear of the crest as it passes under you)
+    camera.lookAt(CX + M_SIT.lookX + 2 * sw, ey + M_SIT.lookY + 0.4 * Math.sin(T * 0.31), CZ - 40);
   }
   if (rider && tick.demo) { tick.demo.dispose(scene); tick.demo = null; }
   fx.update(dt, camera.position);
@@ -2509,6 +2510,7 @@ const flipProj = (cam) => { cam.projectionMatrix.elements[0] *= -1; cam.projecti
 // paused) is drawn 4 times a second, not 60; one nobody can see (Wavedash's send-your-phone card, the computer card
 // on sumbasurf.app) the same; and 30 when you can't be playing: the contest board open over the villa, or the game's
 // window in the background on a computer (you're in another app or tab beside it)
+const M_SIT = { x: 40, z: 0, ahead: -40, lookX: -14, lookY: 0.6 };   // the menu's seat: where you sit, how far down the wave the break is as it passes you, where you look
 let drawnT = 0, menuWas = false;
 renderer.setAnimationLoop(() => {
   const now0 = performance.now(), menu = ui.start.style.display !== 'none' && !starting, B = document.body.classList;
@@ -2528,9 +2530,9 @@ renderer.setAnimationLoop(() => {
   for (const h of hairMeshes) h.visible = camera.layers.isEnabled(1);   // (walking round the villa, your legs are yours again)
   // the ride's over (the score is up): your body settling back onto the board moves faster than your eyes follow, and
   // from just behind it you'd see your own back; it isn't drawn in your view until you're back in the lineup
-  if (surfer && !W.on) surfer.visible = !(rider && rider.state === 'OUT' && !camera.layers.isEnabled(1));
+  if (surfer && !W.on) surfer.visible = !(tick.demo && !rider && mode !== 'villa') && !(rider && rider.state === 'OUT' && !camera.layers.isEnabled(1));   // (the menu: just your board, no body)
   ARMTH.value = rider && rider.standing ? 0.02 : 0.12;   // standing, shoulder skin is kept whole (no holes up the arm); sitting or lying your shoulder is right at the lens, so it's cut away   // (outside views, e.g. tests and replays, show the whole body)
-  if (camera.layers.isEnabled(1)) renderer.render(scene, camera);
+  if (camera.layers.isEnabled(1) || (tick.demo && !rider && mode !== 'villa')) renderer.render(scene, camera);   // (the menu has no arms to draw: one pass)
   else {
     if (foamK && !(rider && rider.state === 'WIPE' && W.on)) setFoam(0);   // (never left on screen: back to the menu mid-wipeout, the villa)
     ARMCUT.value = rider && rider.standing ? armCutNow() : 0; WATERY.value = rider && rider.state === 'LIE' && !W.on ? rig.position.y + 0.01 : -99;
