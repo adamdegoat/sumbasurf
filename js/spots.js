@@ -2,14 +2,14 @@
 // landmarks of its own. Distances are in the coast's own frame: the beach is ~185-225 m in from the break, and the
 // whole coast is pushed back by dz (a longer run to the sand makes a longer ride).
 import * as THREE from 'three';
-import { coast, landMaterial } from './wave.js?v=173';
+import { coast, landMaterial } from './wave.js?v=174';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const SPOTS = {
   // beginners: a wide white-sand bay, low green points, calm turquoise over a pale reef, a village of beach huts
   easy: { name: 'Pantai Kuda', dz: 110, xEnd: 200, reefTint: [1.34, 1.3, 1.16], reefK: 0.56, look: { beachW: 48, beachRise: 2.7, stackRock: [0.42, 0.39, 0.34], sandWet: [0.62, 0.6, 0.52], sandDry: [0.33, 0.33, 0.3], land: [0.16, 0.27, 0.12], palms: 1, cliffH: 0.12, cliffGreen: 1, temple: false, mountain: [0.3, 0.38, 0.32], mountainScale: 0.55, jungle: 0.8 } },
   // the classic: limestone cliffs, the temple on the edge, golden sand (the original coast)
-  medium: { name: 'Tanjung Uma', dz: 60, xEnd: 200, reefTint: [1, 1, 1], look: { rock: [0.7, 0.6, 0.46], arch: true } },   // (weathered honey limestone: the pale cream read as foam from the villa)
+  medium: { name: 'Tanjung Uma', dz: 60, xEnd: 200, reefTint: [1, 1, 1], look: { rock: [0.7, 0.6, 0.46], arch: true, land: [0.46, 0.37, 0.19], plat: [0.44, 0.36, 0.19], cliffGreen: 0.35, palms: 0.5, mountain: [0.42, 0.4, 0.36] } },   // (weathered honey limestone: the pale cream read as foam from the villa; the land behind dry and golden, Sumba's dry-season savanna)
   // advanced: a black volcanic slab, basalt cliffs, black sand, a lighthouse on the point
   hard: { name: 'Batu Hitam', dz: 110, xEnd: 290, reefTint: [0.55, 0.62, 0.6], look: { sandWet: [0.1, 0.1, 0.11], sandDry: [0.1, 0.1, 0.1], land: [0.1, 0.16, 0.09], palms: 0.35, cliffH: 1.25, rock: [0.15, 0.15, 0.16], cliffGreen: 0.3, temple: false, mountain: [0.18, 0.2, 0.22], mountainScale: 1.15, jungle: 0.7 } },
   // the rights (mirror: the whole place is drawn the other way round, so the wave peels to your right). Watu Kanan:
@@ -45,6 +45,7 @@ export function spotGroup(scene, key) {
   if (key === 'bintang') ownDice(g, nightLights, 11);
   if (key === 'easy') ownDice(g, horseHead);
   if (key === 'easy') ownDice(g, kudaNature, 29);
+  if (key === 'medium') { dryJungle(g); ownDice(g, umaNature, 31); }
   if (key === 'extreme') ownDice(g, seaMountain);
   waterProps(g, key);
   if (key === 'hard') blackRock(g);
@@ -357,6 +358,44 @@ function kudaNature(g) {
   // palms crowding each arm's tip, leaning out to sea
   for (const [cx, cz, dir, y0] of [[-470, 55, 0, 25], [610, 70, Math.PI, 21]]) for (let k = 0; k < 11; k++) {   // (y0: the grass on each arm there)
     const a = k * 2.4, r = 6 + (k % 4) * 7; palm(g, cx + Math.cos(a) * r, y0 + (k % 3), cz + Math.sin(a) * r * 0.6, 14 + (k % 5) * 2, 0.18 + (k % 3) * 0.07, dir + (k % 2 ? 0.4 : -0.4)); }
+}
+
+// Tanjung Uma, made more of itself in nature (29 Sep 2026, his call: natural, no people or man-made things): Sumba in
+// the dry season. Bare golden grass hills roll up behind the beach with a lone tree here and there (Pantai Kuda's are
+// soft and green), a higher range further back hazed blue; the forest along the beach thinned and dried to olive
+function umaNature(g) {
+  const hills = [], trees = [];
+  const hill = (x, z, rx, rz, h, depth) => {
+    const geo = new THREE.SphereGeometry(1, 36, 12, 0, Math.PI * 2, 0, Math.PI / 2), pp = geo.attributes.position, c = new Float32Array(pp.count * 3);
+    for (let i = 0; i < pp.count; i++) { const X = pp.getX(i), Y = pp.getY(i), Z = pp.getZ(i), n = 1 + 0.06 * Math.sin(X * 4 + Z * 5) + 0.035 * Math.sin(X * 11 - Z * 13);
+      pp.setXYZ(i, X * rx * n, Math.pow(Y, 0.8) * h * n, Z * rz * n);
+      // dry grass: gold on the sunny tops, a browner olive down in the folds and gullies where it stays greener; the
+      // far range paler and bluer in the sea air (depth: 0 near, 1 far)
+      const grass = 0.9 + 0.12 * Math.sin(X * 23 + Z * 17) * Math.sin(X * 7 - Z * 29) + (Math.random() - 0.5) * 0.08, t = Y, gully = Math.max(0, Math.sin(X * 9 + Z * 3) - 0.6) * (1 - t);
+      const scrub = Math.min(1, Math.max(0, Math.sin(X * 13 + Z * 4 + x) * Math.sin(Z * 11 - X * 6 + z) * 2.5 - 0.3)) + gully;   // (dark patches of dry scrub and thicket, so it reads as grass, not sand)
+      const r0 = (0.36 + 0.14 * t - 0.2 * scrub) * grass, g0 = (0.25 + 0.09 * t - 0.07 * scrub) * grass, b0 = (0.07 + 0.03 * t - 0.02 * scrub) * grass, a = depth * 0.5;
+      c[i * 3] = r0 + (0.56 - r0) * a; c[i * 3 + 1] = g0 + (0.6 - g0) * a; c[i * 3 + 2] = b0 + (0.64 - b0) * a; }
+    geo.setAttribute('color', new THREE.BufferAttribute(c, 3)); geo.computeVertexNormals(); geo.translate(x, -2, z); hills.push(geo);
+    // a few lone trees standing out on the near slopes: a dark rounded crown on a short trunk
+    if (depth < 0.5) for (let k = 0; k < 7; k++) { const a = Math.random() * Math.PI * 2, d = 0.25 + Math.random() * 0.6, X = Math.cos(a) * d, Z = -Math.abs(Math.sin(a)) * d;   // (on the sea side, where you see them)
+      const y = Math.pow(Math.sqrt(Math.max(0, 1 - X * X - Z * Z)), 0.8) * h * 0.94 - 5, s = 4 + Math.random() * 3, tx = x + X * rx, tz = z + Z * rz;   // (sunk a little: the dome is coarser than the true curve)
+      const cr = new THREE.IcosahedronGeometry(s, 1).scale(1.5, 0.65, 1.3); tint(cr, [0.1, 0.13, 0.05], 0.25); cr.translate(tx, y + s * 1.3, tz); trees.push(cr);   // (a wide flat crown, as the savanna trees grow)
+      const tr = new THREE.CylinderGeometry(0.6, 0.9, s * 1.6, 5); tint(tr, [0.2, 0.16, 0.12], 0.1); tr.translate(tx, y + s * 0.5, tz); trees.push(tr); } };
+  for (const [x, z, rx, rz, h, d] of [[-160, 360, 150, 80, 48, 0.1], [40, 390, 170, 90, 64, 0.2], [230, 370, 150, 85, 50, 0.12], [420, 400, 170, 95, 60, 0.25], [590, 370, 130, 80, 44, 0.15],
+    [140, 540, 280, 120, 120, 0.85], [-250, 560, 240, 110, 100, 0.9], [480, 560, 250, 120, 108, 0.88]]) hill(x, z, rx, rz, h, d);
+  for (const list of [hills, trees]) { const geo = mergeGeometries(list.map((q) => { if (q.attributes.uv) q.deleteAttribute('uv'); return q.index ? q.toNonIndexed() : q; })); geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, landMaterial()); m.userData.prop = true; g.add(m); }
+}
+// the forest along the back of the beach, thinned out (bare golden ground showing between the trees) and dried to a
+// dusty olive: keeps every other few crowns of the one the coast built, so the shared dice are untouched
+function dryJungle(g) {
+  const j = g.userData.jungle, e = g.userData.edge; if (!j) return;
+  const m = new THREE.Matrix4(); let n = 0;
+  for (let i = 0; i < j.count; i++) if (i % 5 < 2) { j.getMatrixAt(i, m); j.setMatrixAt(n++, m); }
+  j.count = n; j.instanceMatrix.needsUpdate = true;
+  const geo = j.geometry.clone(), c = geo.attributes.color;
+  for (let i = 0; i < c.count; i++) { const k = c.getY(i) / 0.2; c.setXYZ(i, 0.17 * k, 0.2 * k, 0.09 * k); }   // (the coast's crowns are green 0.09/0.2/0.08 times their light)
+  j.geometry = geo; if (e) e.geometry = geo;   // (and the scrub along the cliff tops)
 }
 
 function blackRock(g) {

@@ -430,7 +430,7 @@ export const SUN_DIR = new THREE.Vector3(0.25, 0.1, -1).normalize();   // low su
 export const WEATHER = {
   // good weather on the three normal levels (his call): morning, midday, afternoon sun; the storm is Extreme only
   easy:    { sun: [0.55, 0.24, 0.6],  zen: 0x4f8ccc, hor: 0xdde6e2, sunCol: 0xffdcb4, fog: 0xdce4de, deep: 0x1a929a, turq: 0x62ecc6, cloud: 0.6, chop: 0.4, fogFar: 470, rain: 0, sunVis: 1, light: 0xffe6c8, hemi: 0xf2e8da, wind: 0.3 },   // early morning: the sun low over the land, glassy green-turquoise water, hardly a breath of wind
-  medium:  { sun: [0.6, 0.38, -0.7],  zen: 0x2c64b0, hor: 0xbfd8e2, sunCol: 0xffd8a0, fog: 0xc8d8dc, deep: 0x083e86, turq: 0x1f9fd0, cloud: 0.24, chop: 1.0, fogFar: 330, rain: 0, sunVis: 1, light: 0xffe2b8, hemi: 0xf0e4d2 },   // clear blue afternoon, deep sapphire water, the sun low and golden on the limestone
+  medium:  { sun: [0.6, 0.38, -0.7],  zen: 0x2c64b0, hor: 0xbfd8e2, sunCol: 0xffd8a0, fog: 0xc8d8dc, deep: 0x083e86, turq: 0x1f9fd0, cloud: 0.42, chop: 1.0, fogFar: 330, rain: 0, sunVis: 1, light: 0xffe2b8, hemi: 0xf0e4d2 },   // clear blue afternoon, deep sapphire water, the sun low and golden on the limestone
   hard:    { sun: [0.3, 0.6, -0.6],   zen: 0x56636e, hor: 0x98a4ab, sunCol: 0xc9ced2, fog: 0x8e9aa1, deep: 0x062f3c, turq: 0x1a7a72, cloud: 0.8, chop: 1.6, fogFar: 260, rain: 0, sunVis: 0.3, light: 0xc4ccd2, hemi: 0xa8b4bc, wind: 1.3 },   // grey overcast, dark heavy water off the black rock
   kanan:   { sun: [-0.5, 0.24, -0.85], zen: 0x3462a8, hor: 0xe8dcc4, sunCol: 0xffb878, fog: 0xead6ba, deep: 0x0c4f5e, turq: 0x2aa89a, cloud: 0.3, chop: 0.9, fogFar: 320, rain: 0, sunVis: 1, light: 0xffd6b0, hemi: 0xf2dcc8, hemiGround: 0x4a3a30, wind: 0.9 },   // late sun low over the sea, warm teal water, the red cliffs lit up
   hiu:     { sun: [0.2, 0.92, -0.35], zen: 0x1858c2, hor: 0x9fd2ee, sunCol: 0xfffaf0, fog: 0xa8d6ee, deep: 0x0a6c9a, turq: 0x2cf0e0, cloud: 0.04, chop: 1.2, fogFar: 380, rain: 0, sunVis: 1, wind: 2 },   // crystal clear midday, electric aqua over the reef, a strong offshore blowing spray off every lip
@@ -912,7 +912,7 @@ function buildCoast(scene, O, mat) {
     if (tall) jTrunk.setMatrixAt(nt++, m4.compose(ps.set(x, ground - 0.5, z), q.identity(), sc.set(r * 0.08 + 0.3, cy - ground, r * 0.08 + 0.3)));
   }
   jungle.count = n; jTrunk.count = nt;
-  group.add(jungle, jTrunk);
+  group.add(jungle, jTrunk); group.userData.jungle = jungle;
   // coconut palms along the beach: slender curving trunks and a crown of long drooping fronds
   const N = 170;
   const trunkG = colorize(new THREE.CylinderGeometry(0.16, 0.26, 1, 6, 6).translate(0, 0.5, 0), [0.4, 0.34, 0.26]);
@@ -962,12 +962,12 @@ function buildCoast(scene, O, mat) {
   // the plateau on top, and jungle along the edge
   const plat = new THREE.PlaneGeometry(CW, 140, 66, 6); plat.rotateX(-Math.PI / 2);
   { const p = plat.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i) - 400, z = p.getZ(i) + 290; let y = cliffTop(x) + 1 + Math.sin(x * 0.05) * Math.cos(z * 0.04) * 2; const C = O.clear; if (C && x > C.x0 && x < C.x1 && z > C.z0 && z < C.z1) y = Math.min(y, C.y - 0.6); p.setXYZ(i, x, y, z); } plat.computeVertexNormals(); }
-  group.add(new THREE.Mesh(colorize(plat, [0.13, 0.21, 0.1], 0.2), mat));
+  group.add(new THREE.Mesh(colorize(plat, O.plat || [0.13, 0.21, 0.1], 0.2), mat));   // (plat: the clifftop's own colour, e.g. Tanjung Uma's dry grass)
   const NE = 160, edge = new THREE.InstancedMesh(blob, mat, NE);
   for (let i = 0; i < NE; i++) { const x = -720 + Math.random() * 640, r = 3 + Math.random() * 4, t = cliffTop(x), ez = 219 + Math.random() * 30, C = O.clear;
     if (t < 4 || (C && x > C.x0 - r && x < C.x1 + r && ez > C.z0 - r && ez < C.z1 + r)) { edge.setMatrixAt(i, m4.makeScale(0, 0, 0)); continue; }
     edge.setMatrixAt(i, m4.compose(ps.set(x, t + r * 0.3, ez), q.setFromEuler(new THREE.Euler(0, Math.random() * 6, 0)), sc.set(r * 1.3, r * 0.7, r))); }
-  group.add(edge);
+  group.add(edge); group.userData.edge = edge;
   // a Balinese temple on the cliff edge: stone base, a meru tower of stacked dark thatch roofs
   if (O.temple) { const tx = -190, ty = cliffTop(tx), tz = 226, stone = [0.62, 0.56, 0.48], thatch = [0.14, 0.11, 0.09];
     group.add(at(new THREE.Mesh(colorize(new THREE.BoxGeometry(9, 3, 9), stone, 0.1), mat), tx, ty + 1.5, tz));

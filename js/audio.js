@@ -101,6 +101,15 @@ export class SurfAudio {
   // the Sumba Ranch machine: a deep whoosh as the chambers fire, with a metallic clank
   // a gull over the beach: a falling 'kee-ow', sometimes twice
   gull(k = 1) { const n = Math.random() < 0.4 ? 2 : 1; for (let i = 0; i < n; i++) { const f = 1700 + Math.random() * 500; this.tone(f, 0.03 * k, 0.34, { type: 'sawtooth', delay: i * 0.42, to: f * 0.62, band: 1600 }); } }
+  // a warm gust over the dry grass (Tanjung Uma): a soft swell of wind rising and dying away over a few seconds
+  breeze(k = 1) {
+    if (!this.ok || this.ctx.state !== 'running') return;
+    const ctx = this.ctx, t0 = ctx.currentTime, dur = 4 + k * 2, src = ctx.createBufferSource(); src.buffer = this.noise; src.loop = true;
+    const fl = ctx.createBiquadFilter(); fl.type = 'bandpass'; fl.Q.value = 0.6; fl.frequency.setValueAtTime(450, t0); fl.frequency.linearRampToValueAtTime(800, t0 + dur * 0.45); fl.frequency.linearRampToValueAtTime(500, t0 + dur);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.07 * k, t0 + dur * 0.45); g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(fl).connect(g).connect(this.master); src.start(t0, 1.3 * k); src.stop(t0 + dur + 0.05);
+    src.onended = () => { src.disconnect(); fl.disconnect(); g.disconnect(); };
+  }
   crowdLevel(k) { if (this.ok) this.set(this.crowd.g.gain, 0.05 * k, 0.8); }
   // the crowd round the pool going up for a barrel or a big move: a swell of voices (noise shaped like a roar, and a
   // few rising whoops on top)
