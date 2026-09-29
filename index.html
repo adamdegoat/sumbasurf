@@ -575,13 +575,23 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260929-2020</small>
+    <small id="build">build 260929-2027</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-29-spotlooks2', look: true, date: '29 Sep 2026', time: '8:27 pm', title: 'Every spot its own place', items: [
+      'Pantai Kuda: soft green hills behind the bay, clearer turquoise shallows, and gulls over the beach.',
+      'Tanjung Uma: golden dry-season hills with lone trees, bigger clouds, and warm gusts over the grass.',
+      'Batu Hitam: a volcano behind the bay, black basalt cliffs in tall columns, and waves booming against them.',
+      'Watu Kanan: a waterfall pouring off the red cliffs into the sea, rounded red sandstone and warmer evening light.',
+      'Karang Hiu: palms bent hard by the offshore wind and a shore of jagged grey reef rock.',
+      'Gunung Laut: waterfalls pouring down the giant cliffs in the storm, between tall green ridges.',
+      'Pantai Bintang: a brighter moon, the moon rising between two tall rock pillars, and crickets in the night.',
+      'The rock arch out at sea is now Tanjung Uma\'s alone; the other spots have their own rocks.',
+    ] },
     { id: '2026-09-29-songs3', look: true, date: '29 Sep 2026', time: '8:20 pm', title: 'Three new songs', items: [
       'Everyday Is A Holiday, Dreaming Of Reggae and Make Your Grey Skies Blue join the radio, in the water and at the villa.',
       'Every song now plays at the same volume, so none jumps out louder than the rest.',
@@ -589,15 +599,6 @@
     { id: '2026-09-29-pause', date: '29 Sep 2026', time: '7:56 pm', title: 'Pause the villa music', items: [
       'Tap Now playing at the villa for a new pause button between back and next. The song carries on from where you stopped it.',
       'Patch notes now have two tabs: Gameplay, and Looks and sound.',
-    ] },
-    { id: '2026-09-29-spotlooks', look: true, date: '29 Sep 2026', time: '7:48 pm', title: 'Every spot its own place', items: [
-      'Pantai Kuda: soft green hills behind the bay, clearer turquoise shallows, and gulls over the beach.',
-      'Tanjung Uma: golden dry-season hills with lone trees, bigger clouds, and warm gusts over the grass.',
-      'Batu Hitam: a volcano behind the bay, black basalt cliffs in tall columns, and waves booming against them.',
-      'Watu Kanan: a waterfall pouring off the red cliffs into the sea, rounded red sandstone and warmer evening light.',
-      'Karang Hiu: palms bent hard by the offshore wind and a shore of jagged grey reef rock.',
-      'Pantai Bintang: a brighter moon and sky, still a night spot with the glowing waves.',
-      'The rock arch out at sea is now Tanjung Uma\'s alone; the other spots have their own rocks.',
     ] },
     { id: '2026-09-29-bestboards', date: '29 Sep 2026', time: '7:17 pm', title: 'Best boards for each spot', items: [
       'The board picker on the menu now tags the best boards for the spot you choose, on phones too.',
@@ -835,6 +836,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=941"></script>
+<script type="module" src="js/game.js?v=942"></script>
 </body>
 </html>

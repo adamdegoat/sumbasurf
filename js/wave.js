@@ -948,17 +948,23 @@ function buildCoast(scene, O, mat) {
   const sandN = (x, y) => Math.sin(x * 0.083 - y * 0.05) * 3.4 + Math.sin(x * 0.19 + y * 0.07) * 2.2 + Math.pow(0.5 + 0.5 * Math.sin(y * 0.33 + Math.sin(x * 0.05) * 3), 2) * 2.4;
   // reef rock (Karang Hiu): old coral raised out of the sea, eaten into sharp ridges and pits
   const karstN = (x, y) => (1 - Math.abs(Math.sin(x * 0.19 + y * 0.23 + Math.sin(y * 0.11 + x * 0.013) * 2))) * 2.6 + (1 - Math.abs(Math.sin(x * 0.07 - y * 0.41 + Math.sin(x * 0.031) * 3))) * 1.8 + Math.sin(x * 0.083) * 3 + Math.sin(x * 0.029 + y * 0.09) * 1.5;   // (no fine repeats: the cliff's grid is 5 m across, finer ridges came out as a quilted diamond pattern)
+  // fluted (Gunung Laut): sheer ridges and deep ravines running straight down the cliff, like knife-edged folds,
+  // a ravine every ~70 m
+  const flutN = (x, y) => -Math.abs(Math.sin(x * 0.045)) * 10 + Math.sin(x * 0.13 + y * 0.02) * 2 + Math.sin(x * 0.021) * 4;
   const CW = 660, cliff = new THREE.PlaneGeometry(CW, 1, 132, 26);
   { const p = cliff.attributes.position, c = new Float32Array(p.count * 3);
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i) - 400, v = p.getY(i) + 0.5, top = cliffTop(x), y = v * top;
       const band = Math.sin(y * 0.55 + Math.sin(x * 0.02) * 2), n = Math.sin(x * 0.31 + y * 0.12) * 1.8 + Math.sin(x * 0.083 - y * 0.05) * 3.4 + Math.sin(x * 1.3 + y * 0.9) * 0.6 + band * 0.9;   // ledges and horizontal strata
       const colH = O.columns ? (Math.sin(Math.floor((x + 1000) / 5.5) * 12.9898) * 43758.5453 % 1 + 1) % 1 : 0;   // (basalt: each column stands a little proud or sunk, lighter or darker)
-      p.setXYZ(i, x, y, 214 + (O.columns ? (colH - 0.5) * 2.6 + Math.sin(x * 0.083) * 3.4 : O.sandstone ? sandN(x, y) : O.karst ? karstN(x, y) : n) + y * 0.12 + (v > 0.97 ? 3 : 0));   // leans back a little; the top lip rolls back into the plateau
+      p.setXYZ(i, x, y, 214 + (O.columns ? (colH - 0.5) * 2.6 + Math.sin(x * 0.083) * 3.4 : O.sandstone ? sandN(x, y) : O.karst ? karstN(x, y) : O.fluted ? flutN(x, y) : n) + y * 0.12 + (v > 0.97 ? 3 : 0));   // leans back a little; the top lip rolls back into the plateau
       const streak = 0.7 + 0.3 * Math.pow(0.5 + 0.5 * Math.sin(x * 0.9 + Math.sin(y * 0.3) * 2), 2) + 0.1 * band, wet = Math.min(1, y / 4), green = Math.max(0, (v - 0.84) / 0.16) + Math.max(0, Math.sin(x * 0.13) * Math.sin(y * 0.2) - 0.75) * 2;   // weathered streaks, tufts of green on ledges
       const crev = 0.6 + 0.4 * Math.min(1, Math.abs(Math.sin(x * 0.47 + Math.sin(y * 0.11) * 1.5)) * 2.2);   // dark vertical cracks and gullies
       const ledge = 0.72 + 0.28 * Math.min(1, Math.max(0, band * 2 + 0.6));   // shadow under each ledge
       let k = (O.columns ? (0.35 + 0.45 * colH) * (0.8 + 0.2 * Math.abs(Math.sin(y * 0.09 + colH * 6))) : streak * crev * ledge) * (0.4 + 0.6 * wet) * (0.8 + 0.2 * v); let r = O.rock[0] * k, g = O.rock[1] * k, b = O.rock[2] * k;   // warm cream limestone at Temple Point (each spot has its own rock)
+      if (O.fluted) { const ridge = 1 - Math.abs(Math.sin(x * 0.045)), kk = (0.7 + 0.3 * Math.abs(Math.sin(x * 0.9 + y * 0.05))) * (0.35 + 0.65 * wet);   // (dark wet rock down in the ravines, the ridges and upper slopes thick with green)
+        r = O.rock[0] * kk; g = O.rock[1] * kk; b = O.rock[2] * kk; const gf = Math.min(1, Math.max(0, ridge * 1.3 - 0.25) * (y > 8 ? 1 : 0) + (v > 0.55 ? (v - 0.55) * 1.6 : 0)), gk = 0.75 + 0.35 * Math.abs(Math.sin(x * 0.37 + y * 0.21));
+        r += (0.07 * gk - r) * gf; g += (0.14 * gk - g) * gf; b += (0.06 * gk - b) * gf; }
       if (O.karst) { const pit = Math.abs(Math.sin(x * 0.23 + y * 0.7 + Math.sin(x * 0.05) * 4) * Math.sin(x * 0.17 - y * 0.9)), kk = (0.62 + 0.38 * (1 - Math.abs(Math.sin(x * 0.19 + y * 0.23 + Math.sin(y * 0.11 + x * 0.013) * 2)))) * (pit > 0.75 ? 0.6 : 1) * (0.9 + 0.2 * ((Math.sin(x * 12.9898 + y * 78.233) * 43758.5453 % 1 + 1) % 1)) * (0.35 + 0.65 * wet) * (0.85 + 0.15 * v);   // (pale on the ridges, dark in the pits, black and wet low down)
         r = O.rock[0] * kk; g = O.rock[1] * kk; b = O.rock[2] * kk; }
       if (O.sandstone) { const st = Math.sin(y * 0.45 + Math.sin(x * 0.03) * 2.5 + Math.sin(x * 0.011) * 1.5), kk = (0.82 + 0.18 * Math.sin(x * 0.9 + Math.sin(y * 0.3) * 2)) * (0.4 + 0.6 * wet) * (0.85 + 0.15 * v) * (0.9 + 0.12 * Math.pow(0.5 + 0.5 * Math.sin(y * 0.33 + Math.sin(x * 0.05) * 3), 2));   // (layers of red, orange and pale cream sandstone, wavy where the old dunes were laid down)
@@ -971,7 +977,7 @@ function buildCoast(scene, O, mat) {
     for (let t = 0; t < fp.count; t += 3) { const cx = Math.min(fp.getX(t), fp.getX(t + 1), fp.getX(t + 2)) + 1, h = (Math.sin(Math.floor((cx + 1000) / 5) * 78.233) * 43758.5453 % 1 + 1) % 1, k = 0.55 + 0.9 * h;
       for (let e = 0; e < 3; e++) fc.setXYZ(t + e, fc.getX(t + e) * k, fc.getY(t + e) * k, fc.getZ(t + e) * k); }
     f.computeVertexNormals(); return f; })() : cliff, mat));
-  group.userData.cliff = { top: cliffTop, z: (x, y) => 214 + (O.sandstone ? sandN(x, y) : 0) + y * 0.12 };   // (the face, for things set against it: Watu Kanan's waterfall; exact for sandstone)
+  group.userData.cliff = { top: cliffTop, z: (x, y) => 214 + (O.sandstone ? sandN(x, y) : O.fluted ? flutN(x, y) : 0) + y * 0.12 };   // (the face, for things set against it: Watu Kanan's waterfall; exact for sandstone)
   // the plateau on top, and jungle along the edge
   const plat = new THREE.PlaneGeometry(CW, 140, 66, 6); plat.rotateX(-Math.PI / 2);
   { const p = plat.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i) - 400, z = p.getZ(i) + 290; let y = cliffTop(x) + 1 + Math.sin(x * 0.05) * Math.cos(z * 0.04) * 2; const C = O.clear; if (C && x > C.x0 && x < C.x1 && z > C.z0 && z < C.z1) y = Math.min(y, C.y - 0.6); p.setXYZ(i, x, y, z); } plat.computeVertexNormals(); }

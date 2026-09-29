@@ -2,7 +2,7 @@
 // landmarks of its own. Distances are in the coast's own frame: the beach is ~185-225 m in from the break, and the
 // whole coast is pushed back by dz (a longer run to the sand makes a longer ride).
 import * as THREE from 'three';
-import { coast, landMaterial, ENV } from './wave.js?v=184';
+import { coast, landMaterial, ENV } from './wave.js?v=185';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const SPOTS = {
@@ -21,7 +21,7 @@ export const SPOTS = {
   // moon and the Milky Way, lamp boats out at sea, a fire on the beach, and plankton that glows wherever the water breaks
   bintang: { name: 'Pantai Bintang', dz: 160, xEnd: 320, reefTint: [0.45, 0.55, 0.7], reefK: 0.001, look: { sandWet: [0.34, 0.35, 0.37], sandDry: [0.5, 0.49, 0.46], land: [0.07, 0.13, 0.09], palms: 1, cliffH: 0.02, rock: [0.32, 0.32, 0.35], cliffGreen: 0.9, temple: false, stacks: false, boat: false, mountain: [0.1, 0.13, 0.18], mountainScale: 0.8, jungle: 1 } },   // (no cliffs and none of the usual offshore stacks: a low palm beach, and its own rock arch out to sea)
   // experts: a giant outer reef far off a towering coast, sea stacks, a storm
-  extreme: { name: 'Gunung Laut', dz: 230, xEnd: 430, reefTint: [0.6, 0.65, 0.65], look: { stacks: false, boat: false,  sandWet: [0.18, 0.17, 0.16], sandDry: [0.12, 0.12, 0.11], land: [0.09, 0.14, 0.08], palms: 0.1, cliffH: 2.6, rock: [0.36, 0.35, 0.33], cliffGreen: 0.7, temple: false, mountain: [0.2, 0.23, 0.24], mountainScale: 1.6, jungle: 0.6 } },
+  extreme: { name: 'Gunung Laut', dz: 230, xEnd: 430, reefTint: [0.6, 0.65, 0.65], look: { stacks: false, boat: false,  sandWet: [0.18, 0.17, 0.16], sandDry: [0.12, 0.12, 0.11], land: [0.09, 0.14, 0.08], palms: 0.1, cliffH: 2.6, rock: [0.3, 0.3, 0.29], fluted: true, cliffGreen: 0.7, temple: false, mountain: [0.2, 0.23, 0.24], mountainScale: 1.6, jungle: 0.6 } },
 };
 
 const built = {};
@@ -49,6 +49,7 @@ export function spotGroup(scene, key) {
   if (key === 'hard') { jungleLook(g, 3, [0.07, 0.11, 0.06]); ownDice(g, hitamNature, 37); }
   if (key === 'kanan') { jungleLook(g, 5, [0.08, 0.25, 0.07]); ownDice(g, (h) => kananNature(h, g.userData.cliff), 41); }
   if (key === 'hiu') ownDice(g, (h) => hiuNature(h, g.userData.cliff), 43);
+  if (key === 'extreme') ownDice(g, (h) => lautNature(h, g.userData.cliff), 47);
   if (key === 'extreme') ownDice(g, seaMountain);
   waterProps(g, key);
   if (key === 'hard') blackRock(g);
@@ -418,6 +419,29 @@ function hitamNature(g) {
   const m = new THREE.Mesh(geo, landMaterial()); m.userData.prop = true; g.add(m);
 }
 
+// a waterfall down a coast's cliff face (C: the face): a sheet of white water hugging the rock, streaks of foam racing
+// down it, spreading a little as it falls (its own see-through material, on the game's clock)
+function waterfall(g, C, FX, FW, top, dim = 1) {
+  const fall = new THREE.PlaneGeometry(1, 1, 4, 30), fp = fall.attributes.position;
+  for (let i = 0; i < fp.count; i++) { const u = fp.getX(i) + 0.5, v = fp.getY(i) + 0.5, y = top * v, w = FW * (0.75 + 0.25 * v + 0.35 * (1 - v) * (1 - v)), x = FX + (u - 0.5) * w;
+    fp.setXYZ(i, x, y, C.z(x, y) - 1.4 - 1.2 * (1 - v) * (1 - v)); }
+  { const ix = fall.index.array; for (let k = 0; k < ix.length; k += 3) { const t = ix[k + 1]; ix[k + 1] = ix[k + 2]; ix[k + 2] = t; } }   // (face the sea)
+  const mat = new THREE.ShaderMaterial({ uniforms: { uTime: ENV.uTime, uDim: { value: dim } }, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    vertexShader: 'varying vec2 vU; void main(){ vU = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+    fragmentShader: `uniform float uTime, uDim; varying vec2 vU;
+      void main(){ float e = smoothstep(0., .18, vU.x) * smoothstep(1., .82, vU.x);
+        float s = fract(vU.y * 5. + uTime * 1.3 + sin(vU.x * 23.) * .35), s2 = fract(vU.y * 9. + uTime * 2.1 + sin(vU.x * 41. + 2.) * .4);
+        float f = .55 + .3 * smoothstep(.5, .9, s) + .2 * smoothstep(.6, .95, s2);
+        gl_FragColor = vec4(mix(vec3(.7, .77, .8), vec3(.9, .92, .92), f) * uDim, e * (.45 + .35 * f) * smoothstep(0., .04, vU.y + .02)); }` });
+  const fm = new THREE.Mesh(fall, mat); fm.renderOrder = 2; g.add(fm);
+}
+// Gunung Laut, made more of itself in nature (29 Sep 2026, his call): its towering cliffs fluted into sheer green ridges
+// and ravines (the coast's look: fluted), with storm-fed waterfalls pouring down three of the ravines
+function lautNature(g, C) {
+  if (!C) return;
+  for (const [x, w] of [[-174.5, 6], [-314, 5], [-453.7, 7]]) waterfall(g, C, x, w, C.top(x) - 3, 0.62);   // (x: ravine bottoms; dimmed in the storm light)
+}
+
 // Watu Kanan, made more of itself in nature (29 Sep 2026, his call): a waterfall pours off the red cliffs from the
 // green valley above into the sea, and worn blocks of red sandstone lie along the foot of the cliffs
 function kananNature(g, C) {
@@ -434,20 +458,7 @@ function kananNature(g, C) {
   { const pool = new THREE.CircleGeometry(1, 16); pool.rotateX(-Math.PI / 2); pool.scale(FW * 0.9, 1, 4); tint(pool, [0.86, 0.9, 0.92], 0.05); pool.deleteAttribute('uv'); pool.translate(FX, 0.35, C.z(FX, 0) - 3.5); geos.push(pool.toNonIndexed()); }
   const merged = mergeGeometries(geos); merged.computeVertexNormals();
   const pm = new THREE.Mesh(merged, landMaterial()); pm.userData.prop = true; g.add(pm);
-  // the fall itself: a sheet of white water hugging the rock face, streaks of foam racing down it (drawn in its own
-  // see-through material, on the game's clock)
-  const fall = new THREE.PlaneGeometry(1, 1, 4, 30), fp = fall.attributes.position;
-  for (let i = 0; i < fp.count; i++) { const u = fp.getX(i) + 0.5, v = fp.getY(i) + 0.5, y = top * v, w = FW * (0.75 + 0.25 * v + 0.35 * (1 - v) * (1 - v)), x = FX + (u - 0.5) * w;   // (spreading a little as it falls)
-    fp.setXYZ(i, x, y, C.z(x, y) - 1.4 - 1.2 * (1 - v) * (1 - v)); }
-  { const ix = fall.index.array; for (let k = 0; k < ix.length; k += 3) { const t = ix[k + 1]; ix[k + 1] = ix[k + 2]; ix[k + 2] = t; } }   // (face the sea)
-  const mat = new THREE.ShaderMaterial({ uniforms: { uTime: ENV.uTime }, transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    vertexShader: 'varying vec2 vU; void main(){ vU = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
-    fragmentShader: `uniform float uTime; varying vec2 vU;
-      void main(){ float e = smoothstep(0., .18, vU.x) * smoothstep(1., .82, vU.x);
-        float s = fract(vU.y * 5. + uTime * 1.3 + sin(vU.x * 23.) * .35), s2 = fract(vU.y * 9. + uTime * 2.1 + sin(vU.x * 41. + 2.) * .4);
-        float f = .55 + .3 * smoothstep(.5, .9, s) + .2 * smoothstep(.6, .95, s2);
-        gl_FragColor = vec4(mix(vec3(.7, .77, .8), vec3(.9, .92, .92), f), e * (.45 + .35 * f) * smoothstep(0., .04, vU.y + .02)); }` });
-  const fm = new THREE.Mesh(fall, mat); fm.renderOrder = 2; g.add(fm);
+  waterfall(g, C, FX, FW, top);
 }
 
 // Karang Hiu, made more of itself in nature (29 Sep 2026, his call): a shore of raw reef rock. Jagged grey blocks of
@@ -493,19 +504,18 @@ function glowTex(stops) {
   const cv = document.createElement('canvas'); cv.width = cv.height = 64; const c = cv.getContext('2d'), gr = c.createRadialGradient(32, 32, 0, 32, 32, 32);
   for (const [o, col] of stops) gr.addColorStop(o, col); c.fillStyle = gr; c.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(cv);
 }
-// Pantai Bintang's landmark: a great rock arch standing alone out to sea, right where the moon sits as you wait in the
-// lineup, so the moon hangs in its opening; plankton glows where the swell breaks round its feet
+// Pantai Bintang's landmark: two great rock pillars standing alone out to sea, right where the moon sits as you wait
+// in the lineup, so the moon hangs in the gap between them; plankton glows where the swell breaks round their feet
+// (an arch stood here first; the arch is Tanjung Uma's alone, his call 29 Sep 2026)
 function moonArch(g, halo) {
-  const X = 92, Z = -470, R = 30, T = 11;   // (the coast sits 160 m back: this keeps the arch 310 m out from the lineup)
-  const geo = new THREE.TorusGeometry(R, T, 12, 48, Math.PI), pp = geo.attributes.position;
-  for (let i = 0; i < pp.count; i++) { const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i), a = Math.atan2(y, x), n = 1 + 0.14 * Math.sin(a * 5 + 1.3) + 0.08 * Math.sin(a * 13 + z * 0.2) + 0.05 * Math.sin(x * 0.9 + z * 0.7);
-    const cx = x / Math.max(1e-3, Math.hypot(x, y)) * R, cy = y / Math.max(1e-3, Math.hypot(x, y)) * R;   // (the rock swells and pinches round its centre line)
-    pp.setXYZ(i, cx + (x - cx) * n, cy + (y - cy) * n * (y > R * 0.7 ? 0.8 : 1), z * n * 1.25); }
-  geo.computeVertexNormals();
-  const legs = [-R, R].map((lx) => { const c = new THREE.CylinderGeometry(T * 1.0, T * 1.6, 30, 14, 4), cp = c.attributes.position;
-    for (let i = 0; i < cp.count; i++) { const y = cp.getY(i), a = Math.atan2(cp.getZ(i), cp.getX(i)), k = 1 + 0.12 * Math.sin(a * 3 + lx) + 0.06 * Math.sin(a * 7 + y * 0.08); cp.setXYZ(i, cp.getX(i) * k, y, cp.getZ(i) * k * 1.25); }
-    c.computeVertexNormals(); c.translate(lx, -15, 0); return c; });
-  for (const q of [geo, ...legs]) { q.translate(X, 26, Z); put(g, q, [0.2, 0.2, 0.23], 0, 0, 0, 0.25); }
+  const X = 92, Z = -470, R = 30, T = 11;   // (the coast sits 160 m back: this keeps them 310 m out from the lineup)
+  for (const [lx, h, r, lean] of [[-R, 64, T * 1.35, -0.05], [R, 52, T * 1.15, 0.07]]) {
+    const c = new THREE.CylinderGeometry(r * 0.62, r, h + 6, 14, 12), cp = c.attributes.position;
+    for (let i = 0; i < cp.count; i++) { const y = cp.getY(i) + (h + 6) / 2 - 6, a = Math.atan2(cp.getZ(i), cp.getX(i)), t = Math.max(0, y) / h;
+      const k = (1 + 0.14 * Math.sin(a * 3 + lx) + 0.07 * Math.sin(a * 7 + y * 0.12) + 0.08 * Math.sin(y * 0.21 + lx)) * (1 - 0.18 * Math.exp(-((y - 1.5) ** 2) / 4)) * (y > h - 3 ? 0.8 : 1);   // (weathered, notched at the waterline, a ragged top)
+      cp.setXYZ(i, cp.getX(i) * k + y * lean, y, cp.getZ(i) * k * 1.2); }
+    c.computeVertexNormals(); c.translate(X + lx, 0, Z); put(g, c, [0.2, 0.2, 0.23], 0, 0, 0, 0.25);
+    const cap = new THREE.SphereGeometry(r * 0.6, 10, 4, 0, Math.PI * 2, 0, Math.PI / 2); cap.scale(1, 0.35, 1.1); put(g, cap, [0.08, 0.12, 0.08], X + lx + h * lean, h - 2.5, Z, 0.3); }   // (a little dark scrub on each top)
   // a low rock at its foot, and the glow where the swell washes round them
   put(g, new THREE.DodecahedronGeometry(1, 1).scale(16, 7, 11), [0.18, 0.18, 0.2], X + 62, 0, Z + 18, 0.3);
   const ring = []; for (const [cx, cz, rr] of [[X - R, Z, T * 1.6], [X + R, Z, T * 1.6], [X + 62, Z + 18, 16]]) for (let k = 0; k < 110; k++) { const a = Math.random() * Math.PI * 2, r2 = rr * (0.95 + Math.random() * 0.6); ring.push([cx + Math.cos(a) * r2, 0.4, cz + Math.sin(a) * r2 * 1.2]); }   // (a loose, uneven wash of light round each rock, not a neat ring)

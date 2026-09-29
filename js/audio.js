@@ -114,6 +114,9 @@ export class SurfAudio {
   // a wave slamming into the cliffs somewhere down the coast (Batu Hitam): a deep boom and the hiss of the water falling back
   boom(k = 1) { this.burst(0.34 * k, 85, 2.6, 'lowpass', 0); this.burst(0.16 * k, 260, 1.4, 'lowpass', 0.05); this.burst(0.07 * k, 1500, 2.2, 'bandpass', 0.35); }
   fallsLevel(k) { if (this.ok && this._fk !== k) { this._fk = k; this.set(this.falls.g.gain, 0.03 * k, 1.5); } }
+  // the night (Pantai Bintang): a cricket's chirp from the trees behind the beach, now and then a frog
+  cricket(k = 1) { const f = 4200 + Math.random() * 600, n = 3 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) this.tone(f, 0.012 * k, 0.05, { delay: i * 0.075 });
+    if (Math.random() < 0.18) { const g = 380 + Math.random() * 120; for (let i = 0; i < 2; i++) this.tone(g, 0.02 * k, 0.12, { type: 'square', delay: 0.5 + i * 0.16, to: g * 0.8, band: 700 }); } }
   crowdLevel(k) { if (this.ok) this.set(this.crowd.g.gain, 0.05 * k, 0.8); }
   // the crowd round the pool going up for a barrel or a big move: a swell of voices (noise shaped like a roar, and a
   // few rising whoops on top)

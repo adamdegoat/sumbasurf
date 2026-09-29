@@ -2,13 +2,13 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=184';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=185';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=185';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=16';
-import { SurfAudio } from './audio.js?v=22';
+import { SurfAudio } from './audio.js?v=23';
 import { ranch, POOL } from './ranch.js?v=9';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=117';
-import { villa, VILLA } from './villa.js?v=149';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=118';
+import { villa, VILLA } from './villa.js?v=150';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
@@ -181,6 +181,7 @@ const locals = [], _lq = new THREE.Quaternion(), _le = new THREE.Euler(0, 0, 0, 
 let gullT = 4, breezeT = 5, breezeN = 0, boomT = 6;
 function updateLocals(dt) {
   if (rider && mode === 'easy') { gullT -= dt; if (gullT <= 0) { gullT = 7 + Math.random() * 11; audio.gull(0.6 + Math.random() * 0.4); } }   // (Pantai Kuda: gulls over the beach now and then)
+  if (rider && mode === 'bintang') { breezeT -= dt; if (breezeT <= 0) { breezeN++; breezeT = 0.5 + 1.6 * Math.abs(Math.sin(breezeN * 1.37)); audio.cricket(0.6 + 0.4 * Math.abs(Math.sin(breezeN * 2.1))); } }   // (Pantai Bintang: crickets and frogs in the night)
   if (rider && mode === 'hiu') { breezeT -= dt; if (breezeT <= 0) { breezeN++; breezeT = 6 + 6 * Math.abs(Math.sin(breezeN * 1.9)); audio.breeze(0.9 + 0.3 * Math.abs(Math.sin(breezeN * 2.3))); } }   // (Karang Hiu: the strong offshore gusting through the palms)
   if (rider && mode === 'medium') { breezeT -= dt; if (breezeT <= 0) { breezeN++; const k = 0.6 + 0.4 * Math.abs(Math.sin(breezeN * 2.3)); breezeT = 9 + 8 * Math.abs(Math.sin(breezeN * 1.7)); audio.breeze(k); } }   // (Tanjung Uma: warm gusts over the dry grass; its own beat, off the shared dice)
   audio.fallsLevel(rider && mode === 'kanan' ? 1 : 0);   // (Watu Kanan: the waterfall's rush, faint under the surf)
