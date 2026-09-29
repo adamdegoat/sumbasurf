@@ -529,6 +529,12 @@
     #pnBtn { bottom: max(5px, calc(env(safe-area-inset-bottom) + 3px)); right: max(10px, calc(env(safe-area-inset-right) + 8px)); padding: 5px 10px 4px; font-size: 11px; }
     #fbBtn { bottom: max(5px, calc(env(safe-area-inset-bottom) + 3px)); right: max(101px, calc(env(safe-area-inset-right) + 99px)); padding: 5px 10px 4px; font-size: 11px; }   /* (back in its corner, his call 28 Sep 2026: the menu stops short of it, below) */
   }
+  /* a phone on its side (30 Sep 2026): the panel is short, so the one-line description and the wave drawing go and the
+     spot's text is never squeezed under START SURFING (seen on iPhones, worst on Wavedash with its Leaderboard row above) */
+  @media (max-height: 420px) {
+    #start .mmTop { flex: none; grid-template-columns: 1fr; } #start .mmDesc, #start .mmScale { display: none; }
+    #start .mmActs #goSurf { min-height: 44px; } #start .mmPicks { margin-top: 6px; padding-top: 6px; row-gap: 7px; }
+  }
   /* a narrow phone on its side (iPhone SE and the like, 667 wide): the drawing and the long line go, the name stays on
      one line, and boards and stance sit two to a row, so nothing piles up behind START SURFING */
   @media (max-height: 460px) and (max-width: 760px) {
@@ -536,10 +542,11 @@
     #start .mmTop { grid-template-columns: 1fr; } #start .mmScale, #start .mmDesc { display: none; }
     #start .mmKick { font-size: 11px; letter-spacing: .14em; } #start .mmBig { font-size: 30px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
     #start .mmLvl { margin-top: 5px; font-size: 12px; gap: 6px; } #start .mmLvl .chip { font-size: 13px; }
-    #start .mmActs { padding-top: 7px; } #start .mmActs #goSurf { min-height: 42px; } #start .mmActs #goSurf span { font-size: 20px; }
-    #start .mmPicks { flex-direction: column; align-items: stretch; gap: 5px; margin-top: 6px; padding-top: 6px; }
-    #start .mmPicks .boardrow, #start .mmPicks .stancerow { display: block; } #start .mmPicks .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-    #start .mmPicks .boards button { padding: 3px 8px 3px 6px !important; font-size: 13px; gap: 5px; } #start .mmPicks .boards svg { width: 24px; }
+    #start .mmTop { flex: none; }   /* (never squeezed into START SURFING: on Wavedash its Leaderboard row pushes this panel down, 30 Sep 2026) */
+    #start .mmActs { padding-top: 6px; } #start .mmActs #goSurf { min-height: 38px; } #start .mmActs #goSurf span { font-size: 20px; }
+    #start .mmPicks { flex-direction: column; align-items: stretch; gap: 4px; margin-top: 5px; padding-top: 5px; }
+    #start .mmPicks .boardrow, #start .mmPicks .stancerow { display: block; } #start .mmPicks .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    #start .mmPicks .boards button { padding: 2px 8px 2px 6px !important; font-size: 13px; gap: 5px; } #start .mmPicks .boards svg { width: 24px; }
   }
 </style>
 </head>
@@ -623,7 +630,7 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260930-0103</small>
+    <small id="build">build 260930-0125</small>
   </div>
 </div>
 <script>
