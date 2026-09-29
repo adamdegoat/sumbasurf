@@ -5,9 +5,9 @@ import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=168';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=185';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=16';
-import { SurfAudio } from './audio.js?v=18';
+import { SurfAudio } from './audio.js?v=19';
 import { ranch, POOL } from './ranch.js?v=9';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=93';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=94';
 import { villa, VILLA } from './villa.js?v=137';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
@@ -177,9 +177,11 @@ const birds = (() => {
   return list;
 })();
 const locals = [], _lq = new THREE.Quaternion(), _le = new THREE.Euler(0, 0, 0, 'YXZ');
+let gullT = 4;
 function updateLocals(dt) {
+  if (rider && mode === 'easy') { gullT -= dt; if (gullT <= 0) { gullT = 7 + Math.random() * 11; audio.gull(0.6 + Math.random() * 0.4); } }   // (Pantai Kuda: gulls over the beach now and then)
   for (const L of locals) {
-    L.grp.visible = !!rider && !isRanch(); if (!L.grp.visible) continue;
+    L.grp.visible = !!rider && !isRanch() && (!L.spot || mode === L.spot); if (!L.grp.visible) continue;
     const y = heightAt(waves, L.x, L.z);
     L.grp.position.set(L.x + Math.sin(T * 0.2 + L.ph) * 0.6, y + 0.05, L.z);
     L.grp.quaternion.setFromEuler(_le.set(-0.25 + Math.sin(T * 1.3 + L.ph) * 0.05, Math.PI + Math.sin(T * 0.15 + L.ph) * 0.3, Math.sin(T * 1.1 + L.ph) * 0.04));   // facing the sets, nose up (sitting on the tail)
@@ -267,6 +269,19 @@ const ready = new Promise((res, rej) => new GLTFLoader().load('surfer.glb?v=3', 
     const mx = new THREE.AnimationMixer(body); if (sit) { const a = mx.clipAction(sit); a.play(); a.time = ph; }
     locals.push({ grp, mx, x, z, ph, body, B: {} });
   }
+  // Pantai Kuda, the beginner beach: learners from the surf school sitting on big foam boards off to the side of the
+  // peak (out of your way: you ride the other way along the wave), in the school's bright colours
+  { const shared = Math.random; let sd = 31; Math.random = () => { sd = (sd * 16807) % 2147483647; return (sd - 1) / 2147483646; };   // (their own dice: new objects mustn't shift the shared one that picks the sets)
+  try {
+  for (const [x, z, ph, col] of [[-38, -11, 0.7, 0xf5c518], [-51, -4, 1.9, 0x2f7fd6], [-64, -13, 3.1, 0xf06a22], [-45, 5, 4.2, 0x25b5a5]]) {
+    const body = cloneSkinned(g.scene), grp = new THREE.Group(), brd = makeBoard('long');
+    { const soft = new THREE.MeshLambertMaterial({ color: col, emissive: col, emissiveIntensity: 0.5, side: THREE.DoubleSide }); brd.traverse((o) => { if (o.isMesh) o.material = soft; }); }   // (a soft-top: matte, one bright colour all over, rails too: from the lineup you see them side-on)
+    body.traverse((o) => { o.layers.set(0); if (o.isMesh) { o.frustumCulled = false; o.material = o.material.clone(); o.material.side = THREE.FrontSide; } });
+    body.position.set(0, -0.36, -0.25); grp.add(brd, body); scene.add(grp);
+    const mx = new THREE.AnimationMixer(body); if (sit) { const a = mx.clipAction(sit); a.play(); a.time = ph; }
+    locals.push({ grp, mx, x, z, ph, body, B: {}, spot: 'easy' });
+  }
+  } finally { Math.random = shared; } }
   res();
 }, undefined, (err) => { ui.load.textContent = 'Could not load the surfer. Check your connection and reload.'; rej(err); }));
 function play(name, { fade = 0.25, once = false, speed = 1, weight = 1 } = {}) {
@@ -2122,7 +2137,7 @@ function warmAll() {
 }
 // the two locals in the lineup as real people (Rocketbox, in boardshorts: see surfers.js), fetched once the game is up;
 // until they're in (or if they can't load) they sit there in the old body
-const LOCALS = [['m16', 0x1f3f5f], ['m07', 0xb8452c]];
+const LOCALS = [['m16', 0x1f3f5f], ['m07', 0xb8452c], ['m02', 0x2a5a8a], ['f17', 0x1d6f7a], ['m08', 0xd49a2a], ['m02', 0x284a2c]];   // (the last four: Pantai Kuda's learners)
 function loadLocals() {
   const L = new GLTFLoader();
   Promise.all(LOCALS.map(([id]) => new Promise((res, rej) => L.load(`people/water/${WATER_PEOPLE[id].file}.glb?v=1`, (g) => res(g.scene), undefined, rej)))).then((a) => {

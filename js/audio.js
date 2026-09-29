@@ -99,6 +99,8 @@ export class SurfAudio {
   air() { this.burst(0.2, 900, 0.7); this.burst(0.12, 2200, 0.5, 'highpass', 0.1); }
   land(k = 1) { this.burst(0.4 * k, 500, 0.35, 'lowpass'); this.burst(0.3 * k, 1600, 0.5); this.burst(0.2 * k, 3500, 0.4, 'highpass', 0.05); }
   // the Sumba Ranch machine: a deep whoosh as the chambers fire, with a metallic clank
+  // a gull over the beach: a falling 'kee-ow', sometimes twice
+  gull(k = 1) { const n = Math.random() < 0.4 ? 2 : 1; for (let i = 0; i < n; i++) { const f = 1700 + Math.random() * 500; this.tone(f, 0.03 * k, 0.34, { type: 'sawtooth', delay: i * 0.42, to: f * 0.62, band: 1600 }); } }
   crowdLevel(k) { if (this.ok) this.set(this.crowd.g.gain, 0.05 * k, 0.8); }
   // the crowd round the pool going up for a barrel or a big move: a swell of voices (noise shaped like a roar, and a
   // few rising whoops on top)

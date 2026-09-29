@@ -44,6 +44,7 @@ export function spotGroup(scene, key) {
   if (key === 'hiu') palmPoint(g);
   if (key === 'bintang') ownDice(g, nightLights, 11);
   if (key === 'easy') ownDice(g, horseHead);
+  if (key === 'easy') ownDice(g, kudaSchool, 23);
   if (key === 'extreme') ownDice(g, seaMountain);
   waterProps(g, key);
   if (key === 'hard') blackRock(g);
@@ -334,6 +335,14 @@ function waterProps(g, key) {
       part(new THREE.BoxGeometry(1.3, 0.3, 0.5), [0.1, 0.1, 0.1], -0.3, 0.52, 0), part(new THREE.BoxGeometry(0.1, 0.45, 0.8), [0.15, 0.15, 0.15], 0.6, 0.6, 0),
       part(new THREE.BoxGeometry(2.3, 0.14, 1.3), [0.95, 0.8, 0.12], -2.7, -0.05, 0)], 45, -335, 0.6, 0.35, 0.07, 1.5);
   }
+}
+
+// Pantai Kuda's surf school, out on the water (29 Sep 2026): two more boats pulled in close on the far side, and the
+// school's yellow buoys in a line from out the back to the beach, marking the learners' side of the peak
+function kudaSchool(g) {
+    for (const [x, z, ry, c, sl] of [[-118, -150, 0.9, [0.9, 0.62, 0.1], [0.16, 0.42, 0.74]], [-146, -128, 2.1, [0.12, 0.46, 0.52], [0.92, 0.3, 0.2]]]) floater(g, jukungParts(c, sl), x, z, ry, 0.35, 0.05, 1.6);
+    const buoy = () => [part(new THREE.SphereGeometry(0.62, 12, 8).scale(1, 0.85, 1), [0.97, 0.78, 0.08], 0, 0.25, 0), part(new THREE.CylinderGeometry(0.64, 0.64, 0.14, 12), [0.96, 0.95, 0.92], 0, 0.3, 0)];
+    for (let z = -128; z <= 60; z += 16) floater(g, buoy(), -27 + Math.sin(z * 0.05) * 3, z, 0, 0.1, 0.1, 1);
 }
 
 function blackRock(g) {
