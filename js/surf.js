@@ -42,11 +42,12 @@ export const RIDE = {
 //   longboard 9'2": paddles fast and catches waves early; very stable and glides; slow, wide turns; no snaps or airs
 //   gun       9'6" big-wave board: paddles into huge waves early; holds a line at high speed with lots of grip; stiff turns
 const BASE = { ...RIDE };
-const BOG_FALL = 1.1;   // seconds a board can sit below planing speed in a stall before the tail sinks and you fall
+const BOG_FALL = 1.1;
+const NOSE_STEP = 0.38, NOSE_BACK = 0.24, PEARL_T = 0.8, WOB_MAX = 0.3, WOB_STEER = 3.2;   // (the rock at the nose: how far it can tip before you fall, rad; how hard your thumb pushes it back)   // (one cross-step up or down the longboard, s; how long the nose can be out of the pocket before it digs in)   // seconds a board can sit below planing speed in a stall before the tail sinks and you fall
 export const BOARDS = {
   short: {},
   fish: { planeV: 3.0, snap: 0.85, paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.3, relFrom: 0.3, leanRate: 10.0, yawLag: 0.06, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85, catchPaddle: 0.6, catchLate: 1.9, catchReach: 1.4 },
-  long: { planeV: 2.3, snap: 0.3, paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.85, catchK: 0.65, catchPaddle: 0.35, catchLate: 2.5, catchReach: 3.0, air: false, turnMin: 0.55 },
+  long: { planeV: 2.3, walk: true, snap: 0.3, paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.85, catchK: 0.65, catchPaddle: 0.35, catchLate: 2.5, catchReach: 3.0, air: false, turnMin: 0.55 },
   gun: { planeV: 3.0, snap: 0.45, paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.72, catchK: 0.75, catchPaddle: 0.5, catchLate: 2.0, catchReach: 1.8, turnMin: 0.75 },
 };
 export function setBoard(name) { Object.assign(RIDE, BASE, BOARDS[name] || {}); }
@@ -57,7 +58,8 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 // and the back (from behind the wave up to the crest). Heights in the wave's own frame: zl = z - wave.zW.
 // what each move is worth before how well and where you did it (28 Sep 2026: turns, snaps and cutbacks raised so a
 // wave of hard, committed turns in the pocket can score like a barrel, as real judges score it)
-export const MOVE_BASE = { TURN: 1.0, CARVE: 3.8, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0 };   // (airs kept above the turns: the hardest move scores most)
+const LINK_TOP = new Set(['SNAP', 'CUTBACK', 'FLOATER', 'AIR', 'AIR 360']);   // (the moves a bottom turn sets up)
+export const MOVE_BASE = { TURN: 1.0, CARVE: 3.8, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0, 'HANG FIVE': 3.6, 'HANG TEN': 5.2, ROUNDHOUSE: 5.8, 'LATE DROP': 4.0 };   // (airs kept above the turns: the hardest move scores most)
 export const MOVE_BASE_OLD = { TURN: 0.9, SNAP: 2.2, CUTBACK: 2.4, FLOATER: 2.0, AIR: 3.0, 'AIR 360': 4.2 };
 const JUDGE_K = 6;   // (28 Sep 2026: with quality over quantity below, 3 to 5 great moves reach the 8s; was 8)   // how hard the top of the scale is (calibrated with test riders: see HANDOVER)
 
@@ -271,7 +273,7 @@ export class Rider {
       ax += -k * along * dx - P.lieLat * lx; az += -k * along * dz - P.lieLat * lz;
       if (inp.paddle) { const f = P.paddleThrust * Math.max(0, 1 - (along / P.paddleMax) ** 2); ax += f * dx; az += f * dz; }
       this.th += inp.steer * (inp.paddle ? P.paddleTurn : P.lieTurn) * h;
-      this.turn = 0; this.lean = 0; this.skid = 0;
+      this.turn = 0; this.lean = 0; this.skid = 0; this.pearlT = 0; this.pearlK = 0; this.shoulderK = 0; this.wob = 0; this.wobV = 0; this.wobK = 0;   // (lying down, no nose-ride warning can linger)
     } else {
       // standing: planing drag along the board, fins stop it sliding sideways (up to their grip), carving turns the board
       const pop = this.state === 'POP' ? 0.4 : 1;
@@ -280,7 +282,50 @@ export class Rider {
       // your thumb asks for a share of the full turn, not of the full lean: the lean a turn needs grows steeply (tan), so a
       // straight thumb-to-lean map left half a thumb turning a quarter as hard. Half the thumb now leans the board over
       // as far as half the turn really takes (the physics of the carve itself is unchanged)
-      const wantLean = Math.sign(inp.steer) * Math.atan(Math.abs(inp.steer) * Math.tan(P.leanMax)) * pop, dl = wantLean - this.lean;
+      // nose riding (29 Sep 2026, his call; the longboard only: P.walk): the PUMP button walks you up the board a cross-step
+      // at a time (4 steps, each ~0.38 s, eased: never a slide or a jump) and back when you let go. Up there you only steer
+      // gently; you need the pocket (close to the curl, the wave holding the tail down) or the nose digs in and you fall
+      let steer = inp.steer;
+      if (P.walk && this.state === 'RIDE') {
+        const held = !!inp.pump;
+        if (!this.stepDir) { if (held && (this.noseStep || 0) < 4) { this.stepDir = 1; this.stepT = 0; } else if (!held && (this.noseStep || 0) > 0) { this.stepDir = -1; this.stepT = 0; } }
+        else if (this.stepDir > 0 && !held) { const u = Math.min(1, this.stepT / NOSE_STEP); this.noseStep = (this.noseStep || 0) + 1; this.stepDir = -1; this.stepT = (1 - u) * NOSE_BACK; }   // (let go mid-step and your weight comes straight back: the step reverses from where your foot is, no finishing it first)
+        if (this.stepDir) { this.stepT += h; const u = Math.min(1, this.stepT / (this.stepDir < 0 ? NOSE_BACK : NOSE_STEP)); this.stepU = u;   // (stepping back is quicker: a couple of fast steps off the nose, as a real longboarder bails back)
+          this.nose = ((this.noseStep || 0) + this.stepDir * u * u * (3 - 2 * u)) / 4;
+          if (u >= 1) { this.noseStep = (this.noseStep || 0) + this.stepDir; this.stepDir = 0; this.stepU = 0; this.nose = this.noseStep / 4; } }
+        const Hh = w ? C.H : 1, sH = (this.s || 0) / Hh, yH = this.y / Hh, pocket = w && sH > -0.8 && sH < 1.4 && yH > 0.15 && yH < 0.8;   // (the curl itself included: tip time right in it is the classic nose ride)
+        steer *= 1 - 0.55 * this.nose;   // (from the nose you steer gently: most of the board is behind you)
+        const hardTurn = Math.abs(inp.steer) > 0.88;   // (a firm thumb is fine up there; only a full-lock turn buries the nose)
+        // how you come unstuck depends on where you are, like a real nose ride. Run out onto the shoulder ahead of the
+        // pocket and nothing holds the tail down: the board just slows (it can't pearl on a slope that gentle), and if
+        // you stay up front the wave leaves you. Under the lip, too low on the steep part, too high by the lip, or a
+        // full-lock turn from the tip: the nose digs in and you pearl. Soft waves forgive you longer than heavy ones
+        const shoulder = w && this.nose > 0.55 && !pocket && sH >= 1.4 && yH > 0.15 && yH < 0.8 && !hardTurn;
+        this.shoulderK = shoulder ? Math.min(1, (this.shoulderK || 0) + h * 1.5) : Math.max(0, (this.shoulderK || 0) - h * 3);
+        if (this.shoulderK > 0 && speed > 0.5) { const f = 1.6 * this.nose * this.shoulderK / speed; ax -= f * this.vx; az -= f * this.vz; }   // (up to 1.6 m/s every second of drag)
+        this.noseHard = hardTurn && this.nose > 0.55 && !pocket;   // (the game says so: it's the turn burying the nose, not only where you are)
+        const front = this.nose >= 0.74 ? 0.5 + 0.5 * Math.min(1, (this.nose - 0.74) / 0.25) : 0, over = Math.max(0, (this.hangT || 0) - 1.5);
+        const pearlLim = PEARL_T * (C.nose ?? 1);
+        if (this.nose > 0.55 && !shoulder && (!pocket || hardTurn)) this.pearlT = (this.pearlT || 0) + h * (hardTurn && !pocket ? 2 : 1) * (this.stepDir < 0 ? 0.5 : 1); else if (front > 0 && over > 0 && !this.stepDir) this.pearlT = (this.pearlT || 0) + h * 0.45 * Math.min(1, over / 1.5); else this.pearlT = Math.max(0, (this.pearlT || 0) - 1.5 * h);   // (already stepping back: the weight is coming off the nose, half rate)
+        this.pearlK = Math.min(1, this.pearlT / pearlLim);   // (how close the nose is to going under: the game shows it)
+        // up front the board rocks rail to rail and you hold it with small opposite steers (tipping right, thumb left);
+        // more on a heavy wave, and the longer you stay up there the livelier it gets and the heavier the nose. Past
+        // about 1.5 s on the front the nose starts to dig in slowly even in the pocket: bank the hang or push your luck
+        if (front > 0) {
+          const inst = (3.2 + 3 * over) * front, kick = (0.9 + 0.8 * over) * front / (C.nose ?? 1);   // (left alone it tips over in about a second)
+          this.wobV = (this.wobV || 0) + (inst * (this.wob || 0) + WOB_STEER * inp.steer + kick * (Math.random() * 2 - 1) * 3) * h;
+          this.wobV *= 1 - 2.2 * h; this.wob = (this.wob || 0) + this.wobV * h;
+          if (Math.abs(this.wob) > WOB_MAX) return this.wipe('Lost your balance on the nose');
+        } else { this.wobV = (this.wobV || 0) * (1 - 8 * h); this.wob = (this.wob || 0) * (1 - 6 * h); }
+        this.wobK = Math.min(1, Math.abs(this.wob || 0) / WOB_MAX);   // (how close to toppling: the game shows it)
+        this.pearlK = Math.min(1, this.pearlT / pearlLim);
+        if (this.pearlT > pearlLim) return this.wipe('Pearled: the nose went under');
+        if (pocket && this.nose > 0.5) { const f = 0.7 * this.nose; ax += f * dx; az += f * dz; }   // (trimming on the nose in the pocket is fast)
+        // the hang: timed at the nose, scored when you step back off it (or the ride ends)
+        if (this.nose >= 0.74) { this.hangT = (this.hangT || 0) + h; if (this.nose >= 0.99) this.hang10T = (this.hang10T || 0) + h; this.hangPocket = (this.hangPocket || 0) + (pocket ? h : 0); }
+        else if (this.hangT > 0) this.scoreHang();
+      } else if (P.walk) { if (this.hangT > 0) this.scoreHang(); this.nose = 0; this.noseStep = 0; this.stepDir = 0; this.pearlT = 0; this.pearlK = 0; this.shoulderK = 0; this.wob = 0; this.wobV = 0; this.wobK = 0; }
+      const wantLean = Math.sign(steer) * Math.atan(Math.abs(steer) * Math.tan(P.leanMax)) * pop, dl = wantLean - this.lean;
       // backside (your back to the wave), rolling onto the heel rail to turn up into it is slower and blinder than
       // frontside's toe rail: the board answers a little later (the wave is on your right when you head toward -x)
       const intoWave = Math.cos(this.th) < 0 ? 1 : -1, maxRoll = P.leanRate * h * (this.backside && Math.sign(dl) === intoWave ? 0.82 : 1);
@@ -363,8 +408,9 @@ export class Rider {
       // PUMP and the surfer keeps the rhythm himself (a stroke every PUMP_PERIOD); a press starts one at once, and mashing
       // faster than your legs can go gives weak strokes. Strongest weaving up and down the face and
       // heading down it, weaker on a dead straight line or climbing. Works anywhere, the barrel included (pump out of it).
-      const press = inp.pump && !this.pumpWas; this.pumpWas = !!inp.pump; this.pumpGap += h;
-      const auto = inp.pump && this.pumpGap >= PUMP_PERIOD;   // held down, your legs keep the rhythm going by themselves
+      const pumpIn = inp.pump && !P.walk;   // (the longboard's button walks you to the nose instead)
+      const press = pumpIn && !this.pumpWas; this.pumpWas = !!pumpIn; this.pumpGap += h;
+      const auto = pumpIn && this.pumpGap >= PUMP_PERIOD;   // held down, your legs keep the rhythm going by themselves
       if (press || auto) { this.pumpQ = press ? smooth(0.22, 0.42, this.pumpGap) : 1; this.pumpT = 0; this.pumpGap = 0; this.pumpN++; }
       this.weave += (Math.abs(this.turn) - this.weave) * Math.min(1, h / 0.7);   // how much you've been turning lately (rad/s)
       this.pumping = this.pumpT < PUMP_STROKE;
@@ -413,13 +459,16 @@ export class Rider {
       // (tried 27 Sep and taken back out the same day: requiring you to be paddling before the wave lifts you, and a short
       // window after it lifts you, made the game's own "Paddle now!" tip too late; padUp and liftT are still tracked)
       const catchV = Math.min(C.speed * 0.5, 3.2 + 0.1 * C.speed) * P.catchK;   // (a longer, floatier board gets in with less)
-      if (this.onFace && this.recentPaddle > 0 && s < P.catchReach * H && Math.sin(this.th) > 0.2 && this.vz > catchV && slope > 0.4 * P.catchK) { this.catchT += h; if (this.catchT > 0.1) { this.set('POP'); this.catchT = 0; } }
+      if (this.onFace && this.recentPaddle > 0 && s < P.catchReach * H && Math.sin(this.th) > 0.2 && this.vz > catchV && slope > 0.4 * P.catchK) { this.catchT += h; if (this.catchT > 0.1) { this.set('POP'); this.catchT = 0; this.lateK = smooth(0.05, 0.35, sl.curl || 0) * smooth(0.3, -0.3, s / H) * smooth(0.2, 0.3, y / H); this.lateDone = false; } }   // (how late you took off: under the peak as it's already pitching, up on the face)
       else this.catchT = 0;
       return;
     }
     if (this.state === 'POP' && this.stateT >= P.popTime) this.set('RIDE');
     const riding = this.state === 'RIDE';
     if (riding) this.ride.t += h;
+    // a late drop made: you took off high under the pitching part and got down to the bottom still on your feet
+    if (riding && !this.lateDone && (this.lateK || 0) > 0.3 && this.stateT > 0.6 && y < 0.4 * Math.max(sl.top, 0.3)) { this.lateDone = true; this.move('LATE DROP', this.lateK, 0, 0.6 + 0.8 * this.lateK); }
+    if (riding && this.stateT > 4) this.lateDone = true;
     // falling out of the whitewater
     // (a soft wave is forgiving: its whitewater is a gentle push you can ride, like beginners do; hollow waves knock you off)
     const fg = C.forgive || 1;
@@ -478,13 +527,16 @@ export class Rider {
       else if (this.ride.tubeT > 0) { this.tubeOut = (this.tubeOut || 0) + h;   // out for a moment (a wobble at the edge) is still the same barrel
         if (this.tubeOut > 0.4) { if (this.ride.tubeT > 0.5) this.move('BARREL', 0.6 + 0.4 * crit, this.ride.tubeT); this.ride.tubeT = 0; this.ride.tubeDeep = 0; } }
       if (this.inBarrel) this.tubeOut = 0;
+      this.grabbing = this.inBarrel && this.backside && (C.nose ?? 1) <= 0.8;   // (backside in a heavy barrel you grab the outside rail and tuck in tight)
+      if (this.grabbing) this.ride.grabT = (this.ride.grabT || 0) + h;
       // a turn counts when the carve swings hard one way and then hard the other at speed
       // (and only a real carve: the last one held for at least 0.35 s, so thumb wiggles don't count)
       this.ride.gPk = Math.max(this.ride.gPk, Math.abs(this.turn) * this.v / P.g);   // (the hardest the rail has loaded since the last turn)
       const hFace = y / Math.max(sl.top, 0.3); this.tyMin = Math.min(this.tyMin ?? hFace, hFace); this.tyMax = Math.max(this.tyMax ?? hFace, hFace);   // how far up and down the face you've been since the last turn
       if (Math.abs(this.turn) > 0.9 * P.turnMin && this.v > C.peel * 0.8) {   // (a longboard's flowing turns count at its own, gentler rate)
         const sg = Math.sign(this.turn);
-        if (sg !== this.turnSign) { if (this.turnSign !== 0 && this.turnHold > 0.35 && this.ride.gPk > 0.9 && onFront && hFace > 0.15 && s < 4 * H) { this.ride.turns++; this.move('TURN', crit, 0, 0.35 + 0.65 * smooth(0.15, 0.45, this.tyMax - this.tyMin)); }   // (a real carve on the face near the wave's power: a wiggle out on the flats isn't a turn)
+        if (sg !== this.turnSign) { if (this.turnSign !== 0 && this.turnHold > 0.35 && this.ride.gPk > 0.9 && onFront && hFace > 0.15 && s < 4 * H) { this.ride.turns++; if (this.tyMin < 0.4) this.ride.botT = this.ride.t;   // (a turn that came through the bottom 40% of the face: a bottom turn)
+          this.move('TURN', crit, 0, 0.35 + 0.65 * smooth(0.15, 0.45, this.tyMax - this.tyMin)); }   // (a real carve on the face near the wave's power: a wiggle out on the flats isn't a turn)
           this.ride.gPk = 0; this.turnSign = sg; this.turnHold = 0; this.tyMin = this.tyMax = hFace; }   // (a turn is judged on how much of the face it used: flat S-bends in the middle score a third)
         else this.turnHold = (this.turnHold || 0) + h;
       }
@@ -492,6 +544,11 @@ export class Rider {
       const hd = Math.cos(this.th);
       if (hd > 0.5) this.cbArmed = true;
       else if (this.cbArmed && hd < -0.4 && this.v > 0.45 * C.speed) { this.cbArmed = false; this.ride.cutbacks++; this.move('CUTBACK', crit); }
+      // a roundhouse: the cutback carried right round into a figure eight, rebounding off the breaking part and back down
+      // the line with speed. The cutback you just did becomes the roundhouse (one move, scored as the bigger one)
+      if (this.trick && this.trick.name.endsWith('CUTBACK') && this.trick.t < 0.05) this.rhT = this.ride.t;
+      if (this.rhT != null && (this.ride.t - this.rhT > 2.2 || this.ride.t < this.rhT)) this.rhT = null;
+      if (this.rhT != null && hd > 0.5 && s / H < 0.8 && this.v > 0.45 * C.speed) { this.rhT = null; this.roundhouse(crit); }
       // a snap (top turn): climb hard up to the lip, then whip the board back down the face from up there
       const relVz = this.vz - C.speed, hTop = y / Math.max(sl.top, 0.3);
       if (relVz < -1.2 && hTop > 0.6) this.snapArm = 1.2; else this.snapArm = Math.max(0, this.snapArm - h);
@@ -515,7 +572,7 @@ export class Rider {
     this.lowT = (this.v < 2.2 || (!this.onFace && this.v < 3.2)) ? this.lowT + h : 0;
     if (this.lowT > 0.6) { if (this.ride.t > 0 && this.wave && (this.wave.closing || (this.wave.endBy === 'beach' && this.wave.endK < 0.8))) { this.ride.end = 1; return this.out('It closed out behind you: you rode it to the end'); }   // (out ahead of it on the flats in the last stretch before the sand, as it closes out: you did ride it to the end)
       if (this.ride.t >= 12) { this.ride.end = 1; return this.out('The wave backed off: you rode it out'); }   // (29 Sep 2026: after a long ride, the wave leaving you is the end of the line, not a miss)
-      this.out(this.ride.t > 0 ? 'Lost speed: the wave left you' : 'Missed it'); }
+      this.out(this.ride.t > 0 ? (this.nose > 0.5 ? 'Stayed on the nose out on the shoulder: the wave left you' : 'Lost speed: the wave left you') : 'Missed it'); }
   }
 
   // like a contest judge: turns, speed, time in the barrel and in the pocket; just riding along earns little
@@ -533,7 +590,7 @@ export class Rider {
     const spin = mine ? inp.steer * 5.2 : Math.max(-2.8, Math.min(2.8, off * 5));
     this.th += spin * h; A.spin += mine ? spin * h : 0; this.turn = spin * 0.5;
     this.lean += (inp.steer * 0.3 - this.lean) * Math.min(1, h * 6);
-    this.skid = 0; this.slide = 0; this.stalling = 0; this.stallT = 0; this.bogT = 0; this.bogK = 0; this.pumping = false; this.inBarrel = false; this.onFace = false;
+    this.skid = 0; this.slide = 0; this.stalling = 0; this.stallT = 0; this.bogT = 0; this.bogK = 0; this.nose = 0; this.noseStep = 0; this.stepDir = 0; this.stepU = 0; this.pearlT = 0; this.pearlK = 0; this.shoulderK = 0; this.wob = 0; this.wobV = 0; this.wobK = 0; this.rhT = null; this.lateK = 0; this.lateDone = true; this.grabbing = false; this.hangT = 0; this.hang10T = 0; this.hangPocket = 0; this.pumping = false; this.inBarrel = false; this.onFace = false;
     this.ride.t += h;
     const q = waterAt(waves, this.x, this.z, _c), e = 0.15;
     if (q.w) { this.wave = q.w; this.s = q.s; this.zl = q.zl; }
@@ -560,9 +617,19 @@ export class Rider {
   // close to the breaking part and high on the face). The same move out on the flat shoulder is worth a fraction of it
   // done in the pocket. Moves linked with no dead time between them build a combo. A barrel is worth more the longer
   // and the deeper you sat in it, and only counts once you're out.
+  scoreHang() {   // a hang counts from ~0.6 s at the nose (five) or ~0.8 s with both feet on it (ten); longer is worth more
+    const t = this.hangT || 0, t10 = this.hang10T || 0, inPocket = t > 0 ? (this.hangPocket || 0) / t : 0;
+    if (this.wave && (t10 >= 0.8 || t >= 0.6)) this.move(t10 >= 0.8 ? 'HANG TEN' : 'HANG FIVE', 0.4 + 0.6 * inPocket, t10 >= 0.8 ? t10 : t, 1 + 0.25 * Math.min(2, t - 0.6));
+    this.hangT = 0; this.hang10T = 0; this.hangPocket = 0;
+  }
+  roundhouse(crit) {
+    const R = this.ride, m = [...R.moves].reverse().find((x) => x.name === 'CUTBACK' && R.t - x.t < 2.4); if (!m) return;
+    m.pts *= MOVE_BASE.ROUNDHOUSE / MOVE_BASE.CUTBACK; m.base = MOVE_BASE.ROUNDHOUSE; m.name = 'ROUNDHOUSE'; if (crit > 0.6) m.notes.push('off the whitewater');
+    this.trick = { name: (m.strong ? 'BIG ' : '') + 'ROUNDHOUSE', t: 0 };
+  }
   move(name, crit, dur = 0, k = 1, snap = null) {
     const C = this.wave.cond, R = this.ride, spd = Math.min(1, this.v / (C.speed * 1.15));
-    const pow = name === 'TURN' ? Math.min(1, R.gPk / 2.1) : R.leanPk;
+    const pow = name === 'TURN' ? Math.min(1, R.gPk / 2.1) : name.startsWith('HANG') ? 0.85 : R.leanPk;   // (a hang is poise, not power)
     let q = Math.min(1, 0.35 * spd + 0.35 * pow + 0.3 * crit), base = MOVE_BASE[name] || 0;
     if (name === 'TURN' && q >= 0.65 && crit >= 0.55) base = MOVE_BASE.CARVE;   // (a powerful carve close to the curl is a real move to a judge, not a linking turn)
     let posK = 0.25 + 0.75 * crit;   // (where you did it: the pocket counts, the flats barely)
@@ -571,16 +638,20 @@ export class Rider {
       const deep = R.tubeT > 0 ? R.tubeDeep / R.tubeT : 0.5, deepK = smooth(0.4, 1.6, deep);
       base = (1.2 + 0.9 * Math.min(dur, 6)) * (0.8 + 0.5 * deepK); q = crit; posK = 1;
       if (deepK > 0.6) notes.push('deep');
+      if ((R.grabT || 0) > 0.5 * dur) { base *= 1.12; notes.push('grab rail'); } R.grabT = 0;   // (a heavy backside barrel ridden on the rail: a little extra)
     } else { if (snap) { base += 0.9 * smooth(0.3, 0.9, snap.pivot) + (snap.lip ? 0.8 : 0); if (snap.lip) notes.push('off the lip'); }   // (a real pivot at the top, and one that met the lip, is a bigger turn)
       if (crit > 0.7) notes.push('close to the curl'); if (pow > 0.8) notes.push('hard carve'); if (crit < 0.3) notes.push('far from the curl'); }
     // linked moves: a different move within 1.6 s of the last one (a barrel links from its exit). The same move again
     // straight after isn't a combination (judges reward combining different manoeuvres), it just keeps the chain alive
+    // a bottom turn linked straight into a move up top (the classic surf line: down, round, and hit the lip): the top
+    // move scores a quarter more and is called as the pair. The bottom turn has to be the last thing you did
+    const offBottom = LINK_TOP.has(name) && R.lastMove === 'TURN' && R.t - (R.botT ?? -9) < 2.2; if (offBottom) { R.botT = -9; notes.push('off a bottom turn'); }
     const linked = R.t - R.lastMoveT < 1.6; R.combo = !linked ? 1 : name !== R.lastMove ? Math.min(5, R.combo + 1) : R.combo; R.lastMoveT = R.t; R.lastMove = name;
     const comboK = 1 + 0.1 * Math.min(R.combo - 1, 4); if (R.combo > 1) notes.push(`combo x${R.combo}`);
-    const pts = k * base * posK * (0.2 + 0.8 * Math.pow(q, 1.3)) * comboK * (0.8 + 0.2 * Math.min(1.5, C.H / 3));   // bigger surf, bigger scores
+    const pts = k * base * posK * (0.2 + 0.8 * Math.pow(q, 1.3)) * comboK * (offBottom ? 1.25 : 1) * (0.8 + 0.2 * Math.min(1.5, C.H / 3));   // bigger surf, bigger scores
     this.ride.moves.push({ name, pts, t: this.ride.t, notes, dur, base, strong: name === 'BARREL' ? dur >= 1.5 : q >= 0.65 && crit >= 0.55 });   // (strong: a big, committed one: see the excellent rule in scoreRide)
     const big = q > 0.75 ? (name === 'BARREL' ? 'DEEP ' : 'BIG ') : '';
-    this.trick = { name: big + name + (name === 'BARREL' ? ` ${dur.toFixed(1)}s` : name.startsWith('AIR') ? ` ${dur.toFixed(1)}m` : ''), t: 0 };
+    this.trick = { name: big + (offBottom ? 'BOTTOM TURN + ' : '') + name + (name === 'BARREL' || name.startsWith('HANG') ? ` ${dur.toFixed(1)}s` : name.startsWith('AIR') ? ` ${dur.toFixed(1)}m` : ''), t: 0 };
   }
   // like a contest judge, out of 10: the best moves count most (diminishing after that), variety earns a bonus,
   // flow (speed kept up along the wave) a little; riding along without doing anything earns almost nothing.
@@ -591,12 +662,13 @@ export class Rider {
   // sheet: what counted, each line's share of the score (they add up to it).
   liveScore(fell = false, detail = false) { if (this.wave && this.ride.judge === undefined) this.ride.judge = this.wave.cond.judge ?? 1; return scoreRide(this.ride, fell, detail); }
   wipe(why) {
+    this.hangT = 0; this.hang10T = 0; this.hangPocket = 0;   // (a hang you fall off doesn't count, and never carries into the next ride)
     // taken by the closeout at the very end, still on your feet: that's riding the wave to its end, not a fall
     if (this.state === 'RIDE' && this.wave && this.wave.closing && /whitewater|foam ball|lip|tube/.test(why)) { this.ride.end = 1; return this.out('Closed out: you rode it right to the end'); }   // (once it closes out the whole section throws at once: whatever it does to you then is the wave ending, not a mistake)
     this.why = why; this.set('WIPE'); this.ride.score = this.ride.t > 0 ? this.liveScore(true) : 0;
   }
   out(why) {
-    this.why = why;
+    this.why = why; if (this.hangT > 0 && this.state === 'RIDE') this.scoreHang();
     if (this.ride.tubeT > 0.5 && this.wave) this.move('BARREL', 0.8, this.ride.tubeT);   // the ride ended cleanly with you in (or just out of) the barrel, riding it into the sand included: that counts
     this.ride.tubeT = 0; this.set('OUT'); this.ride.score = this.ride.t > 0 ? this.liveScore() : 0;
   }

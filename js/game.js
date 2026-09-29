@@ -2,19 +2,19 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=167';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=168';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=168';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=185';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=16';
 import { SurfAudio } from './audio.js?v=17';
 import { ranch, POOL } from './ranch.js?v=4';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=92';
-import { villa, VILLA } from './villa.js?v=136';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=93';
+import { villa, VILLA } from './villa.js?v=137';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=50';
-import { wildlife } from './wildlife.js?v=54';
+import { crew } from './crew.js?v=52';
+import { wildlife } from './wildlife.js?v=56';
 import { droneShow } from './show.js?v=13';
 
 const Q = new URLSearchParams(location.search);
@@ -695,6 +695,7 @@ const _wT = new THREE.Vector3(), _lT = new THREE.Vector3();
 const POVCAM = { fwd: 0.1, up: 0.14, pitch: -0.5, drop: 0.08 };   // eye point ahead of/above the head bone, head pitch riding, extra pitch at the take-off
 const _pq2 = new THREE.Quaternion(), popEye0 = new THREE.Vector3(), lastEye = new THREE.Vector3(), eyeCarry = new THREE.Vector3(); let lastEyeSt = ''; let tubeLook = 0, roofOff = 0, curtOff = 0, wallOff = 0;
 const pov = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0, pitch: -0.2, roll: 0, ready: false }, _eye = new THREE.Vector3(), _pe = new THREE.Euler(0, 0, 0, 'YXZ');
+const _gl = new THREE.Vector3();
 function povCamera(dt) {
   if (!bones.head && surfer) surfer.traverse((o) => { if (o.isBone) bones[o.name] = o; });
   const standing = rider.standing || finishing(), st = rider.state;   // (kicking out at the end you're still on your feet: eyes on the water ahead, not up at the next wave)
@@ -709,7 +710,8 @@ function povCamera(dt) {
   // look mostly where you're travelling, partly where the board points (you see the nose swing in a turn/drift)
   const dh = Math.atan2(Math.sin(rider.th - travel), Math.cos(rider.th - travel));
   const popIn = st === 'POP' ? smooth01(popClock() / 0.2) : 1;   // (the catch: the view eases into the pop over 0.2 s; it used to lurch and tip in the first frame)
-  let yawT = travel + dh * (standing ? 0.8 - 0.4 * popIn : 0.8);   // (a little toward where the board points: you see the nose swing in a turn)
+  let yawT = travel + dh * (standing ? 0.8 - 0.4 * popIn : 0.8);
+  if (noseV > 0.001) yawT += Math.atan2(Math.sin(rider.th - yawT), Math.cos(rider.th - yawT)) * noseV;   // (up the longboard you look along the board, down at its nose)   // (a little toward where the board points: you see the nose swing in a turn)
   // in the barrel look down the tube toward the exit (along the line), not out through the open side at the beach
   tubeLook += ((standing && (rider.inBarrel || (rider.ride && rider.ride.tubeT > 0)) ? 1 : 0) - tubeLook) * Math.min(1, dt * 1.5);   // (held through a wobble at the tube's edge: tubeT only clears after 0.4 s out)
   const tubeEase = smooth01(tubeLook);   // (eases in and out: no kick as you enter)
@@ -720,6 +722,11 @@ function povCamera(dt) {
   const sK = standing ? (st === 'POP' ? Math.min(1, popClock() / 0.25) : 1) : 0;   // (lying -> standing eye point blended over the start of the pop, not switched in a frame)
   const ef = -0.05 + (POVCAM.fwd + popFwd + 0.05) * sK, eu = 0.2 + (POVCAM.up - 0.2) * sK;   // lying: eyes at the head, a bit up, so your paddling hands pass below them
   _eye.x += Math.cos(yawT) * ef; _eye.z += Math.sin(yawT) * ef; _eye.y += eu - 0.08 * stallV;   // (sitting back in a stall: a little lower)   // camera just in front of the face, like a surfer's mouth-mounted camera
+  // the nose starting to dig in on the longboard: you look at it (head turned and tipped down to the tip), so you see
+  // the water coming over it even when a lean has carried your head out over the rail
+  const glK = standing ? Math.min(1, Math.max(0, (pearlV - 0.15) / 0.3)) * noseV : 0; let glP = 0;
+  if (glK > 0.001) { _gl.set(0, 0.05, board.position.z + BOARD_LENGTH(boardType) / 2 - 0.2).applyMatrix4(rig.matrixWorld).sub(_eye);
+    const yN = Math.atan2(_gl.z, _gl.x); yawT += Math.atan2(Math.sin(yN - yawT), Math.cos(yN - yawT)) * glK; glP = Math.atan2(_gl.y, Math.hypot(_gl.x, _gl.z)); }
   // smooth the eye's position relative to the board (not in the world, or at speed it would trail behind your head)
   _eye.sub(rig.position);
   // eyes never lower than this above the board; during the pop it rises with you instead of snapping up in one frame
@@ -762,9 +769,9 @@ function povCamera(dt) {
   }
   if (pitchLook > pitchT) pitchT = pitchLook;
   if (!standing && isRanch()) pitchT = Math.max(pitchT, -0.2);   // at the Surf Ranch, eyes up on the machine wall where your wave comes from
-  pitchT += 0.14 * tubeEase + 0.07 * stallV + 0.035 * bogV * Math.sin(T * 7.3);   // (a stall: you sit back and your eyes tip up a little; sinking, they bob)   // (in the barrel your eyes lift ~8 deg, so you see the tube arching over you)   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
+  pitchT += 0.14 * tubeEase + 0.07 * stallV + 0.035 * bogV * Math.sin(T * 7.3) - 0.16 * noseV + (standing && noseV > 0.01 ? 0.85 * noseV * Math.min(0, Math.asin(Math.max(-1, Math.min(1, pose.fwd.y)))) : 0); if (glK > 0.001) pitchT += (glP - pitchT) * glK;   // (on the nose your eyes follow the board's slope: heading down the face you look down it, so the tip stays in view)   // (up on the nose your eyes drop a little; when it starts to dig in you glance down at it, so you see the tip going under)   // (a stall: you sit back and your eyes tip up a little; sinking, they bob)   // (in the barrel your eyes lift ~8 deg, so you see the tube arching over you)   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
   pov.pitch += (pitchT - pov.pitch) * Math.min(1, dt * (st === 'POP' ? 4 + 20 * Math.min(1, popClock() / 0.3) : st === 'RIDE' ? 5 + 19 * Math.max(0, 1 - rider.stateT / 0.4) : 5));   // (and out of it without a kink: the rates hand over gradually when you're up)   // (the pop: eyes snap down to the board between your hands)
-  pov.roll += ((standing ? -rider.lean * 0.2 + 0.05 * bogV * Math.sin(T * 9.1) : 0) - pov.roll) * Math.min(1, dt * 6);   // (the wobble of a sinking tail rocks the horizon)   // you feel the lean: the horizon tips as you lay into a carve (less than the board: people hold their head nearer level)
+  pov.roll += ((standing ? -rider.lean * 0.2 - 0.55 * (rider.wob || 0) + 0.05 * bogV * Math.sin(T * 9.1) : 0) - pov.roll) * Math.min(1, dt * 6);   // (the wobble of a sinking tail rocks the horizon)   // you feel the lean: the horizon tips as you lay into a carve (less than the board: people hold their head nearer level)
   // three.js cameras look down -z: turn our heading (angle in x/z) into a yaw about y
   _pe.set(pov.pitch - (rider.standing ? 0.055 * pumpA : 0), -pov.yaw - Math.PI / 2, pov.roll);   // (each pump stroke: the head nods down ~3 deg as you compress, like real POV footage)
   camera.quaternion.setFromEuler(_pe);
@@ -971,7 +978,8 @@ const WORLD_UP = new THREE.Vector3(0, 1, 0), INTO_WAVE = new THREE.Vector3(0, 0,
 const _xAxis = new THREE.Vector3(1, 0, 0), _up = new THREE.Vector3(), _tq = new THREE.Quaternion(), _yq = new THREE.Quaternion(), bodyQ = new THREE.Quaternion(), stanceQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2), invQ = new THREE.Quaternion();
 // the rider's world orientation (bodyQ, plus side-on stance) expressed in the board's frame
 if (stance === 'regular') stanceQ.setFromAxisAngle(WORLD_UP, -Math.PI / 2);   // (turned the other way round on the board: left foot to the nose)
-const setStance = () => { invQ.copy(rig.quaternion).invert(); surfer.quaternion.copy(invQ).multiply(bodyQ).multiply(stanceQ); };
+const _stq = new THREE.Quaternion(), _idq = new THREE.Quaternion();
+const setStance = () => { invQ.copy(rig.quaternion).invert(); surfer.quaternion.copy(invQ).multiply(bodyQ).multiply(_stq.copy(stanceQ).slerp(_idq, 0.55 * noseV)); };   // (walking to the nose you turn to face it, gradually over the steps)
 // body moves between poses (sitting -> lying -> popping up) glide over ~0.15 s instead of jumping in one frame: the
 // camera rides on your head, so a jump was a jolt in the view (sit to paddle dropped 57 cm, paddle to pop rose 44 cm)
 const _gp = new THREE.Vector3();
@@ -986,10 +994,27 @@ const FIN_HOLD = 0.8, FIN_SIT = 0.7;
 // the stall you can see and hear (his call 29 Sep 2026: the stronger stall must show): stallV eases in and out with the
 // button, bogV rises as the board stops planing under you (the warning before the tail sinks). They tip your eyes back
 // and lift the nose (updateRig, povCamera), throw spray off your dragging hand, gurgle, wobble, and pulse the button
-let stallV = 0, bogV = 0, stallSprayAcc = 0, gurgleT = 0;
+let stallV = 0, bogV = 0, stallSprayAcc = 0, gurgleT = 0, noseV = 0, pearlV = 0, shoulderV = 0, pearlSprayAcc = 0, pearlGurgleT = 0, pearlBuzzed = false;
 const _stP = new THREE.Vector3(), _stV = new THREE.Vector3();
 function stallFx(dt) {
   const on = rider && rider.standing && rider.state === 'RIDE';
+  noseV = on ? rider.nose || 0 : noseV * Math.max(0, 1 - dt * 4);
+  pearlV += ((on ? rider.pearlK || 0 : 0) - pearlV) * Math.min(1, dt * 8);
+  shoulderV += ((on ? rider.shoulderK || 0 : 0) - shoulderV) * Math.min(1, dt * 6);
+  // the nose about to go under, in two stages you can see and hear (walk back in either and you're fine): from a
+  // quarter of the way the tip dips, water washes up over it and it gurgles; past 70% it dips hard, more water piles
+  // on, the board shudders and (Android) the phone buzzes
+  if (on && pearlV > 0.25 && rider.v > 1) {
+    const k2 = pearlV > 0.7 ? 1 : 0; pearlSprayAcc += (60 + 140 * k2) * pearlV * dt;
+    const nz = board.position.z + BOARD_LENGTH(boardType) / 2 - 0.25;
+    while (pearlSprayAcc >= 1) { pearlSprayAcc -= 1;
+      _stP.set((Math.random() - 0.5) * 0.35, 0.02, nz).applyMatrix4(rig.matrixWorld);
+      _stV.set(rider.vx * 0.6, 0.5 + Math.random() * (0.8 + 0.8 * k2), rider.vz * 0.6).addScaledVector(pose.fwd, -0.8 - Math.random() * 0.8);
+      railSpray.stream(_stP, _stV, 1, 0.45); }
+    pearlGurgleT -= dt; if (pearlGurgleT <= 0) { pearlGurgleT = (k2 ? 0.2 : 0.38) + 0.15 * Math.random(); audio.burst(0.08 + 0.14 * pearlV, 220 + 80 * Math.random(), 0.28, 'lowpass'); }
+    if (k2 && !pearlBuzzed) { pearlBuzzed = true; if (!DESK) try { navigator.vibrate && navigator.vibrate([40, 60, 40]); } catch (e) {} }
+  }
+  if (pearlV < 0.5) pearlBuzzed = false;
   stallV += ((on ? rider.stalling || 0 : 0) - stallV) * Math.min(1, dt * (rider && rider.stalling ? 7 : 4));
   bogV += ((on ? rider.bogK || 0 : 0) - bogV) * Math.min(1, dt * 8);
   if (ui.stall.classList.contains('bog') !== bogV > 0.12) ui.stall.classList.toggle('bog', bogV > 0.12);
@@ -1016,9 +1041,9 @@ function updateRig(dt, t) {
     // each pump stroke swoops the board a little, rail to rail and nose swinging, like the small S a real pump makes
     // (only what you see: your line and the physics are untouched). One stroke one way, the next the other way.
     const pw = rider.pumping ? Math.sin(Math.PI * rider.pumpT / PUMP_STROKE) : 0, ps = rider.pumpN % 2 ? 1 : -1;
-    const roll = rider.lean * 0.8 + ps * 0.12 * pw;                     // the board on its rail: the lean you're carving with
+    const roll = rider.lean * 0.8 + ps * 0.12 * pw + (rider.wob || 0);   // (up on the longboard's nose: the rock you're balancing)                     // the board on its rail: the lean you're carving with
     pose.fwd.applyAxisAngle(WORLD_UP, ps * 0.07 * pw);
-    pose.fwd.y += 0.14 * stallV + 0.07 * bogV * Math.sin(t * 7.5); pose.fwd.normalize();   // (a stall: weight on the tail lifts the nose; sinking, it bobs)
+    pose.fwd.y += 0.14 * stallV + 0.07 * bogV * Math.sin(t * 7.5) - 0.05 * noseV - 0.12 * pearlV - (pearlV > 0.7 ? 0.05 * pearlV + 0.025 * Math.sin(t * 23) : 0);   // (the last stage: dipping hard, shuddering) pose.fwd.normalize();   // (walking forward the nose dips; about to pearl, it dips hard)   // (a stall: weight on the tail lifts the nose; sinking, it bobs)
     pose.up.applyAxisAngle(pose.fwd, roll);   // (+lean turns right, toward +z; rolling up toward +z puts the right rail in the water)
   }
   pose.up.addScaledVector(pose.fwd, -pose.up.dot(pose.fwd)).normalize();
@@ -1085,9 +1110,13 @@ function updateRig(dt, t) {
     if (curClip !== clips.crouch) { play('crouch', { fade: 0.3 }); clips.stand.reset().play(); }
     // rising out of the pop-up's deep squat over half a second (not snapping up: that jerks your eyes up 16 cm in a frame)
     const up_ = Math.min(1, rider.stateT / 0.6), rise = up_ * up_ * (3 - 2 * up_);
-    clips.crouch.weight = 0.8 + (deep - 0.8) * rise; clips.stand.weight = 1 - clips.crouch.weight;
+    clips.crouch.weight = (0.8 + (deep - 0.8) * rise) * (1 - 0.45 * noseV); clips.stand.weight = 1 - clips.crouch.weight;   // (on the nose you stand tall)
     setStance();
     surfer.position.set(0, -0.04 * clips.crouch.weight, -0.1);       // hips drop a little as the feet spread
+    if (noseV > 0.001 || rider.stepDir) {   // cross-stepping up the longboard: forward a step at a time, the body rising a little and rocking side to side with each step
+      const run = board.position.z + BOARD_LENGTH(boardType) / 2 - 0.5, u = rider.stepU || 0, lift = Math.sin(Math.PI * u), sideS = (rider.noseStep || 0) % 2 ? 1 : -1;
+      surfer.position.z += noseV * run; surfer.position.y += 0.07 * lift; surfer.position.x += 0.04 * lift * sideS;
+    }
   } else if (st === 'WIPE') {
     setStance(); surfer.position.set(0, 0, -0.1);
     wipeout(dt);
@@ -1142,7 +1171,7 @@ const railSpray = (() => {
         }
         // drifting: the tail sprays a big fan to the outside of the slide; a snap or cutback throws a sheet of spray up
         const snapK = rider.trick && rider.trick.name.endsWith('SNAP') && rider.trick.t < 0.3 ? 1 : 0;
-        const cutK = rider.trick && rider.trick.name.endsWith('CUTBACK') && rider.trick.t < 0.3 ? 1 : 0;
+        const cutK = rider.trick && /CUTBACK|ROUNDHOUSE$/.test(rider.trick.name) && rider.trick.t < 0.3 ? 1 : 0;
         const hitK = Math.max(snapK, cutK);
         if (hitK && !fanHit) { fanHit = true; splashLens(5, 0.8); }   // (you ride through your own spray: a few drops on the lens)
         if (!hitK) fanHit = false;
@@ -1223,7 +1252,7 @@ const surfFx = (() => {
         while (sAcc >= 1) { sAcc--; _a.copy(rig.position).addScaledVector(pose.fwd, -0.2 - Math.random() * 0.6).addScaledVector(pose.up, 0.05);
           const keep = 0.55 + Math.random() * 0.3; _b.set(vx * keep + sx * (2.5 + Math.random() * 3.5) * curtain, 1.8 + Math.random() * 2.4 * curtain, vz * keep + sz * (2.5 + Math.random() * 3.5) * curtain); sheet(_a, _b, 1.2); }
         // a snap or cutback throws a wall of it up in front of you for a moment
-        if (rider.trick && rider.trick !== lastTrick && /SNAP|CUTBACK/.test(rider.trick.name)) {
+        if (rider.trick && rider.trick !== lastTrick && /SNAP|CUTBACK|ROUNDHOUSE/.test(rider.trick.name)) {
           for (let k = 0; k < 70; k++) { _a.copy(rig.position).addScaledVector(pose.fwd, -0.3 + Math.random() * 0.8).addScaledVector(pose.up, 0.1);
             _b.set(vx * 0.8 + sx * (3 + Math.random() * 4) + fx * 1.5, 3 + Math.random() * 4, vz * 0.8 + sz * (3 + Math.random() * 4) + fz * 1.5); sheet(_a, _b, 2); } }
         lastTrick = rider.trick;
@@ -1331,7 +1360,8 @@ const bowGlow = (() => {
         if (life[i] < 0) { if (col[i * 3 + 2] !== 0) { col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = 0; } continue; }
         life[i] -= dt; const k = Math.max(0, life[i] / max[i]), f = k * k * (0.75 + 0.5 * Math.random());   // (a flicker as it fades)
         pos[i * 3] += vel[i * 2] * dt; pos[i * 3 + 2] += vel[i * 2 + 1] * dt;
-        if (i % 3 === fr) pos[i * 3 + 1] = heightAt(waves, pos[i * 3], pos[i * 3 + 2]) + 0.03;   // (kept on the water as the wave moves under it: a third of them a frame) vel[i * 2] *= 1 - dt * 2.5; vel[i * 2 + 1] *= 1 - dt * 2.5;
+        if (i % 3 === fr) pos[i * 3 + 1] = heightAt(waves, pos[i * 3], pos[i * 3 + 2]) + 0.03;   // (kept on the water as the wave moves under it: a third of them a frame)
+        vel[i * 2] *= 1 - dt * 2.5; vel[i * 2 + 1] *= 1 - dt * 2.5;
         col[i * 3] = 0.1 * f; col[i * 3 + 1] = 0.7 * f; col[i * 3 + 2] = 1.0 * f;
       }
       g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true;
@@ -1723,6 +1753,7 @@ function surfStance() {
     // pop-up: hands flat on the deck either side of the stringer, just ahead of your chest (placed on the board itself)
     if (popK > 0) { const sideSign = Math.sign(_cv.subVectors(bones['upperarm_' + s].getWorldPosition(_ik4), bones.spine_03.getWorldPosition(_ik1)).dot(_ik2.set(1, 0, 0).applyQuaternion(rig.quaternion))) || 1;
       P.lerp(rig.localToWorld(_aq.set(0.17 * sideSign, 0.1, 0.35)), popK); }
+    if (noseV > 0.01) P.lerp(at(_aq, front ? 0.15 : -0.05, 0.95, front ? 0.42 : -0.42), Math.min(1, noseV * 1.3));   // (on the nose: arms low and relaxed at your sides, the classic poise, out of your view)
     if (aw) P.addScaledVector(F, (front ? 0.6 : 0.25) * aw).addScaledVector(WORLD_UP, -(front ? 1 : 0.6) * aw);   // (the pump swing, on top of whatever the arms are doing)
     // smooth each hand's path (the pose blends above can jump between frames when the lean changes side)
     // (smoothed relative to your eyes: smoothing in the world would leave the hands trailing behind you at speed)
@@ -1752,8 +1783,15 @@ const setText = (el, t) => { if (el && el._t !== t) { el._t = t; el.textContent 
 let endT = -1, snapCam = true, tubeShowT = 0, lastAir = false;
 // ---- the HUD's speed, score and move callouts (look: index.html #speed, #score, #tube)
 const hudSpdB = ui.speed.querySelector('b'), hudBar = ui.speed.querySelector('.sbar i'), hudScB = ui.score.querySelector('b');
-const cBig = ui.tube.querySelector('.cbig'), cWord = ui.tube.querySelector('.cword'), cPts = ui.tube.querySelector('.cpts');
-let hudKmh = -2, scShown = -1, callKey = null, callOn = false, callSlamT = 0;
+const cBig = ui.tube.querySelector('.cbig'), cWord = ui.tube.querySelector('.cword'), cPts = ui.tube.querySelector('.cpts'), cWhy = ui.tube.querySelector('.cwhy'), cBal = ui.tube.querySelector('.cbal'), cBalDot = cBal.querySelector('i');
+let hudKmh = -2, scShown = -1, callKey = null, callOn = false, callSlamT = 0, whyT = 0;
+// the first time you land a move with a surfer's name, a line under it says what it is (held a little longer to read)
+const MOVE_WHY = { 'HANG FIVE': "One foot's toes over the nose", 'HANG TEN': "Both feet's toes over the nose" };
+let movesSeen = {}; try { movesSeen = JSON.parse(localStorage.getItem('ssMovesSeen') || '{}') || {}; } catch (e) { movesSeen = {}; }
+function moveWhy(word) {
+  const k = Object.keys(MOVE_WHY).find((n) => word.startsWith(n)); if (!k || movesSeen[k]) return '';
+  movesSeen[k] = 1; try { localStorage.setItem('ssMovesSeen', JSON.stringify(movesSeen)); } catch (e) {} return MOVE_WHY[k];
+}
 ui.score.addEventListener('animationend', () => ui.score.classList.remove('bump'));
 function hudSpeed(kmh) {
   if (kmh === hudKmh) return; const on = kmh >= 0; ui.speed.classList.toggle('on', on); hudKmh = kmh; if (!on) return;
@@ -1768,7 +1806,7 @@ function hudScore(v, dt) {
   const t = scShown.toFixed(1); if (hudScB.textContent !== t) hudScB.textContent = t;
 }
 const CALL_COL = { gold: '#ffcf8a', sea: '#8fe6d6', coral: '#ff8e6e' };
-function hudCallOff(now) { if (!callOn && !now) return; callOn = false; callKey = null; ui.tube.classList.remove('on', 'slam', 'big', 'live'); if (!now) ui.tube.classList.add('out'); else ui.tube.classList.remove('out'); }
+function hudCallOff(now) { ui.tube.classList.remove('bal'); if (!callOn && !now) return; callOn = false; whyT = 0; cWhy.textContent = ''; callKey = null; ui.tube.classList.remove('on', 'slam', 'big', 'live'); if (!now) ui.tube.classList.add('out'); else ui.tube.classList.remove('out'); }
 function hudCallShow(key, big, word, pts, col, slam) {
   if (cWord.textContent !== word) cWord.textContent = word;
   if (key === callKey) return;
@@ -1780,15 +1818,30 @@ function hudCallShow(key, big, word, pts, col, slam) {
 function hudCall(st, dt) {
   callSlamT = Math.max(0, callSlamT - dt);
   if (st === 'RIDE' && tubeShowT > 0) {
-    hudCallShow('tube', '', `BARREL ${Math.max(0, rider.ride.tubeT).toFixed(1)}s`, '', 'sea', true);
+    const grab = (rider.ride.grabT || 0) > 0.3 ? 'GRAB RAIL' : ''; hudCallShow('tube', grab, `BARREL ${Math.max(0, rider.ride.tubeT).toFixed(1)}s`, '', 'sea', true); if (cBig.textContent !== grab) cBig.textContent = grab;   // (backside in a heavy barrel: on the rail)
     if (!callSlamT && !ui.tube.classList.contains('live')) { ui.tube.classList.remove('slam', 'big'); ui.tube.classList.add('live'); }
     return;
   }
+  // up on the longboard's nose: the hang's own clock, like the barrel's (HANG FIVE counting, HANG TEN once you're on
+  // the tip), coral while the nose is digging in. Stepping back off it, the scored hang slams in with its points below
+  if (st === 'RIDE' && (rider.nose || 0) >= 0.74 && rider.hangT > 0) {
+    const ten = rider.hang10T > 0, word = `${ten ? 'HANG TEN' : 'HANG FIVE'} ${(ten ? rider.hang10T : rider.hangT).toFixed(1)}s`;
+    hudCallShow(ten ? 'hang10' : 'hang5', '', word, '', 'gold', true);   // (slams again as you reach the tip)
+    ui.tube.style.setProperty('--c', pearlV > 0.25 || (rider.wobK || 0) > 0.55 ? CALL_COL.coral : CALL_COL.gold);
+    if (!callSlamT && !ui.tube.classList.contains('live')) { ui.tube.classList.remove('slam', 'big'); ui.tube.classList.add('live'); }
+    // the balance bar: the dot goes the way the board tips on screen (a mirrored spot flips it), 60 px at the edge
+    const bk = Math.max(-1, Math.min(1, (rider.wob || 0) / 0.3)) * (MIRROR ? -1 : 1);
+    ui.tube.classList.add('bal'); cBalDot.style.setProperty('--bx', (bk * 60).toFixed(1) + 'px'); cBal.classList.toggle('hot', Math.abs(bk) > 0.55);
+    return;
+  }
+  ui.tube.classList.remove('bal');
   const tr = st === 'RIDE' ? rider.trick : null;
-  if (!tr) { hudCallOff(false); return; }
+  whyT = Math.max(0, whyT - dt);
+  if (!tr) { if (whyT > 0 && st === 'RIDE') return; hudCallOff(false); return; }
   if (tr !== callKey) {
     const m = /^(BIG |DEEP )?(.*)$/.exec(tr.name), word = m[2], mv = rider.ride.moves[rider.ride.moves.length - 1];
     hudCallShow(tr, (m[1] || '').trim(), word, mv ? `+${mv.pts.toFixed(1)}` : '', /^BARREL/.test(word) ? 'sea' : /^AIR/.test(word) ? 'coral' : 'gold', true);
+    const why = moveWhy(word); cWhy.textContent = why; whyT = why ? 3.2 : 0;   // (1.4 s callout + time to read the line)
   }
 }
 function updateHUD(dt) {
@@ -1797,7 +1850,8 @@ function updateHUD(dt) {
   hudSpeed(rider.standing ? Math.round(rider.v * 3.6) : -1);
   if (mode === 'random') setText(ui.cond, rider.wave && rider.standing ? `Random: ${rider.wave.cond.name.toLowerCase()} wave` : 'Random');
   ui.paddle.style.visibility = st === 'WIPE' || st === 'OUT' ? 'hidden' : 'visible';
-  const lbl = rider.standing ? 'PUMP' : 'PADDLE'; if (ui.paddle.dataset.l !== lbl) { ui.paddle.dataset.l = lbl; ui.paddle.innerHTML = DESK ? `${lbl}<small>SPACE</small>` : lbl; }
+  const lbl = rider.standing ? (boardType === 'long' ? 'WALK' : 'PUMP') : 'PADDLE';   // (the longboard walks to the nose instead of pumping)
+  if (ui.paddle.dataset.l !== lbl) { ui.paddle.dataset.l = lbl; ui.paddle.innerHTML = DESK ? `${lbl}<small>SPACE</small>` : lbl; }
   // coaching for the first few waves: read the sea like a surfer would
   let hint = '';
   if (st === 'LIE' && ranchWaiting()) hint = session.waves < 3 ? 'Order a wave: it comes out of the machine wall in front of you' : '';
@@ -1821,7 +1875,7 @@ function updateHUD(dt) {
   else if (st === 'RIDE' && rider.stateT > 13 && rider.stateT < 17 && session.waves >= 1 && session.waves < 6 && !rider.ride.moves.some((m) => m.name.startsWith('AIR')) && RIDE.air) hint = 'Air: race down, then turn hard up the face into the lip and it launches you';
   // the curl is right behind you: tell the player how to get covered (a barrel comes to whoever sets up for it)
   if (st === 'RIDE' && !hint && !rider.inBarrel && rider.wave && rider.s > 0 && rider.s < 2.2 * rider.wave.cond.H && rider.wave.cond.hollow > 0.5 && session.barrels < 2) hint = rider.y < 0.6 * rider.wave.cond.H ? 'Barrel coming! Stay low and hold STALL' : 'The lip is pitching behind you: drop low to get barreled';
-  setText(ui.hint, spec ? '' : bogV > 0.3 ? (DESK ? 'Too slow: let go of Shift' : 'Too slow: let go of STALL') : session.waves < 5 || st === 'POP' ? (DESK ? deskHint(hint) : hint) : '');   // (the sinking-tail warning shows every time, not only in the first waves)   // (no coaching while you watch someone else)
+  setText(ui.hint, spec ? '' : pearlV > 0.25 ? (rider.noseHard ? 'Turning too hard on the nose: ease off, walk back' : 'Nose digging in: walk back') : shoulderV > 0.4 ? (DESK ? 'Out on the shoulder: walk back, Shift to stall to the curl' : 'Out on the shoulder: walk back, STALL to the curl') : bogV > 0.3 ? (DESK ? 'Too slow: let go of Shift' : 'Too slow: let go of STALL') : session.waves < 5 || st === 'POP' ? (DESK ? deskHint(hint) : hint) : '');   // (the sinking-tail warning shows every time, not only in the first waves)   // (no coaching while you watch someone else)
   // the callout: BARREL while you're in it, or the move you just landed
   tubeShowT = rider.inBarrel ? 0.4 : Math.max(0, tubeShowT - dt);   // (held a moment: a wobble at the tube's edge doesn't flicker the word)
   hudCall(st, dt);
@@ -1840,9 +1894,9 @@ function updateHUD(dt) {
     const judge = r.score < 2 ? 'Poor' : r.score < 5 ? 'Fair' : r.score < 6.5 ? 'Good' : r.score < 8 ? 'Very good' : 'Excellent';   // (the contest judges' own words for the range, 28 Sep 2026)
     ui.msgN.innerHTML = r.t > 0 ? `${r.score.toFixed(1)}<small>${judge.toUpperCase()}${newBest ? '  \u00b7  NEW BEST' : ''}</small>` : '';
     ui.msgS.innerHTML = '';
-    { const J = r.t > 0 ? rider.liveScore(st === 'WIPE', true) : null, NM = { TURN: 'Turn', SNAP: 'Snap', CUTBACK: 'Cutback', FLOATER: 'Floater', AIR: 'Air', 'AIR 360': 'Air 360', BARREL: 'Barrel' };
+    { const J = r.t > 0 ? rider.liveScore(st === 'WIPE', true) : null, NM = { TURN: 'Turn', SNAP: 'Snap', CUTBACK: 'Cutback', FLOATER: 'Floater', AIR: 'Air', 'AIR 360': 'Air 360', 'HANG FIVE': 'Hang five', 'HANG TEN': 'Hang ten', BARREL: 'Barrel' , ROUNDHOUSE: 'Roundhouse', 'LATE DROP': 'Late drop' };
       const top = J ? J.lines.filter((l) => NM[l.name]).slice(0, 3) : [];
-      ui.msgJ.innerHTML = top.map((l) => `<div><span><b>${NM[l.name]}${l.name === 'BARREL' ? ` ${l.dur.toFixed(1)}<small>s</small>` : ''}</b>${l.notes.length ? `<i>${l.notes.join(', ')}</i>` : ''}</span><em>${l.pts.toFixed(1)}</em></div>`).join('') + (J && J.fell ? '<div><span><i>fell at the end: moves in the last second did not count</i></span></div>' : ''); }
+      ui.msgJ.innerHTML = top.map((l) => `<div><span><b>${NM[l.name]}${l.name === 'BARREL' || l.name.startsWith('HANG') ? ` ${l.dur.toFixed(1)}<small>s</small>` : ''}</b>${l.notes.length ? `<i>${l.notes.join(', ')}</i>` : ''}</span><em>${l.pts.toFixed(1)}</em></div>`).join('') + (J && J.fell ? '<div><span><i>fell at the end: moves in the last second did not count</i></span></div>' : ''); }
     // the level this wave reached stands out (amber, with the menu's three dots), then how far the next one is
     const parts = []; let lvl = '';
     if (r.t > 0) { const lv = levelOf(r.score), nx = LEVELS[lv + 1];

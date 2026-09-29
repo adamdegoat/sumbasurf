@@ -1,7 +1,7 @@
 // Film a carving ride, snaps and all, frame by frame (canvas only) to the local receiver (scratchpad film/recv.py, :8799).
 //   const F = await import('./test/snapfilm.js?x=1'); F.prep('medium', 11, true); await F.film('after', 0, 600)   (resumable)
 import { carveBrain } from './sim2.js';
-import { RIDE } from '../js/surf.js?v=168';
+import { RIDE } from '../js/surf.js?v=185';
 const G = () => window.__g;
 const seeded = (seed) => { let st = seed >>> 0; return () => ((st = (st * 1664525 + 1013904223) >>> 0) / 4294967296); };
 let S = null;

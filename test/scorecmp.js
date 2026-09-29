@@ -2,7 +2,7 @@
 // (surf.js scoreRide(..., old)), with what it was made of.
 //   const C = await import('./test/scorecmp.js?x=1'); C.run('medium', 'carver', 5)
 import { run as ride } from './skill.js';
-import { scoreRide } from '../js/surf.js?v=168';
+import { scoreRide } from '../js/surf.js?v=185';
 const G = () => window.__g;
 export function run(spot, lv, waves = 5, seed = 7) {
   const g = G(), s0 = g.step, rides = []; let last = '';

@@ -70,6 +70,15 @@
   #tube .cword { display: inline-block; font: 800 clamp(24px, 9vh, 38px)/.95 var(--disp); letter-spacing: .01em; color: var(--c); -webkit-text-stroke: 1.6px var(--ink); paint-order: stroke fill; text-shadow: 3px 3px 0 var(--ink); transform: rotate(-4deg); font-variant-numeric: tabular-nums; }
   #tube .cpts { display: block; margin-top: 4px; font: 700 clamp(12px, 4vh, 16px)/1 var(--disp); color: #fff; -webkit-text-stroke: .8px var(--ink); paint-order: stroke fill; text-shadow: 1.5px 1.5px 0 var(--ink); transform: rotate(-4deg); }
   #tube .cpts:empty { display: none; }
+  #tube .cwhy { display: table; margin: 10px auto 0; max-width: calc(100% - 32px); padding: 5px 11px 6px; border-radius: 3px; background: rgba(21, 17, 12, .78); font: 600 clamp(13px, 3.6vh, 15px)/1.2 var(--body); color: #f6ecdc; letter-spacing: .01em; }
+  #tube .cwhy:empty { display: none; }
+  /* the balance bar under the hang clock: the dot slides the way the board is tipping; steer it back to the middle */
+  #tube .cbal { display: none; position: relative; width: 132px; height: 8px; margin: 9px auto 0; border-radius: 4px; background: rgba(21, 17, 12, .62); box-shadow: 0 0 0 1.5px rgba(246, 236, 220, .55); }
+  #tube .cbal::before { content: ''; position: absolute; left: 50%; top: -3px; width: 2px; height: 14px; margin-left: -1px; background: rgba(246, 236, 220, .7); border-radius: 1px; }
+  #tube .cbal i { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #f6ecdc; box-shadow: 0 0 0 2px #15110c; transform: translateX(var(--bx, 0px)); }
+  #tube .cbal.hot i { background: #ff8e6e; }
+  #tube.bal .cbal { display: block; }
+  #tube.slam .cwhy { animation: cfade .3s .2s both; }
   #tube.slam .cword { animation: cslam .34s cubic-bezier(.2,.9,.3,1.2) both; }
   #tube.slam.big .cword { animation: cslamBig .46s cubic-bezier(.2,.9,.3,1.2) both; }
   #tube.slam .cbig, #tube.slam .cpts { animation: cfade .3s .08s both; }
@@ -484,7 +493,7 @@
 <div class="hud" id="cond"></div>
 <div class="hud" id="speed"><b>0</b><small>KM/H</small><span class="sbar"><i></i></span></div>
 <div class="hud" id="score"><small>SCORE</small><b>0.0</b></div>
-<div class="hud" id="tube"><span class="cbig"></span><span class="cword"></span><span class="cpts"></span></div>
+<div class="hud" id="tube"><span class="cbig"></span><span class="cword"></span><span class="cbal"><i></i></span><span class="cpts"></span><span class="cwhy"></span></div>
 <div class="hud" id="hint"></div>
 <div class="hud" id="fps"></div>
 <div class="ctl" id="menu"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 4h12M2 8h12M2 12h12"/></svg>MENU</div>
@@ -542,13 +551,19 @@
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div id="pnList"></div>
-    <small id="build">build 260929-1136</small>
+    <small id="build">build 260929-1504</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-29-moves', date: '29 Sep 2026', time: '3:05 pm', title: 'Nose riding and new moves', items: [
+      'On the longboard, hold WALK to step up to the nose. Hang Five and Hang Ten get their own clock.',
+      'Up on the nose, keep the dot in the middle to stay balanced, and walk back when the clock turns coral.',
+      'Link a bottom turn into a snap, cutback, floater or air for bonus points.',
+      'New moves: the roundhouse cutback, a late drop bonus, and grab rail in heavy backside barrels.',
+    ] },
     { id: '2026-09-29-tougher', date: '29 Sep 2026', time: '11:36 am', title: 'Tougher waves, fairer judging', items: [
       'Batu Hitam and Karang Hiu bite back: sit too deep and the foam ball or the lip will get you.',
       'Barrels last 3 to 5 seconds, then the wave spits you out onto the open face and you ride on.',
@@ -762,6 +777,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=857"></script>
+<script type="module" src="js/game.js?v=884"></script>
 </body>
 </html>

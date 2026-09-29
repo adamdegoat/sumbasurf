@@ -46,7 +46,18 @@ function draw(fov, body, crop, chase) {
   cx.drawImage(r.domElement, 0, 0, W, H);   // (copied in the same task, before the browser clears the drawing buffer)
   if (CALL.text && CALL.a > 0.01) {   // the game's own callout (#tube in index.html: 22% down, bold condensed, wide letter spacing)
     const fs = Math.round(H * 0.056); cx.save(); cx.globalAlpha = CALL.a; cx.font = `700 ${fs}px "Barlow Condensed", "Helvetica Neue", sans-serif`; cx.letterSpacing = `${(fs * 0.3).toFixed(1)}px`;
-    cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.shadowColor = 'rgba(0,0,0,.45)'; cx.shadowBlur = fs * 0.25; cx.fillStyle = '#f4efe6'; cx.fillText(CALL.text, W / 2 + fs * 0.15, H * 0.22 + fs * 0.5); cx.restore(); }
+    const fit = Math.min(1, W * 0.9 / cx.measureText(CALL.text).width); if (fit < 1) { cx.font = `700 ${Math.round(fs * fit)}px "Barlow Condensed", "Helvetica Neue", sans-serif`; cx.letterSpacing = `${(fs * fit * 0.3).toFixed(1)}px`; }   // (a long pair like BOTTOM TURN + SNAP shrinks to fit)
+    cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.shadowColor = 'rgba(0,0,0,.45)'; cx.shadowBlur = fs * 0.25; cx.fillStyle = CALL.warn ? '#ff8e6e' : '#f4efe6'; cx.fillText(CALL.text, W / 2 + fs * 0.15, H * 0.22 + fs * 0.5); cx.restore(); }
+  { const br = G().rider;   // the game's balance bar under the hang clock (#tube .cbal): the dot the way the board tips
+    if (CALL.a > 0.01 && br && br.state === 'RIDE' && (br.nose || 0) >= 0.74 && br.hangT > 0 && !(CALL.tubeT > 0)) {
+      const u = H / 390, bw = 132 * u, bh = 8 * u, cxm = W / 2, cy = H * 0.22 + Math.round(H * 0.056) * 1.25 + 9 * u, k = Math.max(-1, Math.min(1, (br.wob || 0) / 0.3)) * (G().mirror ? -1 : 1);
+      cx.save(); cx.fillStyle = 'rgba(21,17,12,.62)'; cx.strokeStyle = 'rgba(246,236,220,.55)'; cx.lineWidth = 1.5 * u; cx.beginPath(); cx.roundRect(cxm - bw / 2, cy, bw, bh, bh / 2); cx.fill(); cx.stroke();
+      cx.fillStyle = 'rgba(246,236,220,.7)'; cx.fillRect(cxm - u, cy - 3 * u, 2 * u, 14 * u);
+      cx.beginPath(); cx.arc(cxm + k * 60 * u, cy + bh / 2, 7 * u, 0, Math.PI * 2); cx.fillStyle = Math.abs(k) > 0.55 ? '#ff8e6e' : '#f6ecdc'; cx.fill(); cx.lineWidth = 2 * u; cx.strokeStyle = '#15110c'; cx.stroke(); cx.restore(); } }
+  const hr = G().rider, ht = !body || !hr || hr.state !== 'RIDE' ? '' : (hr.pearlK || 0) > 0.25 ? (hr.noseHard ? 'Turning too hard on the nose: ease off, walk back' : 'Nose digging in: walk back') : (hr.shoulderK || 0) > 0.4 ? 'Out on the shoulder: walk back, STALL to the curl' : '';
+  if (ht) {   // the game's nose-ride warning line (#hint in index.html: top centre, white, semibold), on your view only
+    const fs = Math.round(H * 0.036); cx.save(); cx.font = `600 ${fs}px "Barlow", "Helvetica Neue", sans-serif`; cx.textAlign = 'center'; cx.textBaseline = 'top';
+    cx.shadowColor = 'rgba(0,0,0,.6)'; cx.shadowBlur = fs * 0.3; cx.fillStyle = '#fff'; cx.fillText(ht, W / 2, H * 0.035); cx.restore(); }
 }
 // frames are encoded on the spot and sent in batches (one request per dozen frames: a hidden tab throttles every
 // awaited callback to about one a second, which made one-request-per-frame crawl)
@@ -60,7 +71,9 @@ async function grab(shot, i) {
 const CALL = { text: '', a: 0, tubeT: 0, last: '' };
 function callout(r, dt) {
   CALL.tubeT = r.inBarrel ? 0.4 : Math.max(0, CALL.tubeT - dt);
-  const t = r.state !== 'RIDE' ? '' : CALL.tubeT > 0 ? 'BARREL' : r.trick && !r.trick.name.endsWith('TURN') ? r.trick.name : '';
+  const hang = r.state === 'RIDE' && (r.nose || 0) >= 0.74 && r.hangT > 0 ? `${r.hang10T > 0 ? 'HANG TEN' : 'HANG FIVE'} ${(r.hang10T > 0 ? r.hang10T : r.hangT).toFixed(1)}s` : '';   // (the game's live hang clock)
+  CALL.warn = !!hang && ((r.pearlK || 0) > 0.25 || (r.wobK || 0) > 0.55);
+  const t = r.state !== 'RIDE' ? '' : CALL.tubeT > 0 ? ((r.ride.grabT || 0) > 0.3 ? 'GRAB RAIL  BARREL' : 'BARREL') : hang || (r.trick && !r.trick.name.endsWith('TURN') ? r.trick.name + (r.trick.name.startsWith('HANG') && r.ride.moves.length ? `  +${r.ride.moves[r.ride.moves.length - 1].pts.toFixed(1)}` : '') : '');
   if (t) CALL.text = t; CALL.a += ((t ? 1 : 0) - CALL.a) * Math.min(1, dt / 0.12);
 }
 const seeded = (seed) => { let st = seed >>> 0; return () => ((st = (st * 1664525 + 1013904223) >>> 0) / 4294967296); };
@@ -142,14 +155,21 @@ function proTake(name, mode, seed, n, boardT, plan, cbo, cam) {
           } else { o = cb(r); o.pump = r.v < w.cond.speed * 0.85; }
         }
         g.input.stick = stick; g.input.test = stick ? null : o.steer; g.input.paddleBtn = r.standing ? !!o.pump : !!o.paddle;
+        // (cbo.walk = [from, to] seconds into the ride: a longboarder trims in the pocket and holds WALK to go up to the nose; trimAt/trimY2: from then on aims for another height on the face, a mistake on purpose to film the warning)
+        if (cbo && cbo.walk && r.state === 'RIDE' && r.wave && r.stateT > cbo.walk[0] - 1.5 && r.stateT < cbo.walk[1] + 2) {
+          const w = r.wave, Hh = w.cond.H, err = r.y / Hh - (cbo.trimAt && r.stateT > cbo.trimAt && !(cbo.react && r._warnAt != null) ? cbo.trimY2 : (cbo.trimY || 0.45)) - 0.35 * Math.max(0, r.s / Hh - 0.6), sn = Math.max(-0.6, Math.min(0.97, w.cond.speed / Math.max(r.v, 1) + err * 0.9));
+          const lim = (r.nose || 0) > 0.3 ? 0.75 : 1, st0 = Math.max(-lim, Math.min(lim, wrapA(Math.asin(sn) - r.th) * 2.5)), st = (r.nose || 0) >= 0.74 ? Math.max(-1, Math.min(1, st0 * 0.4 - 3.2 * (r.wob || 0) - 0.5 * (r.wobV || 0))) : st0, ahead = r.s / Hh > 0.8 && !(cbo.trimAt && r.stateT > cbo.trimAt && cbo.noStall);   // (gentle on the nose, as a longboarder is)   // (running ahead of the pocket: stall back into it)
+          g.input.stick = ahead ? { x: st, y: 1 } : null; g.input.test = ahead ? null : st; g.input.paddleBtn = r.stateT > cbo.walk[0] && r.stateT < cbo.walk[1];
+          if (cbo.react) { if (r.stateT < 0.5) r._warnAt = null; if (r._warnAt == null && ((r.pearlK || 0) > 0.25 || (r.shoulderK || 0) > 0.4)) r._warnAt = r.stateT; if (r._warnAt != null && r.stateT - r._warnAt > cbo.react) g.input.paddleBtn = false; }   // (react: lets go of WALK this long after the warning shows, as a player would)
+        }
         g.step(1 / 60, 1 / 60, false);
       }
       callout(r, cam && cam.sub ? 1 / 60 : 1 / FPS);
       LOG[name].push([i, r.state, r.inBarrel ? 1 : 0, r.trick && r.trick.t < 0.05 ? r.trick.name : '', r.air ? 1 : 0, r.why || '', cut]);
       armK += ((r.standing ? 1 : 0) - armK) * Math.min(1, (cam && cam.sub ? 2 : 4) / FPS);
       if (cam && cam.both && r.wave) {   // both at once: your eyes, and the filmer on the ski (the same ride, frame for frame)
-        const Hh = r.wave.cond.H, c = g.camera, want = new THREE.Vector3(r.x + cam.ahead * Hh, Math.max(1.2, cam.up * Hh), r.z + cam.out * Hh);
-        CH.p = CH.p ? CH.p.lerp(want, 0.08) : want.clone(); CH.l = CH.l ? CH.l.lerp(new THREE.Vector3(r.x, r.y + 1, r.z), 0.25) : new THREE.Vector3(r.x, r.y + 1, r.z);
+        const Hh = r.wave.cond.H, c = g.camera, rp = cam.rel ? g.rig.getWorldPosition(new THREE.Vector3()) : null, want = cam.rel ? new THREE.Vector3(rp.x + cam.ahead, rp.y + cam.up, rp.z + cam.out) : new THREE.Vector3(r.x + cam.ahead * Hh, Math.max(1.2, cam.up * Hh), r.z + cam.out * Hh);   // (rel: metres from the surfer, height above the surfer, so it never dips under the water in front)
+        CH.p = CH.p ? CH.p.lerp(want, cam.rel ? 1 : 0.08) : want.clone(); const lk = rp ? rp.clone().setY(rp.y + 1) : new THREE.Vector3(r.x, r.y + 1, r.z); CH.l = CH.l ? CH.l.lerp(lk, rp ? 1 : 0.25) : lk;
         const fov = gameFov(W / H), pov = [c.position.clone(), c.quaternion.clone()];
         return { multi: [{ tag: '', fov, body: fov + (62 - fov) * armK }, { tag: 'X', pre() { c.position.copy(CH.p); c.lookAt(CH.l); c.updateMatrixWorld(); }, fov: cam.fov, chase: pov }] }; }
       if (cam && cam.ahead != null && r.wave) {   // a filmer in the channel on a jet ski: out in front of the wave and ahead on the shoulder, keeping pace, long lens on the surfer
