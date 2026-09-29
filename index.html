@@ -106,6 +106,8 @@
   .pnHead b { font: 700 24px/1 var(--disp); letter-spacing: .01em; }
   #pnClose { width: 48px; height: 48px; margin: -10px -12px -6px 0; display: grid; place-items: center; color: var(--sand); background: none; border: 0; cursor: pointer; touch-action: manipulation; }
   #pnClose svg { width: 20px; height: 20px; }
+  .pnTabs { display: flex; gap: 6px; margin: 6px 0 2px; } .pnTabs button { min-height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(253,247,238,.2); background: none; color: rgba(246,236,220,.75); font: 600 14px/1 var(--disp); letter-spacing: .02em; cursor: pointer; touch-action: manipulation; }
+  .pnTabs button.on { border-color: #ffcf8a; color: #ffcf8a; background: rgba(255,207,138,.12); }
   .pnEntry { margin-top: 14px; } .pnEntry:first-of-type { margin-top: 8px; }
   .pnDate { font: 700 13px/1 var(--disp); letter-spacing: .08em; text-transform: uppercase; color: #ffcf8a; }
   .pnTitle { font: 600 16px/1.2 var(--disp); margin: 3px 0 4px; }
@@ -389,6 +391,7 @@
   #vSong .mctl button { width: 46px; height: 36px; border-radius: 999px; border: 1px solid rgba(255,201,120,.55); background: rgba(255,201,120,.12); color: var(--amber); display: grid; place-items: center; touch-action: none; }
   #vSong .mctl button:active { background: linear-gradient(180deg, #ffd694, #f2ad52); color: #2a1a0c; }
   #vSong .mctl svg { width: 18px; height: 18px; }
+  #vSong .pl { display: none; } #vSong.paused .pl { display: inline; } #vSong.paused .pa { display: none; }   /* the middle button: pause while it plays, play while paused */
   #vSit { top: auto !important; bottom: max(22px, env(safe-area-inset-bottom)) !important; transform: none !important; }   /* (down in the corner, clear of the pills above it) */
   body.drone #vSit, body.drone #vWatch, body.drone #vPanel, body.drone #vShow { display: none !important; }
   #vSit { border-radius: 999px !important; font-size: 15px !important; font-weight: 700 !important; padding: 12px 20px !important; color: #2a1a0c !important; background: linear-gradient(180deg, #ffd694, #f2ad52) !important;
@@ -533,7 +536,7 @@
 <div class="vui" id="vAlt"></div>
 <button class="vui" id="vUp">UP</button><button class="vui" id="vDn">DOWN</button>
 <div class="vui" id="vNote"></div>
-<div class="vui" id="vSong"><i>Now playing</i><b id="vSongT"></b><span id="vSongA"></span><div class="mctl"><button id="mPrev" aria-label="Previous song"><svg viewBox="0 0 20 20" fill="currentColor"><rect x="3" y="4" width="2.2" height="12" rx="1"/><path d="M16.5 4.8v10.4a.8.8 0 0 1-1.2.7L7.2 10.7a.8.8 0 0 1 0-1.4l8.1-5.2a.8.8 0 0 1 1.2.7z"/></svg></button><button id="mNext" aria-label="Next song"><svg viewBox="0 0 20 20" fill="currentColor"><rect x="14.8" y="4" width="2.2" height="12" rx="1"/><path d="M3.5 4.8v10.4a.8.8 0 0 0 1.2.7l8.1-5.2a.8.8 0 0 0 0-1.4L4.7 4.1a.8.8 0 0 0-1.2.7z"/></svg></button></div></div>
+<div class="vui" id="vSong"><i>Now playing</i><b id="vSongT"></b><span id="vSongA"></span><div class="mctl"><button id="mPrev" aria-label="Previous song"><svg viewBox="0 0 20 20" fill="currentColor"><rect x="3" y="4" width="2.2" height="12" rx="1"/><path d="M16.5 4.8v10.4a.8.8 0 0 1-1.2.7L7.2 10.7a.8.8 0 0 1 0-1.4l8.1-5.2a.8.8 0 0 1 1.2.7z"/></svg></button><button id="mPlay" aria-label="Pause"><svg viewBox="0 0 20 20" fill="currentColor"><rect class="pa" x="5" y="4" width="3.4" height="12" rx="1"/><rect class="pa" x="11.6" y="4" width="3.4" height="12" rx="1"/><path class="pl" d="M6 4.6v10.8a.8.8 0 0 0 1.2.7l8.6-5.4a.8.8 0 0 0 0-1.4L7.2 3.9A.8.8 0 0 0 6 4.6z"/></svg></button><button id="mNext" aria-label="Next song"><svg viewBox="0 0 20 20" fill="currentColor"><rect x="14.8" y="4" width="2.2" height="12" rx="1"/><path d="M3.5 4.8v10.4a.8.8 0 0 0 1.2.7l8.1-5.2a.8.8 0 0 0 0-1.4L4.7 4.1a.8.8 0 0 0-1.2.7z"/></svg></button></div></div>
 <div class="vui" id="vPanel"><b id="vName"></b><span id="vDesc"></span><div id="vStats"></div><button id="vTake">TAKE THIS BOARD</button></div>
 <div class="ctl" id="ranch"><span>ORDER A WAVE</span><button data-wave="easy">MELLOW<small>5 m, slow</small></button><button data-wave="medium">BARREL<small>7.5 m, hollow</small></button><button data-wave="hard">HEAVY<small>10 m, fast</small></button></div>
 <div class="hud" id="chal"></div><div class="hud" id="chalDone"></div>
@@ -570,41 +573,33 @@
 <div id="pn" role="dialog" aria-modal="true" aria-label="Patch notes" hidden>
   <div class="pnBox">
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
+    <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260929-1948</small>
+    <small id="build">build 260929-1956</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
-    { id: '2026-09-29-hiulook', date: '29 Sep 2026', time: '7:48 pm', title: 'A windswept Karang Hiu', items: [
-      'Karang Hiu has its own look: palms bent hard by the offshore wind, a shore of jagged grey reef rock, and gusts rushing through the palms.',
+    { id: '2026-09-29-pause', date: '29 Sep 2026', time: '7:56 pm', title: 'Pause the villa music', items: [
+      'Tap Now playing at the villa for a new pause button between back and next. The song carries on from where you stopped it.',
+      'Patch notes now have two tabs: Gameplay, and Looks and sound.',
     ] },
-    { id: '2026-09-29-kananlook', date: '29 Sep 2026', time: '7:48 pm', title: 'A waterfall at Watu Kanan', items: [
-      'Watu Kanan has its own look: a waterfall pouring off the red cliffs into the sea, rounded red sandstone, a greener valley and warmer evening light.',
-    ] },
-    { id: '2026-09-29-seastacks', date: '29 Sep 2026', time: '7:37 pm', title: 'Each spot its own sea rocks', items: [
-      'The rock arch out at sea now belongs to Tanjung Uma alone. Batu Hitam has a dark basalt islet in its place, and Karang Hiu a low green islet.',
-    ] },
-    { id: '2026-09-29-hitamlook', date: '29 Sep 2026', time: '7:28 pm', title: 'A volcanic Batu Hitam', items: [
-      'Batu Hitam has its own look: a volcano behind the bay, black basalt cliffs in tall columns, dark windswept scrub, and waves booming against the cliffs.',
+    { id: '2026-09-29-spotlooks', look: true, date: '29 Sep 2026', time: '7:48 pm', title: 'Every spot its own place', items: [
+      'Pantai Kuda: soft green hills behind the bay, clearer turquoise shallows, and gulls over the beach.',
+      'Tanjung Uma: golden dry-season hills with lone trees, bigger clouds, and warm gusts over the grass.',
+      'Batu Hitam: a volcano behind the bay, black basalt cliffs in tall columns, and waves booming against them.',
+      'Watu Kanan: a waterfall pouring off the red cliffs into the sea, rounded red sandstone and warmer evening light.',
+      'Karang Hiu: palms bent hard by the offshore wind and a shore of jagged grey reef rock.',
+      'Pantai Bintang: a brighter moon and sky, still a night spot with the glowing waves.',
+      'The rock arch out at sea is now Tanjung Uma\'s alone; the other spots have their own rocks.',
     ] },
     { id: '2026-09-29-bestboards', date: '29 Sep 2026', time: '7:17 pm', title: 'Best boards for each spot', items: [
       'The board picker on the menu now tags the best boards for the spot you choose, on phones too.',
     ] },
-    { id: '2026-09-29-menusit', date: '29 Sep 2026', time: '7:08 pm', title: 'A new view on the menu', items: [
+    { id: '2026-09-29-menusit', look: true, date: '29 Sep 2026', time: '7:08 pm', title: 'A new view on the menu', items: [
       'The menu now shows you sitting on your board out the back, watching the sets roll in and lift you over.',
-    ] },
-    { id: '2026-09-29-umalook', date: '29 Sep 2026', time: '6:48 pm', title: 'A golden Tanjung Uma', items: [
-      'Tanjung Uma has its own look: golden dry-season hills behind the beach with lone trees, bigger clouds, and warm gusts of wind over the grass.',
-    ] },
-    { id: '2026-09-29-kudalook', date: '29 Sep 2026', time: '6:32 pm', title: 'A greener Pantai Kuda', items: [
-      'Pantai Kuda has its own look: soft green hills rolling up behind the bay, clearer morning air with clouds over the land, and clearer turquoise shallows.',
-    ] },
-    { id: '2026-09-29-bright', date: '29 Sep 2026', time: '6:15 pm', title: 'A brighter Pantai Bintang', items: [
-      'Pantai Bintang is easier to see: a brighter moon and sky, and the water no longer goes near black. Still a night spot with the glowing waves.',
-      'Gulls now call over the beach at Pantai Kuda.',
     ] },
     { id: '2026-09-29-ranch', date: '29 Sep 2026', time: '4:31 pm', title: 'Sumba Ranch comes alive', items: [
       'The wave pool is now Sumba Ranch, with a crowd in the stands, flags, umbrellas and a snack kiosk.',
@@ -632,7 +627,7 @@
     { id: '2026-09-29-finish', date: '29 Sep 2026', time: '12:27 am', title: 'A proper finish to every ride', items: [
       'At the end of a wave you stay on your feet and kick out over the back, then settle onto your board, instead of dropping straight down.',
     ] },
-    { id: '2026-09-28-songs4', date: '28 Sep 2026', time: '11:17 pm', title: 'Four new island songs', items: [
+    { id: '2026-09-28-songs4', look: true, date: '28 Sep 2026', time: '11:17 pm', title: 'Four new island songs', items: [
       'Breathe Again, Rhythm in Motion, Bring Yuh Basket and The Last Waltz join the radio, in the water and at the villa.',
     ] },
     { id: '2026-09-28-bintang', date: '28 Sep 2026', time: '10:44 pm', title: 'New spot: Pantai Bintang', items: [
@@ -657,7 +652,7 @@
       'Time it as the lip throws and you come off the lip instead of going over the falls. A big snap off the lip scores more.',
       'Shortboards snap the most, the fish nearly as much, longboards and guns less.',
     ] },
-    { id: '2026-09-28-droneshow', date: '28 Sep 2026', time: '5:08 pm', title: 'A new drone show', items: [
+    { id: '2026-09-28-droneshow', look: true, date: '28 Sep 2026', time: '5:08 pm', title: 'A new drone show', items: [
       'The villa drone show is all new: a sea turtle, a manta ray, leaping dolphins, a humpback whale, a galloping Sumba horse and a sea eagle, then SUMBA in lights.',
       'Smoother from start to finish: each animal flows into the next, and the lights never jump.',
       'You stay where you are when the show starts. The balcony has the best view.',
@@ -689,7 +684,7 @@
       'Space paddles, pops you up and pumps. Shift stalls. In the villa, walk with WASD or the arrows and drag the mouse to look.',
       'On a phone nothing changes.',
     ] },
-    { id: '2026-09-28-pets', date: '28 Sep 2026', time: '2:44 am', title: 'New friends at the villa', items: [
+    { id: '2026-09-28-pets', look: true, date: '28 Sep 2026', time: '2:44 am', title: 'New friends at the villa', items: [
       'Two more dogs join the garden, and two cats: a ginger tabby in the garden and a black and white one who naps on the balcony loungers.',
       'The radio now shows just the song name.',
     ] },
@@ -700,20 +695,20 @@
     { id: '2026-09-28-dots', date: '28 Sep 2026', time: '2:09 am', title: 'Fix: white dots on the water', items: [
       'Removed the foam specks on the water that showed up as white dots. The spray, wet board and lens effects stay.',
     ] },
-    { id: '2026-09-28-water', date: '28 Sep 2026', time: '2:04 am', title: 'More water around your board', items: [
+    { id: '2026-09-28-water', look: true, date: '28 Sep 2026', time: '2:04 am', title: 'More water around your board', items: [
       'Foam on the water streams past under you at speed, with a V of white water peeling off the nose.',
       'Hard carves throw soft clouds of spray, and a snap throws a wall of it in front of you.',
       'A wet, glossy board with drops running back at speed, spray blowing off the lip, and water streaking on the lens.',
     ] },
-    { id: '2026-09-28-show2', date: '28 Sep 2026', time: '1:49 am', title: 'A new drone show', items: [
+    { id: '2026-09-28-show2', look: true, date: '28 Sep 2026', time: '1:49 am', title: 'A new drone show', items: [
       'The drone show is now a story out over the open sea: a sunrise, a wave curling and crashing, a surfer riding it, a turtle, a whale, a spinning globe, then fireworks.',
       'The drones move all the time and pulse with the music. The villa lights dim while it plays.',
     ] },
-    { id: '2026-09-28-show', date: '28 Sep 2026', time: '1:28 am', title: 'Drone show at the villa', items: [
+    { id: '2026-09-28-show', look: true, date: '28 Sep 2026', time: '1:28 am', title: 'Drone show at the villa', items: [
       'New DRONE SHOW button at the villa: night falls and 400 drones light up the bay with a wave, a surfer, a turtle and more.',
       'Fly the drone from anywhere in the villa. Indoors, it takes off from the balcony for you.',
     ] },
-    { id: '2026-09-28-music', date: '28 Sep 2026', time: '1:10 am', title: 'Six new songs', items: [
+    { id: '2026-09-28-music', look: true, date: '28 Sep 2026', time: '1:10 am', title: 'Six new songs', items: [
       'New on the radio from OpenMindAudio: Relaxed Summer Groove, Moonlit Mermaids, Sun Kiss Sip, Break of Day, Old Friends and Sunset Cup.',
     ] },
     { id: '2026-09-28-judge', date: '28 Sep 2026', time: '12:54 am', title: 'New judging', items: [
@@ -772,21 +767,25 @@
       'The fish is looser than the shortboard.',
       'Gunung Laut is a proper challenge again.',
       'Storm lightning is now a single natural flash.' ] },
-    { id: '2026-09-27-surfer', date: '27 Sep 2026', time: '1:10 pm', title: 'Your surfer', items: [
+    { id: '2026-09-27-surfer', look: true, date: '27 Sep 2026', time: '1:10 pm', title: 'Your surfer', items: [
       'Feet stay planted on the board, knees bent in a real stance.',
       'Relaxed, natural hands in first person.',
       'A smoother paddling stroke.' ] },
-    { id: '2026-09-26-life', date: '26 Sep 2026', time: '11:45 pm', title: 'Life in Sumba', items: [
+    { id: '2026-09-26-life', look: true, date: '26 Sep 2026', time: '11:45 pm', title: 'Life in Sumba', items: [
       'Real surfers out in the lineup and friends at your villa who breathe, look around and chat.',
       'Shows in front of the villa: whales breaching, dolphins, manta rays, a sea eagle and flying fish.',
       'Pantai Kuda has a Sumba village and horses on the beach; Gunung Laut has a huge island peak.' ] },
-  ].filter((p) => !p.wd || globalThis.Wavedash).slice(0, 5);   // (wd: news for the Wavedash copy only)
+  ].filter((p) => !p.wd || globalThis.Wavedash);   // (wd: news for the Wavedash copy only; look: looks and sound only, in its own tab)
   const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
-  document.getElementById('pnList').innerHTML = PATCH.map((p) => `<div class="pnEntry"><div class="pnDate">${esc(p.date)}${p.time ? ` · ${esc(p.time)}` : ''}</div><div class="pnTitle">${esc(p.title)}</div><ul>${p.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('');
+  // two tabs (his call, 29 Sep 2026): what changes how you play, and new looks and sounds, so a run of scenery updates
+  // never pushes the gameplay news off the list; the newest 5 of each
+  const pnShow = (look) => { document.getElementById('pnList').innerHTML = PATCH.filter((p) => !!p.look === look).slice(0, 5).map((p) => `<div class="pnEntry"><div class="pnDate">${esc(p.date)}${p.time ? ` · ${esc(p.time)}` : ''}</div><div class="pnTitle">${esc(p.title)}</div><ul>${p.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('');
+    for (const b of document.querySelectorAll('.pnTabs button')) b.classList.toggle('on', (b.dataset.look === '1') === look); };
+  pnShow(false);
   const btn = document.getElementById('pnBtn'), dot = document.getElementById('pnDot'), pn = document.getElementById('pn'), KEY = 'sumbasurf.patchSeen';
   let seen = null; try { seen = localStorage.getItem(KEY); } catch (e) {}
   dot.hidden = seen === PATCH[0].id;
-  const open = () => { pn.hidden = false; dot.hidden = true; try { localStorage.setItem(KEY, PATCH[0].id); } catch (e) {} document.getElementById('pnClose').focus(); };
+  const open = () => { pnShow(!!PATCH[0].look); pn.hidden = false; dot.hidden = true; try { localStorage.setItem(KEY, PATCH[0].id); } catch (e) {} document.getElementById('pnClose').focus(); };
   const close = () => { pn.hidden = true; btn.focus(); };
   // a tap that counts even if the finger slides a little, answered on the touch itself (the page blocks touch
   // scrolling, and a plain click on a phone often never came: the same fix as the game's own buttons)
@@ -796,6 +795,7 @@
     el.addEventListener('click', fn); };
   onTap(btn, open);
   onTap(document.getElementById('pnClose'), close);
+  for (const b of document.querySelectorAll('.pnTabs button')) onTap(b, () => pnShow(b.dataset.look === '1'));
   onTap(pn, (e) => { if (e.target === pn) close(); });   // (outside the box; a scroll inside it moves too far to count as a tap)
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pn.hidden) close(); });
 })();
@@ -831,6 +831,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=938"></script>
+<script type="module" src="js/game.js?v=939"></script>
 </body>
 </html>
