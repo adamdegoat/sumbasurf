@@ -110,6 +110,8 @@ export class SurfAudio {
     src.connect(fl).connect(g).connect(this.master); src.start(t0, 1.3 * k); src.stop(t0 + dur + 0.05);
     src.onended = () => { src.disconnect(); fl.disconnect(); g.disconnect(); };
   }
+  // a wave slamming into the cliffs somewhere down the coast (Batu Hitam): a deep boom and the hiss of the water falling back
+  boom(k = 1) { this.burst(0.34 * k, 85, 2.6, 'lowpass', 0); this.burst(0.16 * k, 260, 1.4, 'lowpass', 0.05); this.burst(0.07 * k, 1500, 2.2, 'bandpass', 0.35); }
   crowdLevel(k) { if (this.ok) this.set(this.crowd.g.gain, 0.05 * k, 0.8); }
   // the crowd round the pool going up for a barrel or a big move: a swell of voices (noise shaped like a roar, and a
   // few rising whoops on top)

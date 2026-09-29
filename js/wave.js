@@ -431,7 +431,7 @@ export const WEATHER = {
   // good weather on the three normal levels (his call): morning, midday, afternoon sun; the storm is Extreme only
   easy:    { sun: [0.55, 0.24, 0.6],  zen: 0x4f8ccc, hor: 0xdde6e2, sunCol: 0xffdcb4, fog: 0xdce4de, deep: 0x1a929a, turq: 0x62ecc6, cloud: 0.6, chop: 0.4, fogFar: 470, rain: 0, sunVis: 1, light: 0xffe6c8, hemi: 0xf2e8da, wind: 0.3 },   // early morning: the sun low over the land, glassy green-turquoise water, hardly a breath of wind
   medium:  { sun: [0.6, 0.38, -0.7],  zen: 0x2c64b0, hor: 0xbfd8e2, sunCol: 0xffd8a0, fog: 0xc8d8dc, deep: 0x083e86, turq: 0x1f9fd0, cloud: 0.42, chop: 1.0, fogFar: 330, rain: 0, sunVis: 1, light: 0xffe2b8, hemi: 0xf0e4d2 },   // clear blue afternoon, deep sapphire water, the sun low and golden on the limestone
-  hard:    { sun: [0.3, 0.6, -0.6],   zen: 0x56636e, hor: 0x98a4ab, sunCol: 0xc9ced2, fog: 0x8e9aa1, deep: 0x062f3c, turq: 0x1a7a72, cloud: 0.8, chop: 1.6, fogFar: 260, rain: 0, sunVis: 0.3, light: 0xc4ccd2, hemi: 0xa8b4bc, wind: 1.3 },   // grey overcast, dark heavy water off the black rock
+  hard:    { sun: [0.3, 0.6, -0.6],   zen: 0x56636e, hor: 0x98a4ab, sunCol: 0xc9ced2, fog: 0x8e9aa1, deep: 0x062f3c, turq: 0x1a7a72, cloud: 0.9, chop: 1.6, fogFar: 260, rain: 0, sunVis: 0.3, light: 0xc4ccd2, hemi: 0xa8b4bc, wind: 1.3 },   // grey overcast, dark heavy water off the black rock
   kanan:   { sun: [-0.5, 0.24, -0.85], zen: 0x3462a8, hor: 0xe8dcc4, sunCol: 0xffb878, fog: 0xead6ba, deep: 0x0c4f5e, turq: 0x2aa89a, cloud: 0.3, chop: 0.9, fogFar: 320, rain: 0, sunVis: 1, light: 0xffd6b0, hemi: 0xf2dcc8, hemiGround: 0x4a3a30, wind: 0.9 },   // late sun low over the sea, warm teal water, the red cliffs lit up
   hiu:     { sun: [0.2, 0.92, -0.35], zen: 0x1858c2, hor: 0x9fd2ee, sunCol: 0xfffaf0, fog: 0xa8d6ee, deep: 0x0a6c9a, turq: 0x2cf0e0, cloud: 0.04, chop: 1.2, fogFar: 380, rain: 0, sunVis: 1, wind: 2 },   // crystal clear midday, electric aqua over the reef, a strong offshore blowing spray off every lip
   extreme: { sun: [0.1, 0.35, -1],    zen: 0x1a2124, hor: 0x56646a, sunCol: 0x8a9496, fog: 0x4a565b, deep: 0x07181b, turq: 0x2a6258, cloud: 0.92, chop: 2.4, fogFar: 150, rain: 1, sunVis: 0.08 },
@@ -949,16 +949,20 @@ function buildCoast(scene, O, mat) {
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i) - 400, v = p.getY(i) + 0.5, top = cliffTop(x), y = v * top;
       const band = Math.sin(y * 0.55 + Math.sin(x * 0.02) * 2), n = Math.sin(x * 0.31 + y * 0.12) * 1.8 + Math.sin(x * 0.083 - y * 0.05) * 3.4 + Math.sin(x * 1.3 + y * 0.9) * 0.6 + band * 0.9;   // ledges and horizontal strata
-      p.setXYZ(i, x, y, 214 + n + y * 0.12 + (v > 0.97 ? 3 : 0));   // leans back a little; the top lip rolls back into the plateau
+      const colH = O.columns ? (Math.sin(Math.floor((x + 1000) / 5.5) * 12.9898) * 43758.5453 % 1 + 1) % 1 : 0;   // (basalt: each column stands a little proud or sunk, lighter or darker)
+      p.setXYZ(i, x, y, 214 + (O.columns ? (colH - 0.5) * 2.6 + Math.sin(x * 0.083) * 3.4 : n) + y * 0.12 + (v > 0.97 ? 3 : 0));   // leans back a little; the top lip rolls back into the plateau
       const streak = 0.7 + 0.3 * Math.pow(0.5 + 0.5 * Math.sin(x * 0.9 + Math.sin(y * 0.3) * 2), 2) + 0.1 * band, wet = Math.min(1, y / 4), green = Math.max(0, (v - 0.84) / 0.16) + Math.max(0, Math.sin(x * 0.13) * Math.sin(y * 0.2) - 0.75) * 2;   // weathered streaks, tufts of green on ledges
       const crev = 0.6 + 0.4 * Math.min(1, Math.abs(Math.sin(x * 0.47 + Math.sin(y * 0.11) * 1.5)) * 2.2);   // dark vertical cracks and gullies
       const ledge = 0.72 + 0.28 * Math.min(1, Math.max(0, band * 2 + 0.6));   // shadow under each ledge
-      const k = streak * crev * ledge * (0.4 + 0.6 * wet) * (0.8 + 0.2 * v), r = O.rock[0] * k, g = O.rock[1] * k, b = O.rock[2] * k;   // warm cream limestone at Temple Point (each spot has its own rock)
+      const k = (O.columns ? (0.35 + 0.45 * colH) * (0.8 + 0.2 * Math.abs(Math.sin(y * 0.09 + colH * 6))) : streak * crev * ledge) * (0.4 + 0.6 * wet) * (0.8 + 0.2 * v), r = O.rock[0] * k, g = O.rock[1] * k, b = O.rock[2] * k;   // warm cream limestone at Temple Point (each spot has its own rock)
       const gr = Math.min(1, green) * O.cliffGreen; c[i * 3] = r + (0.16 - r) * gr; c[i * 3 + 1] = g + (0.25 - g) * gr; c[i * 3 + 2] = b + (0.11 - b) * gr;
     }
     { const ix = cliff.index.array; for (let k = 0; k < ix.length; k += 3) { const t = ix[k + 1]; ix[k + 1] = ix[k + 2]; ix[k + 2] = t; } }   // face the sea
     cliff.setAttribute('color', new THREE.BufferAttribute(c, 3)); cliff.computeVertexNormals(); }
-  group.add(new THREE.Mesh(cliff, mat));
+  group.add(new THREE.Mesh(O.columns ? (() => { const f = cliff.toNonIndexed(), fp = f.attributes.position, fc = f.attributes.color;   // (basalt: flat faces, and each face one shade, so every column stands out sharp-edged, lighter or darker than the next)
+    for (let t = 0; t < fp.count; t += 3) { const cx = Math.min(fp.getX(t), fp.getX(t + 1), fp.getX(t + 2)) + 1, h = (Math.sin(Math.floor((cx + 1000) / 5) * 78.233) * 43758.5453 % 1 + 1) % 1, k = 0.55 + 0.9 * h;
+      for (let e = 0; e < 3; e++) fc.setXYZ(t + e, fc.getX(t + e) * k, fc.getY(t + e) * k, fc.getZ(t + e) * k); }
+    f.computeVertexNormals(); return f; })() : cliff, mat));
   // the plateau on top, and jungle along the edge
   const plat = new THREE.PlaneGeometry(CW, 140, 66, 6); plat.rotateX(-Math.PI / 2);
   { const p = plat.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i) - 400, z = p.getZ(i) + 290; let y = cliffTop(x) + 1 + Math.sin(x * 0.05) * Math.cos(z * 0.04) * 2; const C = O.clear; if (C && x > C.x0 && x < C.x1 && z > C.z0 && z < C.z1) y = Math.min(y, C.y - 0.6); p.setXYZ(i, x, y, z); } plat.computeVertexNormals(); }

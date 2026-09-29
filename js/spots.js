@@ -2,7 +2,7 @@
 // landmarks of its own. Distances are in the coast's own frame: the beach is ~185-225 m in from the break, and the
 // whole coast is pushed back by dz (a longer run to the sand makes a longer ride).
 import * as THREE from 'three';
-import { coast, landMaterial } from './wave.js?v=174';
+import { coast, landMaterial } from './wave.js?v=178';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const SPOTS = {
@@ -11,7 +11,7 @@ export const SPOTS = {
   // the classic: limestone cliffs, the temple on the edge, golden sand (the original coast)
   medium: { name: 'Tanjung Uma', dz: 60, xEnd: 200, reefTint: [1, 1, 1], look: { rock: [0.7, 0.6, 0.46], arch: true, land: [0.46, 0.37, 0.19], plat: [0.44, 0.36, 0.19], cliffGreen: 0.35, palms: 0.5, mountain: [0.42, 0.4, 0.36] } },   // (weathered honey limestone: the pale cream read as foam from the villa; the land behind dry and golden, Sumba's dry-season savanna)
   // advanced: a black volcanic slab, basalt cliffs, black sand, a lighthouse on the point
-  hard: { name: 'Batu Hitam', dz: 110, xEnd: 290, reefTint: [0.55, 0.62, 0.6], look: { sandWet: [0.1, 0.1, 0.11], sandDry: [0.1, 0.1, 0.1], land: [0.1, 0.16, 0.09], palms: 0.35, cliffH: 1.25, rock: [0.15, 0.15, 0.16], cliffGreen: 0.3, temple: false, mountain: [0.18, 0.2, 0.22], mountainScale: 1.15, jungle: 0.7 } },
+  hard: { name: 'Batu Hitam', dz: 110, xEnd: 290, reefTint: [0.55, 0.62, 0.6], look: { sandWet: [0.1, 0.1, 0.11], sandDry: [0.1, 0.1, 0.1], land: [0.08, 0.12, 0.07], plat: [0.07, 0.11, 0.06], palms: 0.2, cliffH: 1.25, rock: [0.15, 0.15, 0.16], columns: true, cliffGreen: 0.15, temple: false, mountain: [0.18, 0.2, 0.22], mountainScale: 0.01, jungle: 0.7 } },   // (basalt in columns; its own volcano behind instead of the usual far mountain: see hitamNature)
   // the rights (mirror: the whole place is drawn the other way round, so the wave peels to your right). Watu Kanan:
   // red sandstone bluffs, golden sand, a green valley behind; a temple on the headland
   kanan: { name: 'Watu Kanan', mirror: true, dz: 80, xEnd: 220, reefTint: [1.05, 1.1, 1.0], look: { sandWet: [0.5, 0.4, 0.28], sandDry: [0.42, 0.33, 0.22], land: [0.13, 0.26, 0.1], palms: 0.9, cliffH: 0.75, rock: [0.64, 0.36, 0.24], cliffGreen: 1.2, temple: true, mountain: [0.24, 0.32, 0.26], mountainScale: 0.8, jungle: 1.1 } },
@@ -45,7 +45,8 @@ export function spotGroup(scene, key) {
   if (key === 'bintang') ownDice(g, nightLights, 11);
   if (key === 'easy') ownDice(g, horseHead);
   if (key === 'easy') ownDice(g, kudaNature, 29);
-  if (key === 'medium') { dryJungle(g); ownDice(g, umaNature, 31); }
+  if (key === 'medium') { jungleLook(g, 2, [0.17, 0.2, 0.09]); ownDice(g, umaNature, 31); }
+  if (key === 'hard') { jungleLook(g, 3, [0.07, 0.11, 0.06]); ownDice(g, hitamNature, 37); }
   if (key === 'extreme') ownDice(g, seaMountain);
   waterProps(g, key);
   if (key === 'hard') blackRock(g);
@@ -386,16 +387,33 @@ function umaNature(g) {
   for (const list of [hills, trees]) { const geo = mergeGeometries(list.map((q) => { if (q.attributes.uv) q.deleteAttribute('uv'); return q.index ? q.toNonIndexed() : q; })); geo.computeVertexNormals();
     const m = new THREE.Mesh(geo, landMaterial()); m.userData.prop = true; g.add(m); }
 }
-// the forest along the back of the beach, thinned out (bare golden ground showing between the trees) and dried to a
-// dusty olive: keeps every other few crowns of the one the coast built, so the shared dice are untouched
-function dryJungle(g) {
+// the forest along the back of the beach, thinned (keep: crowns kept of every 5) and recoloured: Tanjung Uma's dried
+// to a dusty olive with bare golden ground between, Batu Hitam's dark wind-beaten scrub. Keeps crowns of the one the
+// coast built, so the shared dice are untouched
+function jungleLook(g, keep, rgb) {
   const j = g.userData.jungle, e = g.userData.edge; if (!j) return;
   const m = new THREE.Matrix4(); let n = 0;
-  for (let i = 0; i < j.count; i++) if (i % 5 < 2) { j.getMatrixAt(i, m); j.setMatrixAt(n++, m); }
+  for (let i = 0; i < j.count; i++) if (i % 5 < keep) { j.getMatrixAt(i, m); j.setMatrixAt(n++, m); }
   j.count = n; j.instanceMatrix.needsUpdate = true;
   const geo = j.geometry.clone(), c = geo.attributes.color;
-  for (let i = 0; i < c.count; i++) { const k = c.getY(i) / 0.2; c.setXYZ(i, 0.17 * k, 0.2 * k, 0.09 * k); }   // (the coast's crowns are green 0.09/0.2/0.08 times their light)
+  for (let i = 0; i < c.count; i++) { const k = c.getY(i) / 0.2; c.setXYZ(i, rgb[0] * k, rgb[1] * k, rgb[2] * k); }   // (the coast's crowns are green 0.09/0.2/0.08 times their light)
   j.geometry = geo; if (e) e.geometry = geo;   // (and the scrub along the cliff tops)
+}
+// Batu Hitam, made more of itself in nature (29 Sep 2026, his call): a raw volcanic coast. Its own volcano stands
+// behind the bay, a steep dark cone streaked with old lava, green only low on its flanks (a cloud on its summit was tried:
+// solid lumps of land read as a flying saucer, not cloud)
+function hitamNature(g) {
+  const X = 90, Z = 760, R = 430, Hc = 290, rc = 36, geos = [];
+  { const geo = new THREE.CylinderGeometry(1, 1, 1, 64, 14, true), pp = geo.attributes.position, c = new Float32Array(pp.count * 3);
+    for (let i = 0; i < pp.count; i++) { const t = pp.getY(i) + 0.5, a = Math.atan2(pp.getZ(i), pp.getX(i)), gul = Math.sin(a * 23 + Math.sin(a * 7) * 2), n = 1 + 0.05 * gul * t + 0.04 * Math.sin(a * 5 + 1);
+      const r = (rc + (R - rc) * Math.pow(1 - t, 2.1)) * n;   // (a concave cone: steep near the top, spreading wide at the foot)
+      pp.setXYZ(i, Math.cos(a) * r, t * Hc - 8 - (t > 0.97 ? 10 * (t - 0.97) / 0.03 : 0), Math.sin(a) * r);   // (a shallow crater at the top)
+      const green = Math.max(0, 1 - t / 0.28), lava = Math.max(0, gul - 0.4) * t * 0.5, k = 0.85 + 0.25 * Math.random();
+      const rr = (0.09 + 0.02 * lava) * (1 - lava * 0.5), gg = 0.09 * (1 - lava * 0.6), bb = 0.1 * (1 - lava * 0.6);
+      c[i * 3] = (rr + (0.07 - rr) * green) * k; c[i * 3 + 1] = (gg + (0.13 - gg) * green) * k; c[i * 3 + 2] = (bb + (0.06 - bb) * green) * k; }
+    geo.setAttribute('color', new THREE.BufferAttribute(c, 3)); geo.deleteAttribute('uv'); geo.translate(X, 0, Z); geos.push(geo.toNonIndexed()); }
+  const geo = mergeGeometries(geos); geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, landMaterial()); m.userData.prop = true; g.add(m);
 }
 
 function blackRock(g) {
