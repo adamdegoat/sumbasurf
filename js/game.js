@@ -779,7 +779,6 @@ const POVCAM = { fwd: 0.1, up: 0.14, pitch: -0.5, drop: 0.08 };   // eye point a
 const _pq2 = new THREE.Quaternion(), popEye0 = new THREE.Vector3(), lastEye = new THREE.Vector3(), eyeCarry = new THREE.Vector3(); let lastEyeSt = ''; let tubeLook = 0, roofOff = 0, curtOff = 0, wallOff = 0;
 const pov = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0, pitch: -0.2, roll: 0, ready: false }, _eye = new THREE.Vector3(), _pe = new THREE.Euler(0, 0, 0, 'YXZ');
 const _gl = new THREE.Vector3();
-const walkEye = { p: new THREE.Vector3(), v: new THREE.Vector3(), n: 0, t: 0, k: 0 }, _weL = new THREE.Vector3(), _weA = new THREE.Vector3();
 function povCamera(dt) {
   if (!bones.head && surfer) surfer.traverse((o) => { if (o.isBone) bones[o.name] = o; });
   const standing = rider.standing || finishing(), st = rider.state;   // (kicking out at the end you're still on your feet: eyes on the water ahead, not up at the next wave)
@@ -804,13 +803,13 @@ function povCamera(dt) {
   // popping up, the head drives forward over the board (the eye ahead of the shoulders, which stay out of view), easing back as you rise
   const popFwd = st === 'POP' ? 0.15 : st === 'RIDE' ? 0.15 * Math.max(0, 1 - rider.stateT / 0.8) : 0;
   const sK = standing ? (st === 'POP' ? Math.min(1, popClock() / 0.25) : 1) : 0;   // (lying -> standing eye point blended over the start of the pop, not switched in a frame)
-  const ef = -0.05 + (POVCAM.fwd + popFwd + 0.05 + 0.16 * noseV) * sK, eu = 0.2 + (POVCAM.up - 0.2) * sK;   // (walking to the nose you turn square to it and your shoulders come round beside the camera: the eyes sit a little further ahead, clear of them)   // lying: eyes at the head, a bit up, so your paddling hands pass below them
+  const ef = -0.05 + (POVCAM.fwd + popFwd + 0.05 + 0.24 * noseV) * sK, eu = 0.2 + (POVCAM.up - 0.2 + 0.06 * noseV) * sK;   // (walking to the nose you turn square to it and your shoulders come round beside the camera: the eyes sit a little further ahead, clear of them)   // lying: eyes at the head, a bit up, so your paddling hands pass below them
   _eye.x += Math.cos(yawT) * ef; _eye.z += Math.sin(yawT) * ef; _eye.y += eu - 0.08 * stallV;   // (sitting back in a stall: a little lower)   // camera just in front of the face, like a surfer's mouth-mounted camera
   // the nose starting to dig in on the longboard: you look at it (head turned and tipped down to the tip), so you see
   // the water coming over it even when a lean has carried your head out over the rail
   const glK = standing ? Math.min(1, Math.max(0, (pearlV - 0.15) / 0.3)) * noseV : 0; let glP = 0;
   if (glK > 0.001) { _gl.set(0, 0.05, board.position.z + BOARD_LENGTH(boardType) / 2 - 0.2).applyMatrix4(rig.matrixWorld).sub(_eye);
-    const yN = Math.atan2(_gl.z, _gl.x); yawT += Math.atan2(Math.sin(yN - yawT), Math.cos(yN - yawT)) * glK; glP = Math.atan2(_gl.y, Math.hypot(_gl.x, _gl.z)); }
+    const yN = Math.atan2(_gl.z, _gl.x); yawT += Math.atan2(Math.sin(yN - yawT), Math.cos(yN - yawT)) * glK; glP = Math.max(-0.62, Math.atan2(_gl.y, Math.hypot(_gl.x, _gl.z))); }   // (not straight down at the nose: looking steeply down you saw your own chest, his report 29 Sep 2026)
   // smooth the eye's position relative to the board (not in the world, or at speed it would trail behind your head)
   _eye.sub(rig.position);
   // eyes never lower than this above the board; during the pop it rises with you instead of snapping up in one frame
@@ -829,16 +828,6 @@ function povCamera(dt) {
   if (st === 'RIDE' && lastEyeSt === 'POP') eyeCarry.subVectors(lastEye, _eye);
   if (st === 'RIDE' && rider.stateT < 0.4) _eye.addScaledVector(eyeCarry, Math.exp(-rider.stateT * 14)); else eyeCarry.set(0, 0, 0);
   lastEye.copy(_eye); lastEyeSt = st;
-  // walking up the longboard (29 Sep 2026, his report): the feet step four times but the head glides. The steps move
-  // you up the board in stop-start surges and the body's step clip bobs the head, so the eye (in the board's own frame)
-  // runs through a soft spring while you walk: a smooth glide up to the nose with a small bob, not jolt-stop-jolt
-  { const nv = noseV, moved = Math.abs(nv - walkEye.n) > 1e-4; walkEye.n = nv; walkEye.t = moved ? 0.35 : Math.max(0, walkEye.t - dt);
-    walkEye.k += ((standing && walkEye.t > 0 ? 1 : 0) - walkEye.k) * Math.min(1, dt * 12);
-    _pq2.copy(rig.quaternion).invert(); const L = _weL.copy(_eye).applyQuaternion(_pq2);
-    if (walkEye.k < 0.001 || snapCam || !pov.ready) { walkEye.p.copy(L); walkEye.v.set(0, 0, 0); }
-    else { const w = 7, h = Math.min(dt, 0.05); _weA.subVectors(L, walkEye.p).multiplyScalar(w * w).addScaledVector(walkEye.v, -2 * w); walkEye.v.addScaledVector(_weA, h); walkEye.p.addScaledVector(walkEye.v, h);
-      walkEye.p.x = L.x;   // (side to side as before: only the glide up the board and the bob are softened)
-      L.lerp(walkEye.p, walkEye.k); _eye.copy(L.applyQuaternion(rig.quaternion)); } }
   if (!pov.ready || snapCam) { pov.pos.copy(_eye); pov.vel.set(0, 0, 0); pov.yaw = yawT; pov.ready = true; }
   else {
     // (a plain exponential follow: stays glued to your head through the pop-up, just takes the jitter off; the old
@@ -863,7 +852,7 @@ function povCamera(dt) {
   }
   if (pitchLook > pitchT) pitchT = pitchLook;
   if (!standing && isRanch()) pitchT = Math.max(pitchT, -0.2);   // at the Sumba Ranch, eyes up on the machine wall where your wave comes from
-  pitchT += 0.14 * tubeEase + 0.07 * stallV + 0.035 * bogV * Math.sin(T * 7.3) - 0.16 * noseV + (standing && noseV > 0.01 ? 0.85 * noseV * Math.min(0, Math.asin(Math.max(-1, Math.min(1, pose.fwd.y)))) : 0); if (glK > 0.001) pitchT += (glP - pitchT) * glK;   // (on the nose your eyes follow the board's slope: heading down the face you look down it, so the tip stays in view)   // (up on the nose your eyes drop a little; when it starts to dig in you glance down at it, so you see the tip going under)   // (a stall: you sit back and your eyes tip up a little; sinking, they bob)   // (in the barrel your eyes lift ~8 deg, so you see the tube arching over you)   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
+  pitchT += 0.14 * tubeEase + 0.07 * stallV + 0.035 * bogV * Math.sin(T * 7.3) - 0.34 * noseV + (standing && noseV > 0.01 ? 0.85 * noseV * Math.min(0, Math.asin(Math.max(-1, Math.min(1, pose.fwd.y)))) : 0); if (glK > 0.001) pitchT += (glP - pitchT) * glK;   // (on the nose your eyes follow the board's slope: heading down the face you look down it, so the tip stays in view)   // (up on the nose your eyes drop a little; when it starts to dig in you glance down at it, so you see the tip going under)   // (a stall: you sit back and your eyes tip up a little; sinking, they bob)   // (in the barrel your eyes lift ~8 deg, so you see the tube arching over you)   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
   pov.pitch += (pitchT - pov.pitch) * Math.min(1, dt * (st === 'POP' ? 4 + 20 * Math.min(1, popClock() / 0.3) : st === 'RIDE' ? 5 + 19 * Math.max(0, 1 - rider.stateT / 0.4) : 5));   // (and out of it without a kink: the rates hand over gradually when you're up)   // (the pop: eyes snap down to the board between your hands)
   pov.roll += ((standing ? -rider.lean * 0.2 - 0.55 * (rider.wob || 0) + 0.05 * bogV * Math.sin(T * 9.1) : 0) - pov.roll) * Math.min(1, dt * 6);   // (the wobble of a sinking tail rocks the horizon)   // you feel the lean: the horizon tips as you lay into a carve (less than the board: people hold their head nearer level)
   // three.js cameras look down -z: turn our heading (angle in x/z) into a yaw about y
@@ -1088,11 +1077,14 @@ const FIN_HOLD = 0.8, FIN_SIT = 0.7;
 // the stall you can see and hear (his call 29 Sep 2026: the stronger stall must show): stallV eases in and out with the
 // button, bogV rises as the board stops planing under you (the warning before the tail sinks). They tip your eyes back
 // and lift the nose (updateRig, povCamera), throw spray off your dragging hand, gurgle, wobble, and pulse the button
-let stallV = 0, bogV = 0, stallSprayAcc = 0, gurgleT = 0, noseV = 0, pearlV = 0, shoulderV = 0, pearlSprayAcc = 0, pearlGurgleT = 0, pearlBuzzed = false;
+let stallV = 0, bogV = 0, stallSprayAcc = 0, gurgleT = 0, noseV = 0, noseVv = 0, pearlV = 0, shoulderV = 0, pearlSprayAcc = 0, pearlGurgleT = 0, pearlBuzzed = false;
 const _stP = new THREE.Vector3(), _stV = new THREE.Vector3();
 function stallFx(dt) {
   const on = rider && rider.standing && rider.state === 'RIDE';
-  noseV = on ? rider.nose || 0 : noseV * Math.max(0, 1 - dt * 4);
+  // (the physics walks you up in four stop-start steps; what you see moves smoothly: body, arms and eyes all follow one
+  // softly sprung copy of it, together, so your view glides up the board and never slips behind your own shoulders)
+  if (on) { const w = 9, h = Math.min(dt, 0.05); noseVv += ((rider.nose || 0) - noseV) * w * w * h - 2 * w * noseVv * h; noseV = Math.max(0, Math.min(1, noseV + noseVv * h)); }
+  else { noseV *= Math.max(0, 1 - dt * 4); noseVv = 0; }
   pearlV += ((on ? rider.pearlK || 0 : 0) - pearlV) * Math.min(1, dt * 8);
   shoulderV += ((on ? rider.shoulderK || 0 : 0) - shoulderV) * Math.min(1, dt * 6);
   // the nose about to go under, in two stages you can see and hear (walk back in either and you're fine): from a
@@ -1209,7 +1201,7 @@ function updateRig(dt, t) {
     surfer.position.set(0, -0.04 * clips.crouch.weight, -0.1);       // hips drop a little as the feet spread
     if (noseV > 0.001 || rider.stepDir) {   // cross-stepping up the longboard: forward a step at a time, the body rising a little and rocking side to side with each step
       const run = board.position.z + BOARD_LENGTH(boardType) / 2 - 0.2, u = rider.stepU || 0   /* (right out at the tip on a hang ten, toes over the nose: was 0.5 m short, his call 29 Sep 2026) */, lift = Math.sin(Math.PI * u), sideS = (rider.noseStep || 0) % 2 ? 1 : -1;
-      surfer.position.z += noseV * run; surfer.position.y += 0.07 * lift; surfer.position.x += 0.04 * lift * sideS;
+      surfer.position.z += noseV * run; surfer.position.y += 0.025 * lift; surfer.position.x += 0.015 * lift * sideS;   // (a light bob and sway with each step: more read as a jolt at the lens)
     }
   } else if (st === 'WIPE') {
     setStance(); surfer.position.set(0, 0, -0.1);
@@ -2525,6 +2517,7 @@ function tick(dt) {
 const _bwA = new THREE.Vector3(), _bwB = new THREE.Vector3(), _bwC = new THREE.Vector3(), _bwN = new THREE.Vector3(), _bwU = new THREE.Vector3(), _bwV = new THREE.Vector3();
 function boardWater(dt) {
   const U = BOARD_WATER; U.uBTime.value += dt;
+  FADE.value.x = 0.32 + 0.45 * noseV; FADE.value.y = 0.64 + 0.5 * noseV;   // (up on the longboard's nose your shoulders and chest can swing near the lens as you lean and wobble: they fade softly from further out; hands stay solid)
   ENV.uBDim.value.z = 0;
   if (!rider || !rig.visible || mode === 'villa' || (W.on && rider.state === 'WIPE')) { U.uWOn.value = 0; return; }
   rig.updateMatrixWorld(); const L = BOARD_LENGTH(boardType) * 0.46, bw = BOARD_WIDTH(boardType) * 0.5;
