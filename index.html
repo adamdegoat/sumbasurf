@@ -575,13 +575,17 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260929-1956</small>
+    <small id="build">build 260929-2020</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-29-songs3', look: true, date: '29 Sep 2026', time: '8:20 pm', title: 'Three new songs', items: [
+      'Everyday Is A Holiday, Dreaming Of Reggae and Make Your Grey Skies Blue join the radio, in the water and at the villa.',
+      'Every song now plays at the same volume, so none jumps out louder than the rest.',
+    ] },
     { id: '2026-09-29-pause', date: '29 Sep 2026', time: '7:56 pm', title: 'Pause the villa music', items: [
       'Tap Now playing at the villa for a new pause button between back and next. The song carries on from where you stopped it.',
       'Patch notes now have two tabs: Gameplay, and Looks and sound.',
@@ -831,6 +835,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=939"></script>
+<script type="module" src="js/game.js?v=941"></script>
 </body>
 </html>
