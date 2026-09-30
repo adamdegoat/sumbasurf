@@ -799,13 +799,19 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260930-1953</small>
+    <small id="build">build 260930-2021</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-30-rides', wd: true, date: '30 Sep 2026', time: '9:00 pm', title: 'See how your friends surf', items: [
+      'In free surf, the chat now tells you when a friend scores on a wave, and their best move.',
+      'The list of who is on the beach now shows each surfer\'s best wave today.',
+      'Friends arriving on the boat no longer stand in the same spot.',
+      'After you jump in off the boat, the arrow now points to the big waves beside it.',
+    ] },
     { id: '2026-09-30-poses', date: '30 Sep 2026', time: '7:49 pm', title: 'Friends look right on the wave', items: [
       'Friends riding waves now keep a natural stance in hard turns and in the barrel, with the back arm held out properly.',
     ] },
@@ -1195,6 +1201,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1059"></script>
+<script type="module" src="js/game.js?v=1061"></script>
 </body>
 </html>

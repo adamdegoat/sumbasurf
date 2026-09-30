@@ -454,6 +454,7 @@ function freeGuide() {
   const r = rider, show = on && !!r && !freeJumping && r.state === 'LIE' && !FREE.follow;   // (not while heading to a friend: one way to go at a time)
   let i = 0, d = Infinity;
   if (show) for (let k = 0; k < 2; k++) { const dk = Math.hypot(r.x - FREE[k].x, r.z - FREE[k].z + 8); if (dk < d) { d = dk; i = k; } }
+  if (show && Math.hypot(r.x - BOAT.x, r.z - BOAT.z) < 70) { i = 0; d = Math.hypot(r.x - FREE[0].x, r.z - FREE[0].z + 8); }   // (by the boat it's the big waves it sits beside, his catch 30 Sep 2026: the smaller waves across the bay were a few metres nearer)
   const vis = show && d > 40;
   if (guideEl.hidden === vis) guideEl.hidden = !vis;
   if (!vis) return;
@@ -665,7 +666,21 @@ function boatBtnTick() {
   const edge = onDeck && !!boatEdge();   // ('Back in the water' is gone, his call 30 Sep 2026: on deck you jump in from any edge you're facing out over)
   set(boatBtn, isFree() && !freeJumping && (boatNear || edge), edge ? 'JUMP IN' : 'CLIMB ON');
 }
-function boatDeck(lz) { startStrand(BOAT.x, BOAT.z + 3, -2.4); strand.deck = true; strand.lx = 0; strand.lz = lz; strand.pitch = -0.08; }   // (on deck, looking up the line toward the peak, where the rides come from)
+const DECK_SPOTS = [[0, -3], [-0.5, -4.6], [0.3, -1.0], [2.2, -3.4], [-1.6, -1.6], [-2.2, -0.2]];   // (clear of the beanbags, the cooler and the rope)
+const deckTaken = () => [...peers.values()].map((P) => P.buf.length && P.buf[P.buf.length - 1].a).filter((a) => a && a[0] === 'DECK');
+function boatDeck(lz) {   // (on deck at the first spot nobody's standing on: friends arriving together used to stand inside each other, his catch 30 Sep 2026)
+  let lx = 0; if (lz === -3) { const taken = deckTaken();
+    const free = DECK_SPOTS.find(([x, z]) => !taken.some((a) => Math.hypot(a[1] - x, a[3] - z) < 1)) || DECK_SPOTS[(Math.random() * DECK_SPOTS.length) | 0]; lx = free[0]; lz = free[1]; }
+  startStrand(BOAT.x, BOAT.z + 3, -2.4); strand.deck = true; strand.lx = lx; strand.lz = lz; strand.pitch = -0.08; strand.arr = T; strand.chk = T + 0.6 + Math.random() * 0.6; }
+// just arrived and standing inside a friend (you both came on before hearing where the other stood: the usual case when
+// a friend joins, since you arrive before their first message): step to a free spot, picked at random so two of you
+// don't both hop to the same one; checked at random moments for the first 6 s, only until you walk off yourself
+function deckSpread(W_) {
+  if (!W_.arr || T - W_.arr > 6 || T < W_.chk) return; W_.chk = T + 0.4 + Math.random() * 0.8;
+  const taken = deckTaken(); if (!taken.some((a) => Math.hypot(a[1] - W_.lx, a[3] - W_.lz) < 0.8)) return;
+  const free = DECK_SPOTS.filter(([x, z]) => !taken.some((a) => Math.hypot(a[1] - x, a[3] - z) < 1) && Math.hypot(W_.lx - x, W_.lz - z) > 0.5);
+  if (free.length) { const f = free[(Math.random() * free.length) | 0]; W_.lx = f[0]; W_.lz = f[1]; }
+}   // (on deck, looking up the line toward the peak, where the rides come from)
 // at an edge of the deck, looking out over the water: which side, and where you land (just clear of the hull, facing out)
 function boatEdge() {
   const W_ = strand; if (!W_ || !W_.deck || W_.jump) return null; const fx = Math.cos(W_.yaw), fz = Math.sin(W_.yaw), e = 0.5;
@@ -698,7 +713,7 @@ function deckTick(dt, W_) {
   W_.lx = Math.max(DECK.x0 + 0.3, Math.min(DECK.x1 - 0.3, W_.lx + (fx * mz - fz * mx) * sp)); W_.lz = Math.max(DECK.z0 + 0.3, Math.min(DECK.z1 - 0.2, W_.lz + (fz * mz + fx * mx) * sp));
   for (const [x0, x1, z0, z1] of BLOCKS) { const r = 0.3; if (W_.lx > x0 - r && W_.lx < x1 + r && W_.lz > z0 - r && W_.lz < z1 + r) {   // (round the things on deck, not through them: out the nearest side)
     const o = [W_.lx - (x0 - r), x1 + r - W_.lx, W_.lz - (z0 - r), z1 + r - W_.lz], m = Math.min(...o), i = o.indexOf(m); if (i === 0) W_.lx -= m; else if (i === 1) W_.lx += m; else if (i === 2) W_.lz -= m; else W_.lz += m; } }
-  const moving = Math.hypot(mx, mz) > 0.1; W_.bob = (W_.bob || 0) + (moving ? dt * 8 : 0);
+  const moving = Math.hypot(mx, mz) > 0.1; if (moving) W_.arr = 0; else deckSpread(W_); W_.bob = (W_.bob || 0) + (moving ? dt * 8 : 0);
   const p = boatWorld(W_.lx, DECK_Y + 1.65 + (moving ? Math.sin(W_.bob) * 0.02 : 0), W_.lz); W_.x = p.x; W_.z = p.z; W_.y = p.y;
   camera.position.copy(p); _pe.set(W_.pitch + boat.rotation.x * 0.5, -W_.yaw - Math.PI / 2, boat.rotation.z * 0.5); camera.quaternion.setFromEuler(_pe);   // (half the boat's rock reaches your eyes)
   setText(ui.hint, FREE.deckT !== undefined && T - FREE.deckT < 10 ? 'Walk to the edge of the boat and jump in' : ''); freeOut();
@@ -731,7 +746,7 @@ function strandTick(dt) {
   W_.x = Math.max(-190, Math.min(210, W_.x + (fx * mz - fz * mx) * sp)); W_.z = Math.min(REEF.zBeach + 70, W_.z + (fz * mz + fx * mx) * sp);
   // deep enough (about waist deep): onto your board and paddling, facing where you were walking
   if (depth > 0.8) { FREE.walkIn = { x: W_.x, z: W_.z, th: Math.atan2(fz, fx) }; endStrand(); spawnRider(); audio.splash(0.3); return; }
-  const moving = Math.hypot(mx, mz) > 0.1; W_.bob = (W_.bob || 0) + (moving ? dt * 8 : 0);
+  const moving = Math.hypot(mx, mz) > 0.1; if (moving) W_.arr = 0; else deckSpread(W_); W_.bob = (W_.bob || 0) + (moving ? dt * 8 : 0);
   const eye = Math.max(W_.g, sea - 0.4) + 1.65 + (moving ? Math.sin(W_.bob) * (wading ? 0.015 : 0.025) : 0);
   W_.y += (eye - W_.y) * Math.min(1, dt * 8);
   camera.position.set(W_.x, W_.y, W_.z); _pe.set(W_.pitch, -W_.yaw - Math.PI / 2, 0); camera.quaternion.setFromEuler(_pe);
@@ -2394,7 +2409,7 @@ function updateHUD(dt) {
   tubeShowT = rider.inBarrel ? 0.4 : Math.max(0, tubeShowT - dt);   // (held a moment: a wobble at the tube's edge doesn't flicker the word)
   hudCall(st, dt);
   hudScore(st === 'RIDE' && !isFree() ? rider.liveScore() : -1, dt);   // (not on the free beach, his call 30 Sep 2026: it sat under the list of who's there; the score card after each wave stays)
-  if ((st === 'WIPE' || st === 'OUT') && endT < 0 && isFree()) { endT = 0; const sc = rider.ride.score || 0; if (rider.ride.t > 0 || st === 'WIPE') { visitWave(sc, 'the free beach'); session.waves++; } if (rider.ride.t > 0 && !spec) freeScore(sc); }   // (the free beach: how that wave went, shown for a moment, no best kept, no leaderboard)
+  if ((st === 'WIPE' || st === 'OUT') && endT < 0 && isFree()) { endT = 0; const sc = rider.ride.score || 0; if (rider.ride.t > 0 || st === 'WIPE') { visitWave(sc, 'the free beach'); session.waves++; } if (rider.ride.t > 0 && !spec) { freeScore(sc); const bm = [...rider.ride.moves].sort((a, b) => b.pts - a.pts).find((m) => m.name !== 'TURN'); dispatchEvent(new CustomEvent('ss:freeride', { detail: { s: sc, fell: st === 'WIPE', m: bm ? bm.name : '' } })); } }   // (the free beach: how that wave went, shown for a moment, no best kept, no leaderboard; ss:freeride tells your friends, see freeroom.js)
   else if ((st === 'WIPE' || st === 'OUT') && endT < 0) {
     endT = 0;
     const r = rider.ride;
@@ -2811,7 +2826,7 @@ function villaTick(dt) {
   if (W_.gazeT <= 0) { W_.gazeT = 0.2; _vp.set(0, -0.1); _vr.setFromCamera(_vp, camera); _vr.far = 4.5;
     const hit = _vr.intersectObjects(V.rack, true)[0], t = hit ? hit.object.userData.type : null;
     if (t) { W_.gazeOff = 0; if (t !== vPickType) vPick(t); } else if (vPickType && (W_.gazeOff = (W_.gazeOff || 0) + 0.2) > 1.2 && Math.hypot(W_.x - V.rackAt.x, W_.z - V.rackAt.z) > 5) vPick(null); }
-  const moving = Math.hypot(mx, mz) > 0.1; W_.bob = (W_.bob || 0) + (moving ? dt * 8 : 0);
+  const moving = Math.hypot(mx, mz) > 0.1; if (moving) W_.arr = 0; else deckSpread(W_); W_.bob = (W_.bob || 0) + (moving ? dt * 8 : 0);
   if (swim && moving && (W_.strokeT = (W_.strokeT || 0) - dt) <= 0) { W_.strokeT = 1.1; audio.paddle(); }
   W_.y += ((W_.sit ? W_.sit.eye - 1.65 : V.floorAt(W_.x, W_.z, foot)) + 1.65 + (swim ? Math.sin(T * 1.8) * 0.03 + (moving ? Math.sin(W_.bob * 0.55) * 0.02 : 0) : moving ? Math.sin(W_.bob) * 0.025 : 0) - W_.y) * Math.min(1, dt * (swim ? 5 : 10));
   camera.position.set(W_.x, W_.y, W_.z + SPOTS.medium.dz);
