@@ -2128,9 +2128,14 @@ const MUSIC = ['stand-firm-like-a-tree', 'barefoot-in-the-breeze', 'streets-stil
 let radioOn = true;   // (the villa's speakers, all together)
 let musPaused = false;   // (paused from the Now playing box: the song holds its place, the box stays up to start it again)
 let earOn = false; try { earOn = localStorage.getItem('sumbasurf.ear') === '1'; } catch (e) {}   // an earpiece while you surf: your call, remembered
-{ const eb = document.getElementById('ear'), show = () => { eb.classList.toggle('on', earOn); eb.querySelector('span').textContent = earOn ? 'EARPIECE ON' : 'EARPIECE'; };
+{ const eb = document.getElementById('ear'), show = () => { eb.classList.toggle('on', earOn); document.body.classList.toggle('earon', earOn); eb.querySelector('span').textContent = earOn ? 'EARPIECE ON' : 'EARPIECE'; };
   show(); const t = (e) => { e.preventDefault(); e.stopPropagation(); earOn = !earOn; try { localStorage.setItem('sumbasurf.ear', earOn ? '1' : '0'); } catch (err) {} show(); audio.musicKick(); };
   eb.addEventListener('touchstart', t, { passive: false }); eb.addEventListener('click', t); }
+// back / next song while surfing with the earpiece in (his ask 30 Sep 2026); the song's name shows beside them for a moment
+{ const nm = document.getElementById('earSong'); let hide = 0;
+  for (const [id, f] of [['earPrev', () => audio.musicPrev()], ['earNext', () => audio.musicNext()]]) {
+    const go = (e) => { e.preventDefault(); e.stopPropagation(); f(); audio.musicKick(); nm.textContent = songOf(audio.now)[0]; nm.classList.add('show'); clearTimeout(hide); hide = setTimeout(() => nm.classList.remove('show'), 2500); };
+    const b = document.getElementById(id); b.addEventListener('touchstart', go, { passive: false }); b.addEventListener('click', go); } }
 function musicTick() {
   if (!audio.mel) return;
   const playing = document.body.classList.contains('playing');
