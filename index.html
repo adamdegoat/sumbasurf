@@ -640,6 +640,57 @@
   #start .fsPanel .boards button.best::after { display: none; }
   /* five boards (the alaia joined 30 Sep 2026): the spot panel lays them out 3 + 2 on every screen, so the panel is no taller than with four */
   #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards { display: grid; grid-template-columns: repeat(3, max-content); gap: 6px; }
+  /* a very short game window (1 Oct 2026: a phone on Wavedash, whose page frames the game at ~690x224; up to 340 high): the spot panel
+     keeps just the name, START SURFING and one row of picks, the boards as their outlines with the chosen one's name
+     beside them, so nothing runs into About us / Feedback / Patch notes (it did, even with four boards) */
+  @media (max-height: 300px) {
+    #start .mmPanel:not(.fsPanel) { margin-bottom: 22px !important; padding-top: 6px !important; padding-bottom: 6px !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) { margin-top: 20px !important; }   /* (under Wavedash's Leaderboard bar: it asked for 32-40 px, more than this window can spare) */
+    #start .mmPanel:not(.fsPanel) :is(#mmKick, #mmLvl, #mmDesc, #mmBB, #mmScale) { display: none !important; }
+    #start .mmPanel:not(.fsPanel) #mmBig { font-size: 24px !important; }
+    #start .mmPanel:not(.fsPanel) #goSurf { min-height: 32px !important; }
+    #start .mmPanel:not(.fsPanel) .mmPicks { flex-direction: row !important; flex-wrap: nowrap !important; align-items: center; gap: 8px !important; margin-top: 5px !important; padding-top: 5px !important; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .boardrow, #start .mmPanel:not(.fsPanel) .mmPicks .stancerow { display: flex !important; align-items: center; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .blabel { display: none !important; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards, #start .mmPanel:not(.fsPanel) .mmPicks .stancerow .boards { display: flex !important; gap: 3px !important; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards button { padding: 4px 5px 3px !important; gap: 0 !important; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards button :is(span, small) { display: none !important; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards svg { width: 26px !important; }
+    #start .mmPanel:not(.fsPanel) .mmPicks #boardName { display: inline !important; order: 2; margin-left: 6px; font: 700 13px/1 var(--disp); letter-spacing: .04em; color: #ffcf8a; white-space: nowrap; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .stancerow .boards button { padding: 3px 7px 2px 5px !important; font-size: 12px !important; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .stancerow .boards { flex-wrap: nowrap !important; }
+  }
+  @media (max-height: 340px) {   /* (on Wavedash, whose Leaderboard bar takes room, from 340 high) */
+    body.wdme #start .mmPanel:not(.fsPanel) { margin-bottom: 22px !important; padding-top: 6px !important; padding-bottom: 6px !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) { margin-top: 20px !important; }   /* (under Wavedash's Leaderboard bar: it asked for 32-40 px, more than this window can spare) */
+    body.wdme #start .mmPanel:not(.fsPanel) :is(#mmKick, #mmLvl, #mmDesc, #mmBB, #mmScale) { display: none !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) #mmBig { font-size: 24px !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) #goSurf { min-height: 32px !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks { flex-direction: row !important; flex-wrap: nowrap !important; align-items: center; gap: 8px !important; margin-top: 5px !important; padding-top: 5px !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks .boardrow, body.wdme #start .mmPanel:not(.fsPanel) .mmPicks .stancerow { display: flex !important; align-items: center; }
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks .blabel { display: none !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards, body.wdme #start .mmPanel:not(.fsPanel) .mmPicks .stancerow .boards { display: flex !important; gap: 3px !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards button { padding: 4px 5px 3px !important; gap: 0 !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards button :is(span, small) { display: none !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards svg { width: 26px !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks #boardName { display: inline !important; order: 2; margin-left: 6px; font: 700 13px/1 var(--disp); letter-spacing: .04em; color: #ffcf8a; white-space: nowrap; }
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks .stancerow .boards button { padding: 3px 7px 2px 5px !important; font-size: 12px !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks .stancerow .boards { flex-wrap: nowrap !important; }
+  }
+  @media (max-height: 300px) and (max-width: 720px) {   /* (the narrowest of those: a little smaller again, so Goofy and Regular stay on the line) */
+    #start .mmPanel:not(.fsPanel) .mmPicks { gap: 6px !important; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards button { padding: 3px 3px 2px !important; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards svg { width: 22px !important; }
+    #start .mmPanel:not(.fsPanel) .mmPicks #boardName { font-size: 12px; margin-left: 4px; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .stancerow .boards button { padding: 3px 5px 2px 4px !important; font-size: 11px !important; }
+  }
+  @media (max-height: 340px) and (max-width: 720px) {   /* (the narrowest of those: a little smaller again, so Goofy and Regular stay on the line) */
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks { gap: 6px !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards button { padding: 3px 3px 2px !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards svg { width: 22px !important; }
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks #boardName { font-size: 12px; margin-left: 4px; }
+    body.wdme #start .mmPanel:not(.fsPanel) .mmPicks .stancerow .boards button { padding: 3px 5px 2px 4px !important; font-size: 11px !important; }
+  }
   @media (max-height: 460px) {
     #start .fsPanel .mmPicks { margin-top: 2px; padding-top: 5px; gap: 5px; flex-wrap: nowrap; flex-direction: row; align-items: center; }
     #start .fsPanel .mmPicks .boardrow, #start .fsPanel .mmPicks .stancerow { display: flex; }
@@ -831,7 +882,7 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260930-2346</small>
+    <small id="build">build 261001-0005</small>
   </div>
 </div>
 <script>

@@ -16,9 +16,19 @@ export async function chatId(env) {
   const r = await fetch(`https://api.telegram.org/bot${env.TG_TOKEN}/getUpdates`).then((x) => x.json()).catch(() => null);
   const u = r && r.ok && r.result.filter((m) => m.message && m.message.chat).pop();
   if (!u) return null;
-  id = String(u.message.chat.id); if (env.KV) await env.KV.put('chat', id);
+  id = String(u.message.chat.id); if (env.KV) try { await env.KV.put('chat', id); } catch (e) {}   // (a full KV must never stop the alert)
   await tg(env, id, 'SumbaSurf alerts are on. You will get a message here when someone plays.');
   return id;
+}
+// once a minute per connection and kind (so nobody can flood the chat), remembered in Cloudflare's edge cache, not in KV
+// (1 Oct 2026: KV's free plan takes 1,000 writes a day; with more players it ran out and every alert after that threw
+// before it reached Telegram). The cache has no daily limit; it's per data centre, which is plenty for a once-a-minute rule
+async function seen(kind, ip) {
+  if (!ip) return false;
+  try { const c = caches.default, key = new Request(`https://sumbasurf.app/__rl/${kind}/${encodeURIComponent(ip)}`);
+    if (await c.match(key)) return true;
+    await c.put(key, new Response('1', { headers: { 'cache-control': 'max-age=60' } })); } catch (e) {}
+  return false;
 }
 const num = (v, lo, hi) => { v = +v; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo; };
 const list = (a, ok) => (Array.isArray(a) ? [...new Set(a.filter((x) => ok.includes(x)))] : []).slice(0, 10);
@@ -32,7 +42,7 @@ export async function onRequestPost({ request, env }) {
   if (!b || typeof b !== 'object') b = {};
   const ip = request.headers.get('cf-connecting-ip') || '';
   if (b.kind === 'fb') {   // feedback from the menu: the player's own words (and any name they like) do reach the chat, cut to size, one a minute each
-    if (env.KV && ip) { if (await env.KV.get('fb:' + ip)) return none; await env.KV.put('fb:' + ip, '1', { expirationTtl: 60 }); }
+    if (await seen('fb', ip)) return none;
     const clean = (v, n) => String(v || '').replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, '').trim().slice(0, n);
     const text = clean(b.text, 500), name = clean(b.name, 40).replace(/\n/g, ' ');
     if (text.length < 2) return none;
@@ -46,7 +56,7 @@ export async function onRequestPost({ request, env }) {
     return none;
   }
   if (b.kind === 'in') {   // they just started surfing or walked into the villa: one short line (his call 30 Sep 2026), its own once-a-minute limit so the note when they leave still goes
-    if (env.KV && ip) { if (await env.KV.get('in:' + ip)) return none; await env.KV.put('in:' + ip, '1', { expirationTtl: 60 }); }
+    if (await seen('in', ip)) return none;
     try {
       const chat = await chatId(env); if (!chat) return none;
       let country = request.cf && request.cf.country || '';
@@ -58,7 +68,7 @@ export async function onRequestPost({ request, env }) {
     } catch (e) {}
     return none;
   }
-  if (env.KV && ip) { if (await env.KV.get('ip:' + ip)) return none; await env.KV.put('ip:' + ip, '1', { expirationTtl: 60 }); }
+  if (await seen('ip', ip)) return none;
   try {
     const chat = await chatId(env); if (!chat) return none;
     let country = request.cf && request.cf.country || '';
