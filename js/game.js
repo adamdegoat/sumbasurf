@@ -749,8 +749,8 @@ function spawnRider() {
     if (FREE.climb) { const c = FREE.climb; FREE.climb = null; { const x = Math.max(-185, Math.min(205, c.x)); rider.reset(x, offSand(x, c.z), -Math.PI / 2); } FREE.fresh = false; FREE.jump = false; ui.msg.style.display = 'none'; return; }   // (after a wipeout: back on your board where it floated)
     if (FREE.walkIn) { rider.reset(FREE.walkIn.x, FREE.walkIn.z, FREE.walkIn.th); FREE.walkIn = null; FREE.fresh = false; FREE.jump = false; ui.msg.style.display = 'none'; return; }   // (walked into the water: on your board right there)
     if (FREE.fresh || FREE.jump) {
-      const near = FREE.fresh ? FREE[0] : Math.abs(lx - FREE[0].x) < Math.abs(lx - FREE[1].x) || lx < -18 ? FREE[0] : FREE[1];
-      rider.reset(near.x + 2 + Math.random() * 4, near.z - 7 - Math.random() * 3, -Math.PI / 2);
+      const near = FREE[0];   // (always the big waves, his call 30 Sep 2026: one place every time, so everyone knows where Go to lineup takes them; it used to pick the nearer peak)
+      rider.reset(near.x + 4, near.z - 8.5, -Math.PI / 2);   // (the same spot every time; friends arriving together are kept apart by the no-overlap rule)
     } else { const x = Math.max(-185, Math.min(205, lx)); rider.reset(x, offSand(x, lz), -Math.PI / 2); }   // (right where the wave left you; back off the sand if it washed you all the way in)
     const fresh = FREE.fresh; FREE.fresh = false; FREE.jump = false;
     if (!fresh) { ui.msg.style.display = 'none'; return; }   // (a shared beach: nobody's waves are held back for you, only on arrival)
