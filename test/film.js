@@ -8,6 +8,7 @@ const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const G = () => window.__g;
 const NATIVE_RANDOM = window.__nativeRandom || (window.__nativeRandom = Math.random);   // (the browser's own, kept the first time this loads: a take seeds Math.random and must hand the real one back)
 let W = 1080, H = 1920; const FPS = 30;
+export const OVER = { fn: null };
 const NOHINT = { on: false }; export const setHints = (on) => { NOHINT.on = !on; };   // (a trailer can leave the warning line out)
 const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const cx = cv.getContext('2d');
 let saved = null;
@@ -45,6 +46,7 @@ function draw(fov, body, crop, chase) {
   if (mir) { g.flipProj(c); if (body) g.flipProj(a); }
   if (crop !== undefined) { c.clearViewOffset(); a.clearViewOffset(); }
   cx.drawImage(r.domElement, 0, 0, W, H);   // (copied in the same task, before the browser clears the drawing buffer)
+  if (OVER.fn) OVER.fn(cx, c, W, H);   // (a take's own drawing over the picture: friends' name tags in the free surf takes)
   if (CALL.text && CALL.a > 0.01) {   // the game's own callout (#tube in index.html: 22% down, bold condensed, wide letter spacing)
     const fs = Math.round(H * 0.056); cx.save(); cx.globalAlpha = CALL.a; cx.font = `700 ${fs}px "Barlow Condensed", "Helvetica Neue", sans-serif`; cx.letterSpacing = `${(fs * 0.3).toFixed(1)}px`;
     const fit = Math.min(1, W * 0.9 / cx.measureText(CALL.text).width); if (fit < 1) { cx.font = `700 ${Math.round(fs * fit)}px "Barlow Condensed", "Helvetica Neue", sans-serif`; cx.letterSpacing = `${(fs * fit * 0.3).toFixed(1)}px`; }   // (a long pair like BOTTOM TURN + SNAP shrinks to fit)
@@ -268,8 +270,8 @@ const S = {};
 export async function run(name, budget = 36000) {
   const t = T[name]; if (!t) return 'no take ' + name;
   if (!S[name]) { S[name] = { i: 0 }; t.init(); }
-  const s = S[name], t0 = performance.now();
-  while (s.i < t.n && performance.now() - t0 < budget) { const o = t.frame(s.i); if (!t.keep || t.keep.some(([a, b]) => s.i >= a && s.i <= b)) { if (o.multi) for (const v of o.multi) { if (v.pre) v.pre(); draw(v.fov, v.body, v.crop, v.chase); await grab(name + v.tag, s.i); } else { draw(o.fov, o.body, o.crop, o.chase); await grab(name, s.i); } } s.i++; }   // (keep: only the stretches the edit uses get drawn)
+  const now = () => (window.__realNow || performance.now.bind(performance))(), s = S[name], t0 = now();   // (__realNow: a take that runs its own clock, test/trailer2.js)
+  while (s.i < t.n && now() - t0 < budget) { const o = t.frame(s.i); if (!t.keep || t.keep.some(([a, b]) => s.i >= a && s.i <= b)) { if (o.multi) for (const v of o.multi) { if (v.pre) v.pre(); draw(v.fov, v.body, v.crop, v.chase); await grab(name + v.tag, s.i); } else { draw(o.fov, o.body, o.crop, o.chase); await grab(name, s.i); } } s.i++; }   // (keep: only the stretches the edit uses get drawn)
   await flush();
   if (s.i >= t.n) { if (t.done) t.done(); return `${name}: done (${t.n} frames)`; }
   return `${name}: ${s.i}/${t.n}`;
