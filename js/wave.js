@@ -69,6 +69,17 @@ const WHITE_SH = { P: K.white, curl: 0, broken: 1 };   // a closed-out section: 
 const NU = 64;                                     // samples across the wave (Catmull-Rom through the 12 points)
 const AHEAD = 70, BEHIND = 55;                     // metres of wave drawn ahead of / behind the break
 const NX = 150;
+// far away (over 120 m, and not the wave you're on) a wave is drawn from every other row and column of its grid: a quarter
+// of the triangles, the same shape at that distance (his heat check 30 Sep 2026). One coarse index, shared by all waves
+let FAR_IDX = null;
+function farIndex() {
+  if (FAR_IDX) return FAR_IDX;
+  const rows = [], cols = []; for (let i = 0; i < NX; i += 2) rows.push(i); if (rows[rows.length - 1] !== NX - 1) rows.push(NX - 1);
+  for (let j = 0; j < NU; j += 2) cols.push(j); if (cols[cols.length - 1] !== NU - 1) cols.push(NU - 1);
+  const idx = []; for (let r = 0; r < rows.length - 1; r++) for (let c = 0; c < cols.length - 1; c++) {
+    const a = rows[r] * NU + cols[c], b = rows[r] * NU + cols[c + 1], cc = rows[r + 1] * NU + cols[c], d = rows[r + 1] * NU + cols[c + 1]; idx.push(a, cc, b, b, cc, d); }
+  return (FAR_IDX = new THREE.Uint16BufferAttribute(idx, 1));
+}
 
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const lerpK = (A, B, t) => A.map((p, i) => [p[0] + (B[i][0] - p[0]) * t, p[1] + (B[i][1] - p[1]) * t]);
@@ -415,12 +426,22 @@ export class Wave {
     this.spray.geometry.attributes.position.needsUpdate = true;
   }
 
+  farGeo() {
+    const g = this.geo; let f = g.userData.far;
+    if (!f || Object.keys(f.attributes).length !== Object.keys(g.attributes).length) {
+      f = new THREE.BufferGeometry(); for (const k in g.attributes) f.setAttribute(k, g.attributes[k]); f.setIndex(farIndex());
+      if (!g.boundingSphere) g.computeBoundingSphere(); f.boundingSphere = g.boundingSphere; g.userData.far = f; }
+    return f;
+  }
   update(dt, lite = false) {
     this.t += dt;
     if (!this.placed) this.peelX += this.cond.peel * dt;   // test page: just peel; the game places waves itself
     this.mesh.position.set(this.peelX, 0, this.zW);   // same shape, slid along the reef as it peels and toward the beach as it comes in
     this.mesh.scale.y = this.fade;
     this.mesh.material.uniforms.uH.value = this.cond.H;
+    // (far: the coarse grid. The shape is shared by every wave of this size, so the coarse version is its own geometry
+    // over the same buffers, never a change to the shared one: that would have made the near wave coarse too)
+    const gw = lite ? this.farGeo() : this.geo; if (this.mesh.geometry !== gw) this.mesh.geometry = gw;
     // the particles: every frame, or (far away: lite) every other frame with the time saved up
     this._pdt = (this._pdt || 0) + dt;
     if (lite && this._pdt < 1 / 40) return;

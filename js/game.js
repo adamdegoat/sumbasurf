@@ -2,13 +2,13 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=191';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=193';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=188';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER } from './board.js?v=19';
 import { SurfAudio } from './audio.js?v=24';
 import { ranch, POOL } from './ranch.js?v=9';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=126';
-import { villa, VILLA } from './villa.js?v=158';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=128';
+import { villa, VILLA } from './villa.js?v=160';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
@@ -21,7 +21,7 @@ import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=4';
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-const MAX_PR = Math.min(devicePixelRatio, 1.6);
+const MAX_PR = Math.min(devicePixelRatio, 1.3);   // (the sharpness never climbs past where it starts, his heat call 30 Sep 2026: it crept up to 1.6 whenever the device kept up, so it never rested and ran hot; same picture everyone gets on arrival)
 let pr = Math.min(devicePixelRatio, 1.3);
 renderer.setPixelRatio(pr); renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
