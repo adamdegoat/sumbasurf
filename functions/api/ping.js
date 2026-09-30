@@ -3,7 +3,7 @@
 //   { kind: new|back, who, dev, src, host, mins, waves, best, bestAt, spots, boards, again }
 // The bot key lives in the Cloudflare project's settings (the TG_TOKEN secret), never in code. Nothing a player sends
 // reaches the chat as their own text: every name comes from a fixed list and every number is clamped.
-export const SPOTS = ['Pantai Kuda', 'Tanjung Uma', 'Batu Hitam', 'Gunung Laut', 'Watu Kanan', 'Karang Hiu', 'Pantai Bintang', 'Sumba Ranch', 'the villa'];
+export const SPOTS = ['Pantai Kuda', 'Tanjung Uma', 'Batu Hitam', 'Gunung Laut', 'Watu Kanan', 'Karang Hiu', 'Pantai Bintang', 'Sumba Ranch', 'the villa', 'Free surf'];
 export const BOARDS = { short: 'shortboard', fish: 'fish', long: 'longboard', gun: 'gun' };
 export const SOURCES = ['Instagram', 'Facebook', 'TikTok', 'Google', 'another search engine', 'YouTube', 'X', 'Reddit', 'Telegram', 'WhatsApp', 'Wavedash', 'home screen app', 'a direct link', 'another website'];
 const DEV = ['phone', 'tablet', 'computer', 'touchscreen computer'];

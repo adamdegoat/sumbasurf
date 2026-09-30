@@ -485,8 +485,9 @@ export class Rider {
     if (!this.standing) {
       // caught inside: the whitewater rolls you toward the beach (you hang on to the board)
       if (sl.broken > 0.35 && onFront && y > 0.1 * H) this.washed = true;
-      // pulled over the falls: lying at the top of a wave that's pitching
-      if (onFront && y > 0.8 * sl.top && s < 0.6 * H && s > -2 * H && zl < sl.topZ + 0.4) return this.wipe(this.paddleT > 2 ? 'Too far in: the peak pitched right over you' : 'Too late: it pulled you over the falls');
+      // pulled over the falls: lying at the top of a wave that's pitching (not a free-surf inside wave still rolling in
+      // under you as swell, far out from where it breaks)
+      if (onFront && y > 0.8 * sl.top && s < 0.6 * H && s > -2 * H && zl < sl.topZ + 0.4 && !(w.zone && w.zone.z - this.z > 30)) return this.wipe(this.paddleT > 2 ? 'Too far in: the peak pitched right over you' : 'Too late: it pulled you over the falls');
       // the catch: on the face, heading for the beach, and going as fast as the wave
       // (once you're sliding down a steep enough face at a good share of its speed, it has you: you pop up and gravity does the rest)
       // (on a huge wave you get in earlier, lower on the face, like a big-wave gun: the speed you need is capped)

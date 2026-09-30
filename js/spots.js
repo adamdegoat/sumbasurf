@@ -2,7 +2,7 @@
 // landmarks of its own. Distances are in the coast's own frame: the beach is ~185-225 m in from the break, and the
 // whole coast is pushed back by dz (a longer run to the sand makes a longer ride).
 import * as THREE from 'three';
-import { coast, landMaterial, ENV } from './wave.js?v=188';
+import { coast, landMaterial, ENV } from './wave.js?v=191';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const SPOTS = {
@@ -21,6 +21,9 @@ export const SPOTS = {
   // moon and the Milky Way, lamp boats out at sea, a fire on the beach, and plankton that glows wherever the water breaks
   bintang: { name: 'Pantai Bintang', dz: 160, xEnd: 320, reefTint: [0.45, 0.55, 0.7], reefK: 0.001, look: { sandWet: [0.34, 0.35, 0.37], sandDry: [0.5, 0.49, 0.46], land: [0.07, 0.13, 0.09], palms: 1, cliffH: 0.02, rock: [0.32, 0.32, 0.35], cliffGreen: 0.9, temple: false, stacks: false, boat: false, mountain: [0.1, 0.13, 0.18], mountainScale: 0.8, jungle: 1 } },   // (no cliffs and none of the usual offshore stacks: a low palm beach, and its own rock arch out to sea)
   // experts: a giant outer reef far off a towering coast, sea stacks, a storm
+  // the free-surf beach: a wide pale-sand bay, palms, low green headlands either side, nothing else (kept light so six
+  // surfers fit on a phone): see game.js FREE
+  free: { name: 'Free surf', dz: 70, xEnd: 200, reefTint: [1.2, 1.22, 1.08], reefK: 0.5, look: { beachW: 52, beachRise: 2.4, sandWet: [0.5, 0.43, 0.32], sandDry: [0.36, 0.3, 0.21], land: [0.15, 0.28, 0.12], palms: 0.8, cliffH: 0.08, rock: [0.5, 0.46, 0.4], cliffGreen: 1, temple: false, stacks: false, boat: false, mountain: [0.3, 0.38, 0.32], mountainScale: 0.45, jungle: 0.45 } },
   extreme: { name: 'Gunung Laut', dz: 230, xEnd: 430, reefTint: [0.6, 0.65, 0.65], look: { stacks: false, boat: false,  sandWet: [0.18, 0.17, 0.16], sandDry: [0.12, 0.12, 0.11], land: [0.09, 0.14, 0.08], palms: 0.1, cliffH: 2.6, rock: [0.3, 0.3, 0.29], fluted: true, cliffGreen: 0.7, temple: false, mountain: [0.2, 0.23, 0.24], mountainScale: 1.6, jungle: 0.6 } },
 };
 
@@ -42,6 +45,7 @@ export function spotGroup(scene, key) {
   if (key === 'kanan') redHead(g);
   if (key === 'hard') lighthouseHead(g);
   if (key === 'hiu') palmPoint(g);
+  if (key === 'free') freeBay(g);
   if (key === 'bintang') ownDice(g, nightLights, 11);
   if (key === 'easy') ownDice(g, horseHead);
   if (key === 'easy') ownDice(g, kudaNature, 29);
@@ -200,6 +204,12 @@ function headland(g, o) {
   for (let k = 0; k < 30; k++) { const u = 0.05 + Math.random() * 0.9, t = Math.random() * 2 - 1, r = 1.8 + Math.random() * 2.2, z = o.tipZ + (o.baseZ - o.tipZ) * u;
     put(g, new THREE.IcosahedronGeometry(r, 0).scale(1.3, 0.7, 1), [0.13, 0.25, 0.09], o.x + t * W(u) * 0.95, H(u) + r * 0.3, z, 0.3); }
   return (u) => ({ y: H(u), z: o.tipZ + (o.baseZ - o.tipZ) * u });
+}
+// the free-surf beach: a low green headland at each end, so it reads as a bay you're inside (the coast used to just stop
+// in open sea either side), well clear of both peaks and of the edge of the water you can paddle
+function freeBay(g) {
+  headland(g, { x: -268, tipZ: 100, baseZ: 250, w: 30, h0: 8, h1: 17, rock: [0.5, 0.45, 0.36], grass: [0.17, 0.3, 0.12] });
+  headland(g, { x: 290, tipZ: 110, baseZ: 250, w: 32, h0: 10, h1: 19, rock: [0.5, 0.45, 0.36], grass: [0.17, 0.3, 0.12] });
 }
 // a Balinese temple: a stepped stone terrace, a split gate (candi bentar) in front, and a tall meru tower of stacked
 // black thatch roofs, the one shape you can pick out from far out at sea

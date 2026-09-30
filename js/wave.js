@@ -33,6 +33,15 @@ export const CONDITIONS = {
   hiu:     { judge: 1.0, nose: 0.75, H: 9.3,  speed: 10.0, peel: 8.1,  angle: 52, period: 15, hollow: 1.0,  forgive: 0.74, len: 1.35, width: 0.92, fat: 0.76, tube: 0, wobble: 0.34, burst: 1.85, softA: 0.8,  deep: 0.8, foamK: 0.6, name: 'Hard' },   // (29 Sep 2026: bites harder too: forgive .85->.65, burst 1.7->2.0, wobble .3->.38, foam ball closer)     // a fast, shallow, square right over coral: runs away from you: a racing barrel, keep your speed or the foam ball has you
   bintang: { judge: 0.95, nose: 1.1, H: 6.4,  speed: 7.4,  peel: 4.4,  angle: 64, period: 13, hollow: 0.74, forgive: 0.9,  len: 1.4, width: 1.2,  fat: 1.3,  tube: 1.15, wobble: 0.28, burst: 1.7, softA: 0.35, name: 'Medium' },   // the night spot (his call 28 Sep 2026: its own character): the longest ride in the game, a soft open wall for carving and snaps, and surprise barrels (the peel surges: now and then a section races ahead and throws), forgiving once you're in
   extreme: { judge: 0.93, nose: 0.6, H: 15,   speed: 13.5, peel: 11,   angle: 45, period: 20, hollow: 1.0,  forgive: 0.85, len: 4,   width: 1.25, fat: 1.1, tube: 0.2,  wobble: 0.3,  burst: 2.1, softA: 0.8,  name: 'Extreme' },  // a 15 m mountain of water; a giant reef wave breaks in shallower water (H/d ~1.1) and runs ~13-14 m/s, like Jaws
+  // the free-surf beach (30 Sep 2026, his call): its own waves for each place to surf. Outside: the main peak, Tanjung Uma's
+  // size; the second peak a little smaller and softer; inside: small, gentle waves reforming near the shore
+  free_out: { judge: 0.97, nose: 1.0, H: 7.2,  speed: 8.2,  peel: 4.8,  angle: 62, period: 14, hollow: 0.8,  forgive: 1,   len: 1.0, width: 1.1,  fat: 1.1, tube: 1.0,  wobble: 0.18, burst: 1.3, softA: 0.35, name: 'Medium' },
+  free_mid: { judge: 1.0,  nose: 1.15, H: 5.6, speed: 7.0,  peel: 3.9,  angle: 62, period: 12, hollow: 0.74, forgive: 0.8, len: 0.9, width: 1.25, fat: 1.25, tube: 1.2, wobble: 0.1,  burst: 1.15, softA: 0.35, name: 'Easy' },
+  free_in:  { judge: 1.0,  nose: 1.4, H: 2.8,  speed: 5.2,  peel: 2.8,  angle: 64, period: 9,  hollow: 0.55, forgive: 0.55, len: 0.7, width: 1.4, fat: 1.5, tube: 1.3, wobble: 0.05, burst: 1.0, softA: 0.35, name: 'Easy' },
+  // Extreme (the host's choice for a private beach): every wave bigger, faster and heavier, the game's help off
+  free_out_x: { judge: 0.97, nose: 0.7, H: 10.5, speed: 10.4, peel: 8.4, angle: 55, period: 16, hollow: 1.0, forgive: 0.6, len: 1.4, width: 0.95, fat: 0.8, tube: 0, wobble: 0.45, burst: 1.9, softA: 0.8, assist: false, deep: 0.75, foamK: 0.55, name: 'Hard' },
+  free_mid_x: { judge: 1.0, nose: 0.75, H: 8.4, speed: 9.4, peel: 7.2, angle: 54, period: 14, hollow: 1.0, forgive: 0.7, len: 1.2, width: 0.95, fat: 0.8, tube: 0, wobble: 0.34, burst: 1.8, softA: 0.8, assist: false, deep: 0.8, foamK: 0.6, name: 'Hard' },
+  free_in_x:  { judge: 1.0, nose: 1.0, H: 4.2, speed: 6.4, peel: 4.2, angle: 60, period: 10, hollow: 0.85, forgive: 0.75, len: 0.8, width: 1.1, fat: 1.1, tube: 0.6, wobble: 0.2, burst: 1.4, softA: 0.5, name: 'Medium' },
 };
 
 // The Sumba Ranch's machine waves: the pool's own settings (a machine makes the same wave every time), so tuning a reef
@@ -438,6 +447,7 @@ export const WEATHER = {
   bintang: { night: 1, bio: 1, sun: [0.26, 0.075, -1], zen: 0x0c1a3c, hor: 0x33528e, sunCol: 0xd0def4, fog: 0x274070, deep: 0x134766, turq: 0x136379, cloud: 0.0, chop: 0.8, fogFar: 320, rain: 0, sunVis: 0.55, light: 0xb4c6ea, hemi: 0x6178a8, hemiGround: 0x18233a, wind: 0.5 },   // Pantai Bintang: always night, a low moon out to sea (its path on the water), glowing plankton wherever the water breaks
   villa:   { gold: 1, sun: [-0.35, 0.22, -0.9], zen: 0x3a64a8, hor: 0xf0c9a2, sunCol: 0xffc68a, fog: 0xf0c6a0, deep: 0x0a4a62, turq: 0x15a39a, cloud: 0.18, chop: 0.9, fogFar: 1100, rain: 0, sunVis: 1 },   // golden hour at the villa: the sun going down over the sea
   ranch:   { sun: [0.45, 0.72, -0.5], zen: 0x2a6cb8, hor: 0xcfe2ea, sunCol: 0xfff3dd, fog: 0xd4e5ec, deep: 0x1a8ea0, turq: 0x3fd6c8, cloud: 0.08, chop: 0.3, fogFar: 700, rain: 0, sunVis: 1 },   // dry, clear country sky; calm pool water
+  free:    { sun: [-0.55, 0.32, -0.6], zen: 0x2f79c8, hor: 0xcfe5ea, sunCol: 0xfff0cc, fog: 0xd6e8ec, deep: 0x0b6f8e, turq: 0x3ee0cc, cloud: 0.18, chop: 0.6, fogFar: 430, rain: 0, sunVis: 1, light: 0xfff0d8, hemi: 0xeef2ea, wind: 0.4 },   // the free-surf beach: a clear, sunny morning, the sun still low, turquoise water
   random:  { sun: [0.3, 0.7, -0.6],  zen: 0x2766ae, hor: 0xabd3e7, sunCol: 0xfff3dc, fog: 0xb9d9e8, deep: 0x09547e, turq: 0x19bdb2, cloud: 0.32, chop: 1.1, fogFar: 310, rain: 0, sunVis: 1 },
 };
 export const ENV = {
@@ -453,7 +463,8 @@ export const ENV = {
   uStars: { value: 0 },                               // a night spot's own sky: the moon, the stars and the Milky Way (not the drone show's evening, which keeps its own)
   uBio: { value: 0 },                                 // glowing plankton (Pantai Bintang): foam, spray and churned water light up blue                               // night (the villa's drone show): clouds go dark instead of glowing grey
   uReefK: { value: 0.38 },                            // how clearly the reef shows through the shallows (each spot's own)
-  uReefEnd: { value: 190 }, uReefTint: { value: new THREE.Color(1, 1, 1) },   // where the shallows stop (the beach), and each spot's reef colour                                           // 0 = no reef under the water (a concrete pool)
+  uReefEnd: { value: 190 }, uReefTint: { value: new THREE.Color(1, 1, 1) }, uChan: { value: new THREE.Vector3(0, 0, 0) }, uReefX0: { value: -160 },   // (uChan: a channel through the reef, x from/to and how strong: the free-surf beach; uReefX0: where the reef starts along the coast)
+    // where the shallows stop (the beach), and each spot's reef colour                                           // 0 = no reef under the water (a concrete pool)
 };
 // glowing plankton on sprays and splashes: a material keeps its daytime colour and is switched to a blue glow (added light)
 // at a night spot. Materials that last (the rail spray, the splashes on the lens) are kept in a list and switched with the weather
@@ -515,7 +526,7 @@ export function waterMaterial({ wave = false } = {}) {
       }`,
     fragmentShader: /* glsl */`
       precision highp float;
-      uniform float uTime, uH, uCloud, uChop, uFogFar, uSunVis, uFlash, uReef, uReefEnd, uReefK, uGold, uBio; uniform vec3 uReefTint; uniform vec3 uSun, uZen, uHor, uSunCol, uFog, uDeep, uTurq; uniform vec4 uPool; uniform mat4 uBInv; uniform vec4 uBDim;
+      uniform float uTime, uH, uCloud, uChop, uFogFar, uSunVis, uFlash, uReef, uReefEnd, uReefK, uGold, uBio, uReefX0; uniform vec3 uReefTint, uChan; uniform vec3 uSun, uZen, uHor, uSunCol, uFog, uDeep, uTurq; uniform vec4 uPool; uniform mat4 uBInv; uniform vec4 uBDim;
       varying vec3 vW; varying vec3 vN; varying vec2 vFT; varying float vAge;
       ${NOISE}${SUNSET}
       vec3 sky(vec3 d){
@@ -589,7 +600,11 @@ export function waterMaterial({ wave = false } = {}) {
           zone = vnoise(vW.xz * .011 + 3.7); edge = -45. + 55. * (vnoise(vW.xz * .006 + 11.3) - .5);
           body = mix(body, uDeep * .72, smoothstep(edge - 45., edge - 5., vW.z) * (1. - smoothstep(edge - 5., edge + 25., vW.z)) * calm * .35 * smoothstep(-200., -80., vW.x));   // (the drop-off)
         }
-        float reefK = smoothstep(edge, edge + 60., vW.z) * (1. - smoothstep(uReefEnd - 25., uReefEnd, vW.z)) * smoothstep(-160., -60., vW.x) * calm;
+        float reefK = smoothstep(edge, edge + 60., vW.z) * (1. - smoothstep(uReefEnd - 25., uReefEnd, vW.z)) * smoothstep(uReefX0, uReefX0 + 100., vW.x) * calm;
+        if (uChan.z > 0.) {   // a channel through the reef (the free-surf beach's way out): deep, dark blue water, no coral showing
+          float cw = 16. * (vnoise(vec2(vW.z * .018, 4.2)) - .5) + 6. * (vnoise(vec2(vW.z * .07, 9.1)) - .5), cw2 = 16. * (vnoise(vec2(vW.z * .016, 7.7)) - .5);   // (its edges wander, as a real channel's do)
+          float ch = smoothstep(uChan.x + cw - 16., uChan.x + cw + 8., vW.x) * (1. - smoothstep(uChan.y + cw2 - 8., uChan.y + cw2 + 16., vW.x)) * uChan.z * calm;
+          reefK *= 1. - ch; body = mix(body, uDeep * .62, ch * .8); }
         if (reefK > .001) {
           float rn = fbm(vW.xz * .06), rn2 = fbm(vW.xz * .27 + 3.1), sandy = smoothstep(.56, .8, zone), coral = smoothstep(.42, .18, zone);
           vec3 reefCol = mix(vec3(.3, .66, .62) + vec3(.06, .05, .02) * sandy, mix(vec3(.13, .25, .22), vec3(.21, .2, .13), coral * .7), clamp((smoothstep(.46, .6, rn) + .35 * (rn2 - .5)) * (1. - .85 * sandy) + coral * .4, 0., 1.));

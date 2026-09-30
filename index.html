@@ -41,6 +41,39 @@
     border-radius: 15px; border: 1px solid rgba(255,255,255,.45); background: rgba(10,30,40,.35); color: var(--ink); display: flex; align-items: center; gap: 6px;
     font: 600 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing: .1em; touch-action: none; }
   #menu svg { width: 14px; height: 14px; }
+  /* free-surf beach: back to the nearest peak's lineup (see game.js freeOut), and the quick fade it goes through */
+  #freeOut { position: fixed; z-index: 9; top: max(8px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); height: 32px; padding: 0 14px 0 11px; display: flex; align-items: center; gap: 7px;
+    border-radius: 16px; background: rgba(10,20,26,.5); border: 1px solid rgba(255,201,120,.55); color: #ffe2b2; font-size: 13px; font-weight: 700; letter-spacing: .06em; touch-action: manipulation; cursor: pointer; }
+  #freeOut[hidden] { display: none; } #freeOut svg { width: 14px; height: 14px; color: #ffc978; }
+  /* free-surf beach: which way to the nearest peak (see game.js freeGuide) */
+  #freeGuide { position: fixed; z-index: 8; left: 50%; top: 30%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 3px; pointer-events: none; }
+  #freeGuide.mk { transform: translate(-50%, 0); }   /* (in view: the arrow's tip just under the buoy) */
+  #freeGuide[hidden] { display: none; }
+  #freeGuide .gRot { width: 36px; height: 36px; transition: transform .25s ease-out; }
+  #freeGuide .gArr { width: 36px; height: 36px; overflow: visible; animation: gNudge 1.1s ease-in-out infinite; }
+  #freeGuide .gArr path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  #freeGuide .gArr .sh { stroke: rgba(20,14,8,.6); stroke-width: 7.5; } #freeGuide .gArr .c { stroke: #ffc978; stroke-width: 4; }
+  #freeGuide .a2 { animation: gFlow 1.1s ease-in-out infinite; } #freeGuide .a1 { animation: gFlow 1.1s ease-in-out .28s infinite; }
+  @keyframes gFlow { 0%, 100% { opacity: .3; } 45% { opacity: 1; } }
+  @keyframes gNudge { 0%, 100% { transform: translateY(2px); } 50% { transform: translateY(-3px); } }
+  #freeGuide .gTxt { text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.8), 0 0 8px rgba(0,0,0,.55);   /* (readable on white foam too) */ white-space: nowrap; }
+  #freeGuide .gTxt b { display: block; font: 800 15px/1 var(--disp); color: #fff3df; letter-spacing: .05em; }
+  #freeGuide .gTxt i { display: block; margin-top: 2px; font: 700 10px/1.1 var(--disp); font-style: normal; color: #ffc978; letter-spacing: .1em; text-transform: uppercase; }
+  @media (prefers-reduced-motion: reduce) { #freeGuide .gArr, #freeGuide .a1, #freeGuide .a2 { animation: none; } }
+  body:not(.playing) #freeGuide { display: none; }
+  /* the free beach: a wave's score for a moment after it (see game.js freeScore) */
+  #fsScore { position: fixed; z-index: 8; left: 50%; top: 24%; transform: translate(-50%, 6px); display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 20px 8px; border-radius: 14px; background: rgba(24,18,13,.55); border: 1px solid rgba(255,201,120,.3); opacity: 0; transition: opacity .35s, transform .35s; pointer-events: none; }
+  body.fsScoring #freeGuide { visibility: hidden; }   /* (the arrow steps aside while it shows) */
+  #fsScore.on { opacity: 1; transform: translate(-50%, 0); }
+  #fsScore b { font: 800 44px/1 var(--disp); color: #fff3df; } #fsScore small { font: 800 13px/1 var(--disp); letter-spacing: .16em; color: var(--amber); }
+  body:not(.playing) #fsScore { display: none; }
+  /* a friend's name over their head on the free beach (see game.js peersTick) */
+  #fsTags { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+  .fsTag { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; pointer-events: none; will-change: transform; }
+  .fsTag span { padding: 2px 7px 1px; border-radius: 8px; background: rgba(24,18,13,.4); color: #fff3df; font: 700 11px/1.2 var(--disp); letter-spacing: .05em; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+  .fsTag i { display: none; max-width: 180px; padding: 4px 9px 3px; border-radius: 10px; background: rgba(246,236,220,.92); color: #2b2118; font: 600 12px/1.25 var(--body); font-style: normal; text-align: center; overflow-wrap: anywhere; }   /* (their chat line, a speech bubble over the name) */
+  body:not(.playing) .fsTag { display: none !important; }
+  #fade { position: fixed; inset: 0; z-index: 40; background: #05121a; opacity: 0; pointer-events: none; transition: opacity .35s ease; } #fade.on { opacity: 1; }
   #ear { position: fixed; top: calc(max(8px, env(safe-area-inset-top)) + 38px); left: max(10px, env(safe-area-inset-left)); height: 28px; padding: 0 11px 0 8px;
     border-radius: 14px; border: 1px solid rgba(255,255,255,.35); background: rgba(10,30,40,.3); color: var(--dim); display: flex; align-items: center; gap: 6px;
     font: 600 10px/1 "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing: .1em; touch-action: none; }
@@ -100,6 +133,7 @@
   #hint span { display: inline-block; padding: 4px 10px 3px; border-radius: 11px; background: rgba(24,18,13,.42); border: 1px solid rgba(255,201,120,.22);
     color: #f6ecdc; font: 600 13px/1.2 var(--disp); letter-spacing: .02em; }   /* (small, his note 30 Sep 2026: bigger tips blocked the wave) */
   #hint b { color: #ffc978; font-weight: 800; letter-spacing: .05em; }
+  body.fo #hint { left: 25%; right: 25%; }
   #hint.in span { animation: hintIn .38s cubic-bezier(.2,.8,.25,1) both; }
   #hint.gone span { opacity: 0; transform: translateY(-4px); transition: opacity .25s, transform .25s; }
   @keyframes hintIn { from { opacity: 0; transform: translateY(-8px) scale(.97); } to { opacity: 1; transform: none; } }
@@ -339,7 +373,8 @@
   @media (max-height: 420px) { #hint { left: 15%; right: 15%; } #hint span { font-size: 12px; padding: 3px 9px 2px; } }   /* (a short phone on its side: a tip fits on one line between the menu pill and the speed) */
   #start .villarow .stl { margin-left: 10px; } #start #stances svg { width: 22px; height: 12px; }   /* (the filled foot is the front one) */
   /* the villa: walk (left thumb), look (right thumb), tap a board in the rack */
-  body:not(.villa) .vui { display: none !important; }
+  body:not(.villa):not(.strand) .vui { display: none !important; }
+  body.strand .vui:not(#vMove):not(#vLook):not(#vStick), body.strand #paddle, body.strand #stall, body.strand #pad { display: none !important; }   /* (the free-surf beach on foot: only the walk and look thumbs) */
   body.villa #paddle, body.villa #stall, body.villa #pad, body.villa #touch { display: none !important; }
   #vMove { position: fixed; left: 0; top: 56px; bottom: 0; width: 45%; z-index: 7; touch-action: none; }
   #vLook { position: fixed; right: 0; top: 56px; bottom: 0; width: 55%; z-index: 7; touch-action: none; }
@@ -421,9 +456,9 @@
   #rtApp .rtUrl { margin-top: 10px; font: 600 15px var(--disp); letter-spacing: .04em; color: var(--amber); }
   @media (max-height: 640px) { #rotate .rtName { font-size: 36px; } #rotate svg.rtPhone { width: 104px; height: 104px; margin-bottom: 10px; } #rotate h2 { font-size: 25px; }
     #rotate .rtWhy { font-size: 14px; margin-top: 6px; } #rtTurn { margin-top: 14px; padding: 10px 20px; } #rotate .rtMid { padding: 8px 0 14px; } #rotate .rtLock { font-size: 12px; padding: 10px 12px; } }
-  body:not(.villa) .vui, body:not(.playing) .ctl, body:not(.reef) #ear { display: none !important; }   /* (who shows where wins over the looks below) */
+  body:not(.villa):not(.strand) .vui, body:not(.playing) .ctl, body:not(.reef) #ear { display: none !important; }   /* (who shows where wins over the looks below) */
   /* ---- in-game controls, same family as the menu: warm driftwood pills, the poster face, amber for what's active */
-  #menu, #ear, #vGo, #vZoom, #vWatch, #vSit, #vPanel button, #ranch button { font-family: var(--disp) !important; letter-spacing: .05em !important; }
+  #menu, #freeOut, #ear, #vGo, #vZoom, #vWatch, #vSit, #vPanel button, #ranch button { font-family: var(--disp) !important; letter-spacing: .05em !important; }
   #menu, #ear, #vZoom, #vWatch { border-radius: 999px !important; border: 1px solid var(--line) !important; background: linear-gradient(180deg, rgba(40,28,18,.66), rgba(24,17,11,.76)) !important;
     box-shadow: inset 0 1px 0 rgba(255,236,200,.12), 0 2px 10px rgba(0,0,0,.18); color: var(--sand) !important; display: inline-flex; align-items: center; gap: 7px; }
   #menu { height: 32px; font-weight: 700 !important; font-size: 13px !important; padding: 0 14px 0 11px !important; } #ear { font-size: 12px !important; font-weight: 600 !important; height: 30px; }
@@ -526,6 +561,69 @@
   #start [data-mode="ranch"] .nm { white-space: nowrap; }
   #start [data-mode="ranch"] .nm::after { content: "POOL"; display: inline-block; margin-left: .45em; padding: .28em .55em .2em; border-radius: 999px; background: #f2b705; color: #15110c; font: 700 11px/1 var(--disp); letter-spacing: .16em; vertical-align: .2em; }
   @media (max-width: 760px) { #start [data-mode="ranch"] .nm::after { content: none; } }   /* (a small phone: no room beside the name; the moon on its wave icon says it) */
+  /* the multiplayer modes at the top of the list (his design 30 Sep 2026): coral, their own look, a MULTIPLAYER tag */
+  #start .spotList > button.mp { background: linear-gradient(180deg, rgba(92,40,30,.84), rgba(52,22,16,.9)); border-color: rgba(255,154,110,.5); }
+  #start .spotList > button.mp:hover { border-color: #ffa07a; }
+  #start .spotList > button.mp .wg { color: #ffb08f; } #start .spotList > button.mp .nm { color: #fff1ea; } #start .spotList > button.mp small i { color: rgba(255,220,205,.7); }
+  #start .spotList > button.mp .tag { grid-column: 3; grid-row: 1 / span 2; align-self: center; padding: 3px 7px 2px; border-radius: 5px; font: 800 10px/1.2 var(--disp); letter-spacing: .1em; color: #3a130a; background: #ffa07a; }
+  #start .spotList > button.mp.sel { border-color: #ffa07a; background: linear-gradient(180deg, rgba(122,52,36,.9), rgba(66,26,18,.92)); box-shadow: inset 3px 0 0 #ffa07a; }
+  #start .spotList > button#mpCont { margin-bottom: 4px; }
+  #start .spotList > button.mp .nm { white-space: nowrap; }
+  @media (max-height: 420px) { #start .spotList > button.mp .tag { font-size: 8.5px; letter-spacing: .05em; padding: 2px 5px 1px; } #start .spotList > button.mp { column-gap: 8px; } }
+  /* the free surf lobby, in the spot panel's place */
+  #start .mmPanel.fsPanel { display: none; } body.fsOpen #start .mmPanel.fsPanel { display: flex; } body.fsOpen #start .mmPanel:not(.fsPanel) { display: none !important; }
+  #start .fsPanel .fsLob, #start .fsPanel .fsNew { display: flex; flex-direction: column; gap: clamp(5px, 1vh, 9px); min-height: 0; flex: 1; }
+  #start .fsPanel .fsNew, body.fsNewOpen #start .fsPanel .fsLob { display: none; } body.fsNewOpen #start .fsPanel .fsNew { display: flex; }
+  #start .fsPanel .fsK { font: 700 clamp(11px, 1.7vh, 13px)/1 var(--disp); letter-spacing: .18em; text-transform: uppercase; color: #ffa07a; }
+  #start .fsPanel .fsH { margin: 0; font: 800 clamp(26px, 6vh, 56px)/.9 var(--disp); text-transform: uppercase; color: var(--sand); }
+  #start .fsPanel .fsRooms { display: flex; flex-direction: column; gap: 5px; overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+  #start .fsPanel .fsRoom { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 10px; padding: 6px 8px 6px 11px; border-radius: 10px; border: 1px solid var(--line); background: rgba(24,17,11,.5); flex: none; }
+  #start .fsPanel .fsRoom b { font: 700 clamp(14px, 2.2vh, 17px)/1.1 var(--disp); color: var(--sand); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #start .fsPanel .fsRoom i { font-style: normal; font: 600 13px/1 var(--disp); color: rgba(246,236,220,.7); white-space: nowrap; }
+  #start .fsPanel .fsRoom em { font-style: normal; font: 700 11px/1 var(--disp); letter-spacing: .08em; padding: 3px 7px 2px; border-radius: 999px; border: 1px solid rgba(255,201,120,.5); color: var(--amber); }
+  #start .fsPanel .fsRoom em.x { border-color: rgba(255,90,74,.65); color: #ff8a7a; }
+  #start .fsPanel .fsRoom button { font: 800 13px/1 var(--disp); letter-spacing: .05em; color: #2a1a0c; background: var(--amber); padding: 7px 12px 6px; border-radius: 8px; border: 0; cursor: pointer; }
+  #start .fsPanel .fsEmpty { font: 500 13px/1.35 var(--body); color: rgba(246,236,220,.7); padding: 4px 2px; }
+  #start .fsPanel .fsCode { display: flex; gap: 8px; align-items: center; flex: none; }
+  #start .fsPanel .fsCode b { font: 700 12px/1 var(--disp); letter-spacing: .12em; text-transform: uppercase; color: rgba(246,236,220,.6); white-space: nowrap; }
+  #start .fsPanel .fsCode input { flex: 1; min-width: 0; padding: 7px 11px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0,0,0,.3); font: 700 15px/1 var(--disp); letter-spacing: .3em; text-transform: uppercase; color: var(--sand); }
+  #start .fsPanel .fsCode input::placeholder { color: rgba(246,236,220,.3); }
+  #start .fsPanel .fsCode button { padding: 7px 14px; border-radius: 10px; border: 1px solid rgba(255,201,120,.55); background: rgba(24,17,11,.5); font: 800 14px/1 var(--disp); color: var(--amber); cursor: pointer; }
+  #start .fsPanel .fsMsg { margin: 0; min-height: 0; font: 500 12px/1.3 var(--body); color: #ffb08f; } .fsPanel .fsMsg:empty { display: none; }
+  #start .fsPanel .fsActs { display: flex; gap: 8px; flex: none; margin-top: auto; }
+  #start .fsPanel .fsGo { flex: 1; display: flex; align-items: center; justify-content: space-between; min-height: clamp(40px, 8vh, 64px); padding: 0 18px; border-radius: 12px; border: 0; cursor: pointer; font: 800 clamp(17px, 3vh, 26px)/1 var(--disp); letter-spacing: .05em; text-transform: uppercase; color: #2a1a0c; background: linear-gradient(180deg, #ffd79a, #f2b764); }
+  #start .fsPanel .fsGo svg { width: 22px; height: 22px; }
+  #start .fsPanel .fsBack { align-self: flex-start; padding: 0; border: 0; background: none; cursor: pointer; font: 700 12px/1 var(--disp); letter-spacing: .12em; text-transform: uppercase; color: rgba(246,236,220,.65); }
+  #start .fsPanel .fsOpt { display: flex; align-items: center; gap: 10px; }
+  #start .fsPanel .fsOpt > b { width: 88px; flex: none; font: 700 12px/1 var(--disp); letter-spacing: .12em; text-transform: uppercase; color: rgba(246,236,220,.6); }
+  #start .fsPanel .fsSeg { display: flex; gap: 6px; flex-wrap: wrap; }
+  #start .fsPanel .fsSeg button { padding: 7px 14px 6px; border-radius: 999px; border: 1px solid var(--line); font: 700 14px/1 var(--disp); color: rgba(246,236,220,.85); background: rgba(24,17,11,.55); cursor: pointer; }
+  #start .fsPanel .fsSeg button.on { border-color: var(--amber); color: var(--amber); background: rgba(255,201,120,.14); }
+  #start .fsPanel .fsSeg button.x.on { border-color: #ff5a4a; color: #ff8a7a; background: rgba(255,80,60,.14); }
+  #start .fsPanel .fsSeg button.off { opacity: .45; cursor: default; }
+  #start .fsPanel .fsNote { margin: 0; font: 500 clamp(11px, 1.7vh, 13px)/1.35 var(--body); color: rgba(246,236,220,.75); }
+  #start .fsPanel .fsHelp { width: 26px; height: 26px; margin-left: 8px; padding: 0; vertical-align: .25em; border-radius: 50%; border: 1.5px solid rgba(255,201,120,.6); background: rgba(24,17,11,.5); color: var(--amber) !important; font: 800 15px/1 var(--disp) !important; text-align: center; cursor: pointer; }
+  /* how free surf works: a card over the menu (see freeroom.js) */
+  #fsHelp { position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center; padding: 16px; background: rgba(5,8,10,.6); }
+  #fsHelp.on { display: flex; }
+  #fsHelp .card { width: min(520px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; box-sizing: border-box; padding: 20px 22px 16px; border-radius: 16px; background: #efe6d2; color: #2b2118; font-family: var(--body); box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+  #fsHelp h3 { margin: 0 0 10px; font: 800 28px/1 var(--disp); text-transform: uppercase; }
+  #fsHelp p { margin: 0 0 9px; font-size: 16px; line-height: 1.45; color: rgba(43,33,24,.9); }
+  #fsHelp .row { display: flex; justify-content: flex-end; margin-top: 14px; }
+  #fsHelp .ok { padding: 11px 22px 10px; border-radius: 11px; border: 0; background: #2b2118; color: var(--sand); font: 800 17px/1 var(--disp); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+  @media (max-height: 460px) { #fsHelp .card { padding: 14px 16px 12px; } #fsHelp h3 { font-size: 22px; margin-bottom: 7px; } #fsHelp p { font-size: 14px; margin-bottom: 7px; } #fsHelp .ok { padding: 8px 18px 7px; } }
+  /* the board and stance picks inside the free surf panel (they move in from the spot panel: see freeroom.js); the BEST
+     tag is about the spot picked, so not here; on a phone on its side they squeeze onto one line */
+  #start .fsPanel .boards button.best::after { display: none; }
+  @media (max-height: 460px) {
+    #start .fsPanel .mmPicks { margin-top: 2px; padding-top: 5px; gap: 5px; flex-wrap: nowrap; flex-direction: row; align-items: center; }
+    #start .fsPanel .mmPicks .boardrow, #start .fsPanel .mmPicks .stancerow { display: flex; }
+    #start .fsPanel .mmPicks .boards { display: flex; gap: 4px; }
+    #start .fsPanel .mmPicks button { padding: 3px 7px 2px 5px !important; font-size: 12px !important; gap: 4px !important; }
+    #start .fsPanel .mmPicks svg { width: 18px !important; height: auto; }
+    #start .fsPanel .fsNote { display: none; } #start .fsPanel .fsH { font-size: 26px; } #start .fsPanel .fsLob, #start .fsPanel .fsNew { gap: 5px; }
+  }
+  @media (max-height: 420px) { #start .fsPanel .fsRoom { padding: 4px 6px 4px 9px; } #start .fsPanel .fsRoom button { padding: 5px 10px 4px; } #start .fsPanel .fsSeg button { padding: 5px 11px 4px; } #start .fsPanel .fsOpt > b { width: 74px; } }
   #start .spotList .soon { cursor: default; border-style: dashed; background: rgba(20,14,9,.35); opacity: .75; }
   #start .spotList .soon:hover { border-color: var(--line); } #start .spotList .soon .wg { color: rgba(246,236,220,.5); height: 20px; }
   #start .spotList .soon .nm { color: rgba(246,236,220,.62); } #start .spotList .soon small i { color: var(--amber); letter-spacing: .03em; }
@@ -600,6 +698,9 @@
 <div class="ctl" id="menu"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 4h12M2 8h12M2 12h12"/></svg>MENU</div>
 <div class="ctl" id="ear"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5.5 10.5c-1.8 0-3-1.3-3-3.2C2.5 4.6 4.4 3 6.6 3c2.5 0 4 1.7 4 3.8 0 1.6-.9 2.4-1.8 3.1-.8.6-1 1.2-1 2 0 .9-.7 1.6-1.6 1.6"/><path d="M6.7 6.8a.9.9 0 1 1 0 .1"/></svg><span>EARPIECE</span></div>
 <div class="ctl" id="earSk"><button id="earPrev" type="button" aria-label="Previous song"><svg viewBox="0 0 16 16"><rect x="2.5" y="3" width="2" height="10" rx=".6"/><path d="M13.5 3.4v9.2a.6.6 0 0 1-.93.5L5.8 8.5a.6.6 0 0 1 0-1l6.77-4.6a.6.6 0 0 1 .93.5z"/></svg></button><button id="earNext" type="button" aria-label="Next song"><svg viewBox="0 0 16 16"><rect x="11.5" y="3" width="2" height="10" rx=".6"/><path d="M2.5 3.4v9.2a.6.6 0 0 0 .93.5l6.77-4.6a.6.6 0 0 0 0-1L3.43 2.9a.6.6 0 0 0-.93.5z"/></svg></button><span id="earSong"></span></div>
+<div id="freeGuide" hidden><div class="gRot"><svg class="gArr" viewBox="0 0 34 34"><g class="a2"><path class="sh" d="M7 24 17 15 27 24"/><path class="c" d="M7 24 17 15 27 24"/></g><g class="a1"><path class="sh" d="M7 15 17 6 27 15"/><path class="c" d="M7 15 17 6 27 15"/></g></svg></div><div class="gTxt"><b></b><i></i></div></div>
+<div class="ctl" id="freeOut" hidden><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3M4 7l4-4 4 4"/></svg>PADDLE OUT</div>
+<div id="fade"></div>
 <div class="ctl" id="paddle">PADDLE</div>
 <div class="ctl" id="stall">STALL</div>
 <div class="ctl" id="pad"></div>
@@ -627,6 +728,8 @@
   <p class="keys"><span><kbd>Right thumb</kbd>drag to steer</span><span><kbd>PUMP</kbd>speed</span><span><kbd>STALL</kbd>slow down and get barrelled</span></p></div>
   <div class="mm">
     <nav class="spotList" aria-label="Surf spots">
+    <button class="mp" id="mpFree" type="button"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M2 28 C6 28 7 24 9 21 C11 20.5 13 22 12.8 24 C11.6 23 10.5 24.5 11 28 Z" fill="currentColor"/><path d="M14 28 C18 28 19 24 21 21 C23 20.5 25 22 24.8 24 C23.6 23 22.5 24.5 23 28 Z" fill="currentColor"/></svg><span class="nm">Free surf</span><small><i>Surf with friends, no score</i></small><span class="tag">MULTIPLAYER</span></button>
+    <button class="mp" id="mpCont" type="button"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M6 8h14v5a7 7 0 0 1-14 0z M9 21h8 M13 20v-2 M6 10H3a3 3 0 0 0 3 5 M20 10h3a3 3 0 0 1-3 5 M8 27h10" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="nm">Surf contest</span><small><i>Heats against your friends</i></small><span class="tag">MULTIPLAYER</span></button>
     <button data-mode="easy"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C8.2 28 9.4 24.7 11.4 21.9 C13.6 21.4 16.0 22.8 15.8 24.7 C14.3 23.6 12.9 25.0 13.6 28.0 Z" fill="currentColor"/></svg><span class="nm">Pantai Kuda</span><small><i>Beginners, breaks left</i>5 m, slow, friendly barrels</small></button>
 <button data-mode="medium"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C8.2 28 9.4 23.7 11.5 20.2 C13.7 19.6 16.1 21.4 15.8 23.7 C14.4 22.4 12.9 24.1 13.7 28.0 Z" fill="currentColor"/></svg><span class="nm">Tanjung Uma</span><small><i>Intermediate, breaks left</i>7.5 m clean barrels under the cliffs</small></button>
 <button data-mode="hard"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C9.6 28 11.3 22.3 14.0 17.6 C16.9 16.8 20.1 19.2 19.8 22.3 C17.9 20.5 15.9 22.8 16.9 28.0 Z" fill="currentColor"/></svg><span class="nm">Batu Hitam</span><small><i>Advanced, breaks left</i>10 m, fast and heavy</small></button>
@@ -635,9 +738,21 @@
 <button data-mode="hiu" class="rt"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C9.6 28 11.3 22.3 14.0 17.6 C16.9 16.8 20.1 19.2 19.8 22.3 C17.9 20.5 15.9 22.8 16.9 28.0 Z" fill="currentColor"/></svg><span class="nm">Karang Hiu</span><small><i>Advanced, breaks right</i>9.3 m fast right over shallow coral</small></button>
 <button data-mode="bintang"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C8.2 28 9.3 24.1 11.4 20.9 C13.6 20.4 16.0 22.0 15.8 24.1 C14.3 22.9 12.9 24.5 13.6 28.0 Z" fill="currentColor"/><path d="M16.2 9.4a3.6 3.6 0 1 0 3.6 5.6a2.9 2.9 0 1 1 -3.6 -5.6z" fill="#9fdcff"/></svg><span class="nm">Pantai Bintang</span><small><i>Intermediate, breaks left</i>6.4 m glowing waves under the stars</small></button>
 <button data-mode="ranch"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h60M0 18v10M60 18v10" stroke="currentColor" stroke-width="1" opacity=".45"/><path d="M4.0 28 C8.2 28 9.4 23.7 11.5 20.2 C13.7 19.6 16.1 21.4 15.8 23.7 C14.4 22.4 12.9 24.1 13.7 28.0 Z" fill="currentColor"/></svg><span class="nm">Sumba Ranch</span><small><i>Wave pool, breaks left</i>Order the wave you want</small></button>
-    <button class="soon" type="button" aria-disabled="true"><svg class="wg" viewBox="0 0 40 30" aria-hidden="true"><rect x="13" y="13" width="14" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 13v-3a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span class="nm">New spot</span><small><i>Coming soon</i></small></button><button class="soon" type="button" aria-disabled="true"><svg class="wg" viewBox="0 0 40 30" aria-hidden="true"><rect x="13" y="13" width="14" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 13v-3a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span class="nm">New spot</span><small><i>Coming soon</i></small></button>
     <button id="goVilla"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M2 9.5 10 3l8 6.5"/><path d="M4.5 8v9h11V8"/><path d="M8.5 17v-4.5h3V17"/></svg><span>Your villa<small>Walk around, chill, watch the surf from the cliff</small></span></button>
     </nav>
+    <section class="mmPanel fsPanel" id="fsPanel" aria-live="polite">
+      <div class="fsLob"><div class="fsK">Multiplayer, up to 6</div><h2 class="fsH">Free surf <button type="button" class="fsHelp" id="fsHelpBtn" aria-label="How free surf works">?</button></h2>
+        <div class="fsRooms" id="fsRooms"></div>
+        <div class="fsCode"><b>Private code</b><input id="fsCodeIn" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCDE" aria-label="Private code"><button type="button" id="fsCodeGo">Join</button></div>
+        <p class="fsMsg" id="fsMsg"></p>
+        <div class="fsActs"><button type="button" class="fsGo" id="fsOpenBtn"><span>Open a beach</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h11M11 5.5 15.5 10 11 14.5"/></svg></button></div></div>
+      <div class="fsNew"><button type="button" class="fsBack" id="fsBack">Back</button><h2 class="fsH">Open a beach</h2>
+        <div class="fsOpt"><b>Beach</b><div class="fsSeg" data-k="map"><button type="button" data-v="bay" class="on">The Bay</button><button type="button" class="off" disabled>More soon</button></div></div>
+        <div class="fsOpt"><b>Who joins</b><div class="fsSeg" data-k="vis"><button type="button" data-v="open" class="on">Open</button><button type="button" data-v="private">Private</button></div></div>
+        <div class="fsOpt"><b>Waves</b><div class="fsSeg" data-k="cond"><button type="button" data-v="normal" class="on">Normal</button><button type="button" data-v="extreme" class="x">Extreme</button></div></div>
+        <p class="fsNote">Open: anyone can find your beach and jump in. Private: only friends with your code.</p>
+        <div class="fsActs"><button type="button" class="fsGo" id="fsGoBtn"><span>Go surf</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h11M11 5.5 15.5 10 11 14.5"/></svg></button></div></div>
+    </section>
     <section class="mmPanel" aria-live="polite">
       <div class="mmTop"><div class="mmTxt"><div class="mmKick" id="mmKick"></div><h2 class="mmBig" id="mmBig"></h2><p class="mmDesc" id="mmDesc"></p><div class="mmLvl" id="mmLvl"></div><div class="mmBB" id="mmBB"></div></div><div class="mmScale" id="mmScale"></div></div>
       <div class="mmActs"><button id="goSurf"><span>START SURFING<small id="goSpot"></small></span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h11M11 5.5 15.5 10 11 14.5"/></svg></button></div>
@@ -659,7 +774,7 @@
 <div id="inv" role="dialog" aria-modal="true" aria-label="SumbaSurf is on Wavedash" hidden>
   <div class="pnBox">
     <h3>SumbaSurf is on Wavedash</h3>
-    <p><b>Multiplayer surf contests</b> with your friends, plus leaderboards and badges. Free to play, on your phone too.</p>
+    <p><b>Free surf and surf contests</b> with your friends, plus leaderboards and badges. Free to play, on your phone too.</p>
     <div class="invBtns"><a id="invGo" href="https://wavedash.com/games/sumbasurf" rel="noopener">Play on Wavedash</a><button id="invNo" type="button">Keep playing here<small>Single player</small></button></div>
   </div>
 </div>
@@ -677,13 +792,22 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260930-1311</small>
+    <small id="build">build 260930-1601</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-30-freesurf', wd: true, date: '30 Sep 2026', time: '4:00 pm', title: 'Free surf with friends', items: [
+      'Tap Free surf at the top of the menu. Join an open beach from the list, type a friend\'s code, or open your own beach.',
+      'Open beaches let anyone jump in; private beaches are for friends with your code. Pick Normal or Extreme waves, and your board and stance.',
+      'Up to 6 surfers share the same waves. See each other paddle, ride and wipe out, with names over heads and a colour of shorts each.',
+      'Chat from the bar at the bottom. The host is the DJ and picks the songs for everyone. Your score shows after every wave, with no score screen and no leaderboard.',
+    ] },
+    { id: '2026-09-30-freesurf-app', app: true, date: '30 Sep 2026', time: '4:00 pm', title: 'New: free surf with friends', items: [
+      'Free surf and surf contests now sit at the top of the menu. Both are for playing with friends, on SumbaSurf on Wavedash: tap one to find out more.',
+    ] },
     { id: '2026-09-30-scoring', date: '30 Sep 2026', time: '8:34 am', title: 'New scoring: every best starts fresh', items: [
       'Scoring now works like a real surf contest. The whole wave counts: more good moves and more time close to the curl add up.',
       'Falling costs you. A wipeout loses your last moves and more than half the score, so finishing the wave matters.',
@@ -916,7 +1040,7 @@
       'Real surfers out in the lineup and friends at your villa who breathe, look around and chat.',
       'Shows in front of the villa: whales breaching, dolphins, manta rays, a sea eagle and flying fish.',
       'Pantai Kuda has a Sumba village and horses on the beach; Gunung Laut has a huge island peak.' ] },
-  ].filter((p) => !p.wd || globalThis.Wavedash);   // (wd: news for the Wavedash copy only; look: looks and sound only, in its own tab)
+  ].filter((p) => (!p.wd || globalThis.Wavedash) && (!p.app || !globalThis.Wavedash));   // (app: news for sumbasurf.app only)   // (wd: news for the Wavedash copy only; look: looks and sound only, in its own tab)
   const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
   // two tabs (his call, 29 Sep 2026): what changes how you play, and new looks and sounds, so a run of scenery updates
   // never pushes the gameplay news off the list; the newest 5 of each
@@ -969,6 +1093,7 @@
     const desk = matchMedia('(hover: hover) and (pointer: fine)').matches && !navigator.maxTouchPoints;
     const ok = force || (!skip && !desk && !globalThis.Wavedash && !/wavedash/.test(location.hostname) && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname));
     const done = () => { inv.hidden = true; };
+    globalThis.__invite = () => { inv.hidden = false; };   // (the multiplayer pills in the menu open it too, on any device)
     if (ok) { const t = setInterval(() => { const st = document.getElementById('start');
       if (!window.__g || !st || st.style.display === 'none' || document.body.classList.contains('playing') || !pn.hidden || !document.getElementById('fb').hidden) return;
       clearInterval(t); setTimeout(() => { if (!document.body.classList.contains('playing')) inv.hidden = false; }, 1200); }, 500); }
@@ -1024,6 +1149,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=976"></script>
+<script type="module" src="js/game.js?v=1030"></script>
 </body>
 </html>
