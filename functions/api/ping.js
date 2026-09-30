@@ -64,7 +64,7 @@ export async function onRequestPost({ request, env }) {
       const dev = DEV.includes(b.dev) ? b.dev : '', src = SOURCES.includes(b.src) ? b.src : '', wd = b.host === 'wavedash';
       const where = SPOTS.includes(b.where) ? b.where : '', who = b.seen === 'back' ? 'Returning player' : 'New player';
       const top = `${b.who === 'claude' ? 'Claude testing: ' : ''}${who} started${where ? ` at ${where}` : ''}`;
-      await tg(env, chat, `JOINED: ${b.seen === 'back' ? 'RETURNING' : 'NEW'}\n${top}\n${[country, dev, wd ? 'on Wavedash' : src ? `from ${src}` : ''].filter(Boolean).join(', ')}`);
+      await tg(env, chat, `${b.seen === 'back' ? 'RETURN' : 'NEW'}\n${top}\n${[country, dev, wd ? 'on Wavedash' : src ? `from ${src}` : ''].filter(Boolean).join(', ')}`);
     } catch (e) {}
     return none;
   }
