@@ -630,6 +630,7 @@ const _bm = new THREE.Matrix4(), _bi = new THREE.Matrix4(), _bv = new THREE.Vect
 function boatTick(dt) {
   if (!boat) { boat = makeBoat(); scene.add(boat); boat.userData.y = 0; boat.userData.p = 0; boat.userData.r = 0; }
   boat.visible = true;
+  if (FREE.toDeck) { FREE.toDeck = false; if (!strand) { boatDeck(-3); FREE.deckT = T; } }
   // afloat: its height, pitch and roll from the water under its four corners, eased (a heavy boat, not a cork)
   const hb = heightAt(waves, BOAT.x, BOAT.z - 6), hs = heightAt(waves, BOAT.x, BOAT.z + 6), hp = heightAt(waves, BOAT.x - 3, BOAT.z), hq = heightAt(waves, BOAT.x + 3, BOAT.z), u = boat.userData, k = 1 - Math.exp(-4 * dt);
   u.y += ((hb + hs + hp + hq) / 4 - u.y) * k; u.p += (Math.atan2(hb - hs, 12) - u.p) * k; u.r += (Math.atan2(hp - hq, 6) - u.r) * k;
@@ -661,19 +662,37 @@ function boatBtnTick() {
   const far = lying && !boatNear && Math.hypot(r.x - BOAT.x, r.z - BOAT.z) > 15;
   const set = (b, on, t) => { if (b.hidden === on) b.hidden = !on; const sp = b.lastChild; if (on && sp.textContent !== t) sp.textContent = t; };
   set(boatFar, far, 'GO TO BOAT');
-  set(boatBtn, isFree() && !freeJumping && (boatNear || onDeck), onDeck ? 'BACK IN THE WATER' : 'CLIMB ON');
+  const edge = onDeck && !!boatEdge();   // ('Back in the water' is gone, his call 30 Sep 2026: on deck you jump in from any edge you're facing out over)
+  set(boatBtn, isFree() && !freeJumping && (boatNear || edge), edge ? 'JUMP IN' : 'CLIMB ON');
+}
+function boatDeck(lz) { startStrand(BOAT.x, BOAT.z + 3, -2.4); strand.deck = true; strand.lx = 0; strand.lz = lz; strand.pitch = -0.08; }   // (on deck, looking up the line toward the peak, where the rides come from)
+// at an edge of the deck, looking out over the water: which side, and where you land (just clear of the hull, facing out)
+function boatEdge() {
+  const W_ = strand; if (!W_ || !W_.deck || W_.jump) return null; const fx = Math.cos(W_.yaw), fz = Math.sin(W_.yaw), e = 0.5;
+  if (W_.lx <= DECK.x0 + 0.3 + e && fx < -0.55) return { lx: -(HALF.x + 1.4), lz: W_.lz, th: Math.atan2(fz, fx) };
+  if (W_.lx >= DECK.x1 - 0.3 - e && fx > 0.55) return { lx: HALF.x + 1.4, lz: W_.lz, th: Math.atan2(fz, fx) };
+  if (W_.lz <= DECK.z0 + 0.3 + e && fz < -0.55) return { lx: W_.lx, lz: -(HALF.z + 1.4), th: Math.atan2(fz, fx) };
+  if (W_.lz >= DECK.z1 - 0.2 - e && fz > 0.55) return { lx: W_.lx, lz: HALF.z + 1.4, th: Math.atan2(fz, fx) };
+  return null;
 }
 function boatGo(far) {
   if (freeJumping || !isFree() || !boat) return; const onDeck = !!(strand && strand.deck);
   if (far ? onDeck || !rider || rider.state !== 'LIE' : !onDeck && !boatNear) return;
+  if (onDeck && !far) { const E = boatEdge(); if (E) { strand.jump = { t: 0, ...E, x0: strand.lx, z0: strand.lz }; boatBtn.hidden = true; } return; }   // (Jump in: played by deckTick, no fade)
   freeJumping = true; boatBtn.hidden = true; boatFar.hidden = true; fadeEl.classList.add('on');
   setTimeout(() => {
-    if (onDeck && !far) { const p = boatWorld(LADDER.x, 0, LADDER.z + 0.6); FREE.walkIn = { x: p.x, z: p.z, th: Math.PI / 2 }; endStrand(); spawnRider(); audio.splash(0.35); }   // (in by the ladder, facing the beach)
-    else { startStrand(BOAT.x, BOAT.z + 3, -2.4); strand.deck = true; strand.lx = 0; strand.lz = far ? -3 : 4.4; strand.pitch = -0.08; }   // (on deck, looking up the line toward the peak, where the rides come from)
+    boatDeck(far ? -3 : 4.4);
     setTimeout(() => { fadeEl.classList.remove('on'); freeJumping = false; }, 120);
   }, 380);
 }
 function deckTick(dt, W_) {
+  if (W_.jump) {   // jumping in (his call 30 Sep 2026): off the edge in a short arc, a splash, and you're lying on your board right there
+    const J = W_.jump; J.t += dt; const k = Math.min(1, J.t / 0.6), lx = J.x0 + (J.lx - J.x0) * k, lz = J.z0 + (J.lz - J.z0) * k;
+    const top = DECK_Y + 1.65, y = top + 0.5 * Math.sin(Math.PI * Math.min(1, k * 1.15)) - (top - 0.2) * k * k;
+    const p = boatWorld(lx, y, lz); camera.position.copy(p); _pe.set(W_.pitch - 0.5 * k, -W_.yaw - Math.PI / 2, 0); camera.quaternion.setFromEuler(_pe);
+    if (k >= 1) { const q = boatWorld(J.lx, 0, J.lz); FREE.walkIn = { x: q.x, z: q.z, th: J.th }; endStrand(); spawnRider(); audio.splash(0.5); }
+    return;
+  }
   const kx = inputLock ? 0 : (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0), kz = inputLock ? 0 : (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
   const mx = W_.mx || kx, mz = W_.mz || kz, fx = Math.cos(W_.yaw), fz = Math.sin(W_.yaw), sp = 1.6 * dt;   // (the boat points along z, not turned: world steps are its steps)
   W_.lx = Math.max(DECK.x0 + 0.3, Math.min(DECK.x1 - 0.3, W_.lx + (fx * mz - fz * mx) * sp)); W_.lz = Math.max(DECK.z0 + 0.3, Math.min(DECK.z1 - 0.2, W_.lz + (fz * mz + fx * mx) * sp));
@@ -682,7 +701,7 @@ function deckTick(dt, W_) {
   const moving = Math.hypot(mx, mz) > 0.1; W_.bob = (W_.bob || 0) + (moving ? dt * 8 : 0);
   const p = boatWorld(W_.lx, DECK_Y + 1.65 + (moving ? Math.sin(W_.bob) * 0.02 : 0), W_.lz); W_.x = p.x; W_.z = p.z; W_.y = p.y;
   camera.position.copy(p); _pe.set(W_.pitch + boat.rotation.x * 0.5, -W_.yaw - Math.PI / 2, boat.rotation.z * 0.5); camera.quaternion.setFromEuler(_pe);   // (half the boat's rock reaches your eyes)
-  setText(ui.hint, ''); freeOut();
+  setText(ui.hint, FREE.deckT !== undefined && T - FREE.deckT < 10 ? 'Walk to the edge of the boat and jump in' : ''); freeOut();
 }
 // ---- the free-surf beach on foot (his layout): you arrive on the sand, walk into the water and drop onto your board to
 // paddle out; paddle into the shallows and you stand up and walk out again. Same thumbs and keys as the villa (left
@@ -742,7 +761,8 @@ function spawnRider() {
     const lx = rider.x ?? FREE[0].x, lz = rider.z ?? 0;
     if (FREE.fresh && !/[?&]fsw=1\b/.test(location.search)) {   // arriving: lying on your board in the shallows at the channel, facing the sea (his call 30 Sep 2026: no walk from the sand; ?fsw=1 = at the outside peak)
       const zs = shoreZ(6); let z = zs - 4; while (z > zs - 40 && groundAt(6, z) > -1.2) z -= 1; z -= 14;   // (well clear of the sand's edge: right at it, the first bit of whitewater washed you up onto your feet)
-      rider.reset(6, z, -Math.PI / 2); FREE.arriveT = T; FREE.fresh = false; FREE.jump = false; ui.msg.style.display = 'none'; return;
+      rider.reset(6, z, -Math.PI / 2); FREE.arriveT = T; FREE.fresh = false; FREE.jump = false; ui.msg.style.display = 'none';
+      FREE.toDeck = true; return;   // (then straight onto the boat's front deck, his call 30 Sep 2026: everyone arrives there, walks to the edge and jumps in; boatTick does it once the boat exists)
     }
     if (FREE.climb) { const c = FREE.climb; FREE.climb = null; { const x = Math.max(-185, Math.min(205, c.x)); rider.reset(x, offSand(x, c.z), -Math.PI / 2); } FREE.fresh = false; FREE.jump = false; ui.msg.style.display = 'none'; return; }   // (after a wipeout: back on your board where it floated)
     if (FREE.walkIn) { rider.reset(FREE.walkIn.x, FREE.walkIn.z, FREE.walkIn.th); FREE.walkIn = null; FREE.fresh = false; FREE.jump = false; ui.msg.style.display = 'none'; return; }   // (walked into the water: on your board right there)
