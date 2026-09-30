@@ -554,7 +554,7 @@
   /* ---- the menu, list + panel (his call 28 Sep 2026): every spot one line on the left (room for ten, the last three
      'Coming soon'), the chosen spot big on the right with its wave drawn to scale, Start and the board/stance picks */
   #start .mm { display: grid; grid-template-columns: minmax(250px, 34%) 1fr; gap: clamp(12px, 2vw, 28px); height: clamp(300px, calc(100vh - 190px), 680px); height: clamp(300px, calc(100dvh - 190px), 680px); margin-top: clamp(8px, 1.8vh, 18px); }
-  #start .spotList { display: flex; flex-direction: column; gap: clamp(4px, .7vh, 7px); min-height: 0; overflow-y: auto; padding-right: 3px; }
+  #start .spotList { display: flex; flex-direction: column; gap: clamp(4px, .7vh, 7px); min-height: 0; overflow-y: auto; padding-right: 3px; touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }   /* (a finger scrolls it: see game.js touchmove) */
   #start .spotList > button { position: relative; display: grid; grid-template-columns: clamp(28px, 3vw, 40px) 1fr auto; grid-template-rows: auto auto; column-gap: 12px; align-items: center; flex: 1 1 0; min-height: clamp(34px, 5.4vh, 54px); max-height: 60px;
     padding: 0 12px 0 8px; border-radius: 12px; border: 1px solid var(--line); background: linear-gradient(180deg, rgba(40,28,18,.62), rgba(24,17,11,.72)); box-shadow: inset 0 1px 0 rgba(255,236,200,.1);
     color: var(--sand); text-align: left; cursor: pointer; transition: border-color .15s, background .15s; transform: none !important; }
@@ -599,7 +599,7 @@
   #start .fsPanel .fsNew, body.fsNewOpen #start .fsPanel .fsLob { display: none; } body.fsNewOpen #start .fsPanel .fsNew { display: flex; }
   #start .fsPanel .fsK { font: 700 clamp(11px, 1.7vh, 13px)/1 var(--disp); letter-spacing: .18em; text-transform: uppercase; color: #ffa07a; }
   #start .fsPanel .fsH { margin: 0; font: 800 clamp(26px, 6vh, 56px)/.9 var(--disp); text-transform: uppercase; color: var(--sand); }
-  #start .fsPanel .fsRooms { display: flex; flex-direction: column; gap: 5px; overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+  #start .fsPanel .fsRooms { display: flex; flex-direction: column; gap: 5px; overflow-y: auto; min-height: 0; flex: 1 1 auto; touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   #start .fsPanel .fsRoom { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 10px; padding: 6px 8px 6px 11px; border-radius: 10px; border: 1px solid var(--line); background: rgba(24,17,11,.5); flex: none; }
   #start .fsPanel .fsRoom b { font: 700 clamp(14px, 2.2vh, 17px)/1.1 var(--disp); color: var(--sand); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #start .fsPanel .fsRoom i { font-style: normal; font: 600 13px/1 var(--disp); color: rgba(246,236,220,.7); white-space: nowrap; }
@@ -882,7 +882,7 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261001-0005</small>
+    <small id="build">build 261001-0038</small>
   </div>
 </div>
 <script>
@@ -1308,6 +1308,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1064"></script>
+<script type="module" src="js/game.js?v=1065"></script>
 </body>
 </html>
