@@ -449,7 +449,7 @@ function freeGuide() {
   buoys.forEach((b, i) => { b.visible = on; if (!on) return; const x = FREE[i].x + 4, z = FREE[i].z - 16, y = heightAt(waves, x, z);
     b.position.set(x, y - 0.15, z); b.rotation.set(Math.sin(T * 1.3 + i) * 0.08, T * 0.1, Math.cos(T * 1.1 + i) * 0.08); });
   if (!guideEl) return;
-  const r = rider, show = on && !!r && !freeJumping && r.state === 'LIE';
+  const r = rider, show = on && !!r && !freeJumping && r.state === 'LIE' && !FREE.follow;   // (not while heading to a friend: one way to go at a time)
   let i = 0, d = Infinity;
   if (show) for (let k = 0; k < 2; k++) { const dk = Math.hypot(r.x - FREE[k].x, r.z - FREE[k].z + 8); if (dk < d) { d = dk; i = k; } }
   const vis = show && d > 40;
@@ -495,6 +495,19 @@ function freeClearWaves() { for (const w of waves) w.dispose(scene); waves = [];
 function freeBecomeHost() {   // (the host left: carry on the sets from the waves already out there)
   for (const z of FREE) { const zw = waves.filter((v) => v.zone === z), C = CONDITIONS[z.cond + (FREE.extreme ? '_x' : '')];
     z.next = zw.length ? Math.max(...zw.map((v) => v.tBreak)) + C.period * 1.3 : undefined; z.left = 0; z.pos = 0; }
+}
+// Follow a friend (his ask 30 Sep 2026): tap their name on the list and you paddle over to them. It steers and
+// paddles for you while you're lying on your board; your own steering or paddling, catching a wave, getting next to
+// them (6 m) or tapping the name again stops it
+function freeFollow(id) { FREE.follow = id && FREE.follow !== id && peers.has(id) ? id : null; dispatchEvent(new CustomEvent('ss:follow', { detail: FREE.follow })); return FREE.follow; }
+function freeFollowTick(own) {
+  const P = peers.get(FREE.follow), r = rider;
+  if (!isFree() || !P || !P.S || !r || own || r.standing) { freeFollow(null); return; }
+  const dx = P.S.pos.x - r.x, dz = P.S.pos.z - r.z, d = Math.hypot(dx, dz); FREE.followD = d;
+  if (d < 6) { freeFollow(null); return; }
+  if (r.state !== 'LIE') return;   // (wiped out: carries on once you're back on the board)
+  const e = Math.atan2(Math.sin(Math.atan2(dz, dx) - r.th), Math.cos(Math.atan2(dz, dx) - r.th));
+  input.steer = Math.max(-1, Math.min(1, e * 2)); input.paddle = Math.abs(e) < 1.2;
 }
 function freeSnap() {
   if (!isFree()) return null;
@@ -555,14 +568,16 @@ function peersTick(dt) {
     P.os.tick(dt, S, camera);
     // their name, small over their head (his call 30 Sep 2026), fading out far away; not drawn behind you
     if (!P.tag) { let lay = document.getElementById('fsTags'); if (!lay) { lay = document.createElement('div'); lay.id = 'fsTags'; document.body.appendChild(lay); }
-      P.tag = document.createElement('div'); P.tag.className = 'fsTag'; P.tag.innerHTML = '<i></i><span></span>'; lay.appendChild(P.tag); }
-    const nmEl = P.tag.lastChild, sayEl = P.tag.firstChild, saying = P.say && now < P.say.until ? P.say.text : '';   // (a chat line floats over their head for 5 s)
+      P.tag = document.createElement('div'); P.tag.className = 'fsTag'; P.tag.innerHTML = '<i></i><span></span><b></b>'; lay.appendChild(P.tag); }
+    const nmEl = P.tag.children[1], dEl = P.tag.children[2], sayEl = P.tag.firstChild, saying = P.say && now < P.say.until ? P.say.text : '';   // (a chat line floats over their head for 5 s)
     if (nmEl.textContent !== (P.name || '')) nmEl.textContent = P.name || '';
     if (sayEl.textContent !== saying) { sayEl.textContent = saying; sayEl.style.display = saying ? 'block' : 'none'; }
     _tagV.set(S.pos.x, S.pos.y + (c[0] === 'RIDE' || c[0] === 'POP' ? 2.3 : c[20] ? 0.75 : 1.4), S.pos.z).project(camera);   // (just over their head: standing, lying paddling, or sitting up)
-    const dd = camera.position.distanceTo(S.pos), onS = P.name && _tagV.z < 1 && Math.abs(_tagV.x) < 1.05 && Math.abs(_tagV.y) < 1.05 && dd < 160;
+    // (no distance limit any more, his note 30 Sep 2026: friends were hard to find; far away it also says how far)
+    const dd = camera.position.distanceTo(S.pos), onS = P.name && _tagV.z < 1 && Math.abs(_tagV.x) < 1.05 && Math.abs(_tagV.y) < 1.05;
+    const dTxt = dd > 40 ? `${Math.round(dd / 10) * 10} M` : ''; if (dEl.textContent !== dTxt) { dEl.textContent = dTxt; dEl.style.display = dTxt ? '' : 'none'; }
     P.tag.style.display = onS ? '' : 'none';
-    if (onS) { P.tagX = (_tagV.x + 1) / 2 * innerWidth; P.tagY = (1 - _tagV.y) / 2 * innerHeight; P.tagW = (P.name || '').length * 6.5 + 18; P.tagD = dd; P.tag.style.opacity = dd < 90 ? 1 : Math.max(0, (160 - dd) / 70).toFixed(2); tagsOn.push(P); }
+    if (onS) { P.tagX = (_tagV.x + 1) / 2 * innerWidth; P.tagY = (1 - _tagV.y) / 2 * innerHeight; P.tagW = (P.name || '').length * 6.5 + 18; P.tagD = dd; P.tag.style.opacity = dd < 60 ? 1 : 0.8; tagsOn.push(P); }
     // solid, not magnetic (his call 30 Sep 2026: no push-apart effect): you can come right up beside a friend, you just
     // can't pass through them. Only when you'd actually overlap (closer than 1.3 m) are you held at the edge; each player
     // takes half of the overlap, so between the two it closes exactly, nobody is shoved further, nobody falls
@@ -836,6 +851,7 @@ function readInput(dt) {
   input.steer = input.test != null ? input.test : steerF;   // input.test: scripted steering for automated checks
   input.up = input.test != null ? 0 : stickY;              // thumb up (-) / down (+): where on the face you want to be
   input.paddle = !!input.paddleBtn || keys.has('Space');
+  if (FREE.follow) freeFollowTick(Math.abs(sx) > 0.05 || input.paddle);
   const riding = !!(rider && rider.standing && (rider.state === 'RIDE' || rider.state === 'POP'));
   if (riding !== lastStickMode) { document.body.classList.toggle('riding', riding); lastStickMode = riding; }
   if (padTouch !== lastPadTouch) {
@@ -973,7 +989,7 @@ function toMenu() {
   input.paddleBtn = false; input.stallBtn = false; input.stick = null; padTouch = null; padX = padY = 0;
   keys.clear(); steerF = stickY = 0; ui.paddle.classList.remove('down'); ui.stall.classList.remove('down');
   if (strand) { endStrand(); rider = null; rig.visible = false; }   // (endStrand hands you back your board: not on the menu, where it went on lying in the shallows and stood you up again)
-  FREE.rider = null; freeOut(); freePeersClear(); FREE.net.role = 'solo'; FREE.net.onWave = null;   // (hides Paddle out, the pill and the free beach's buoys, which otherwise floated on in the menu's sea)
+  FREE.rider = null; FREE.follow = null; freeOut(); freePeersClear(); FREE.net.role = 'solo'; FREE.net.onWave = null;   // (hides Paddle out, the pill and the free beach's buoys, which otherwise floated on in the menu's sea)
   document.body.classList.remove('playing', 'riding', 'ranch-wait', 'villa', 'reef', 'strand'); ui.msg.style.display = 'none'; walker = null; vPick(null); setHfov(50);
   ui.start.style.display = ''; showBests();
   dispatchEvent(new Event('ss:menu'));   // (a free surf beach on Wavedash: off it, see wavedash/src/freeroom.js)
@@ -2981,4 +2997,4 @@ function specApply(dt) {
   rider.wave = waves.find((v) => v.sid === R.waveId) || null;
   input.paddle = !!b.pad;
 }
-window.__g = { freeStart: (ext) => { FREE.forceX = !!ext; return start('free'); }, freeNet: FREE.net, freeWaveOut, freeWaveApply, freeWaveState, freeWaveSync, freeClearWaves, freeBecomeHost, freeSnap, freePeer, freePeerGone, freeSay, freeShorts, shortsFor: (id) => shortsFor(id), get peers() { return peers; }, hint: (t) => setText(ui.hint, t), get strand() { return strand; }, groundAt: (x, z) => groundAt(x, z), shoreZ: (x) => shoreZ(x), lockRanch, get ranchDbg() { return { people: !!people, loading: peopleLoading, failed: peopleFailed, crowd: crowd && crowd.length, life: !!life }; }, get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), useStance: (k) => useStance(k), get board() { return boardType; }, get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; for (const z of FREE) z.next = undefined; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };
+window.__g = { freeStart: (ext) => { FREE.forceX = !!ext; return start('free'); }, freeNet: FREE.net, freeWaveOut, freeWaveApply, freeWaveState, freeWaveSync, freeClearWaves, freeBecomeHost, freeSnap, freePeer, freePeerGone, freeSay, freeShorts, freeFollow, get following() { return FREE.follow || null; }, get followD() { return FREE.followD || 0; }, shortsFor: (id) => shortsFor(id), get peers() { return peers; }, hint: (t) => setText(ui.hint, t), get strand() { return strand; }, groundAt: (x, z) => groundAt(x, z), shoreZ: (x) => shoreZ(x), lockRanch, get ranchDbg() { return { people: !!people, loading: peopleLoading, failed: peopleFailed, crowd: crowd && crowd.length, life: !!life }; }, get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), useStance: (k) => useStance(k), get board() { return boardType; }, get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; for (const z of FREE) z.next = undefined; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };

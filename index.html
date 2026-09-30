@@ -71,6 +71,7 @@
   #fsTags { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
   .fsTag { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; pointer-events: none; will-change: transform; }
   .fsTag span { padding: 2px 7px 1px; border-radius: 8px; background: rgba(24,18,13,.4); color: #fff3df; font: 700 11px/1.2 var(--disp); letter-spacing: .05em; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+  .fsTag b { padding: 1px 6px 0; border-radius: 6px; background: rgba(24,18,13,.35); color: rgba(255,243,223,.85); font: 700 9px/1.2 var(--disp); letter-spacing: .06em; white-space: nowrap; }   /* (how far away they are, when far) */
   .fsTag i { display: none; max-width: 180px; padding: 4px 9px 3px; border-radius: 10px; background: rgba(246,236,220,.92); color: #2b2118; font: 600 12px/1.25 var(--body); font-style: normal; text-align: center; overflow-wrap: anywhere; }   /* (their chat line, a speech bubble over the name) */
   body:not(.playing) .fsTag { display: none !important; }
   #fade { position: fixed; inset: 0; z-index: 40; background: #05121a; opacity: 0; pointer-events: none; transition: opacity .35s ease; } #fade.on { opacity: 1; }
@@ -792,13 +793,17 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260930-1638</small>
+    <small id="build">build 260930-1645</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-30-follow', wd: true, date: '30 Sep 2026', time: '4:44 pm', title: 'Find your friends', items: [
+      'Tap a friend\'s name on the list at the top right and you paddle over to them. Steer or paddle yourself to stop.',
+      'Names now show over your friends at any distance, with how far away they are.',
+    ] },
     { id: '2026-09-30-music', date: '30 Sep 2026', time: '4:20 pm', title: 'Music comes back', items: [
       'Left the game and came back? Tap once and your song plays again.',
     ] },
@@ -1159,6 +1164,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1033"></script>
+<script type="module" src="js/game.js?v=1034"></script>
 </body>
 </html>
