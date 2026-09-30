@@ -127,6 +127,7 @@ export class OtherSurfer {
     // BOARD_WATER; this plain board sat half under the surface where the water hid it entirely)
     this.group.position.copy(S.pos).addScaledVector(_c.set(0, 1, 0).applyQuaternion(S.q), this.lift ?? 0.1); this.group.quaternion.copy(S.q); this.group.updateMatrixWorld(true);
     const st = S.state; this.body.visible = this.board.visible = true;
+    if (st === 'DECK') return this.deck(dt, S);
     if (st === 'WIPE') return this.wipe(dt, S);
     if (st !== 'RIDE' && st !== 'POP') return this.water(dt, S);
     const fwd = _a.set(0, 0, 1).applyQuaternion(S.q), bup = _b.set(0, 1, 0).applyQuaternion(S.q);
@@ -229,6 +230,30 @@ export class OtherSurfer {
     this.pos0.copy(this.body.position); this.q0.copy(this.body.quaternion);
     this.mixer.update(dt); this.body.updateMatrixWorld(true);
     this.hand.l.ok = this.hand.r.ok = false; this.crouch = 0.8;
+  }
+  // on the boat (30 Sep 2026): stood up on the deck, arms by their sides, walking when they move. This body has no
+  // standing or walking clips (only surfing ones), so from its rest pose each limb is pointed where it should hang, the
+  // legs and arms swinging in turn as they walk, and the body lifted so the lower foot is flat on the deck
+  deck(dt, S) {
+    const B = this.B; this.board.visible = false; if (this.ghost) this.ghost.visible = false;
+    this.weights(dt, {}, 40); this.body.position.set(0, 0, 0); this.body.quaternion.identity(); this.mixer.update(dt); this.body.updateMatrixWorld(true);
+    const sp = Math.min(2, S.v || 0); this.walkA = ease(this.walkA || 0, Math.min(1, sp / 0.7), dt, 6); this.walkPh = (this.walkPh || 0) + dt * (2.2 + sp * 2.6) * (this.walkA > 0.05 ? 1 : 0);
+    const q = this.group.quaternion, down = V().set(0, -1, 0), fwd = V().set(0, 0, 1).applyQuaternion(q), side = V().set(1, 0, 0).applyQuaternion(q), gp = this.group.getWorldPosition(V());
+    // (the rest pose leans forward, head down: the back and neck are stood up straight first, the head looking a little down)
+    const up = V().set(0, 1, 0).applyQuaternion(q);
+    for (const [bn, cn, k] of [['pelvis', 'spine_01', 0], ['spine_01', 'spine_02', 0.02], ['spine_02', 'spine_03', 0.03], ['spine_03', 'neck_01', 0.04], ['neck_01', 'head', 0.1]])
+      if (B[bn] && B[cn]) aimBone(B[bn], B[cn], V().copy(up).addScaledVector(fwd, k).normalize(), 1);
+    for (const s of ['l', 'r']) {
+      const th = B['thigh_' + s], sd = Math.sign(th.getWorldPosition(V()).sub(gp).dot(side)) || 1, ph = Math.sin(this.walkPh + (s === 'l' ? 0 : Math.PI)) * this.walkA;
+      aimBone(th, B['calf_' + s], V().copy(down).addScaledVector(fwd, 0.42 * ph).addScaledVector(side, 0.05 * sd).normalize(), 1);
+      aimBone(B['calf_' + s], B['foot_' + s], V().copy(down).addScaledVector(fwd, 0.42 * ph - 0.35 * Math.max(0, -Math.cos(this.walkPh + (s === 'l' ? 0 : Math.PI))) * this.walkA).normalize(), 1);   // (the knee bends as the leg comes through)
+      if (B['ball_' + s]) aimBone(B['foot_' + s], B['ball_' + s], V().copy(fwd).addScaledVector(down, 0.15).normalize(), 1);
+      const ua = B['upperarm_' + s], asd = Math.sign(ua.getWorldPosition(V()).sub(gp).dot(side)) || 1;
+      aimBone(ua, B['lowerarm_' + s], V().copy(down).addScaledVector(side, 0.14 * asd).addScaledVector(fwd, -0.3 * ph).normalize(), 1);   // (each arm swings with the other leg)
+      aimBone(B['lowerarm_' + s], B['hand_' + s], V().copy(down).addScaledVector(fwd, 0.18 - 0.2 * ph).addScaledVector(side, 0.05 * asd).normalize(), 1);
+    }
+    const yl = B.foot_l.getWorldPosition(V()).y, yr = B.foot_r.getWorldPosition(V()).y;
+    this.body.position.y += S.pos.y + 0.09 - Math.min(yl, yr) + Math.abs(Math.sin(this.walkPh)) * 0.025 * this.walkA; this.body.updateMatrixWorld(true);
   }
   weights(dt, want, rate) {   // ease every clip toward its wanted weight (missing = 0)
     for (const [n, a] of Object.entries(this.clips)) { const w = ease(this.W[n] || 0, want[n] || 0, dt, rate); this.W[n] = w; a.weight = w; }

@@ -16,6 +16,7 @@ import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v
 import { crew } from './crew.js?v=55';
 import { wildlife } from './wildlife.js?v=59';
 import { droneShow } from './show.js?v=13';
+import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=3';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
@@ -427,7 +428,8 @@ const freeBtn = document.getElementById('freeOut'), fadeEl = document.getElement
 let freeJumping = false;
 function freeOut() {
   if (!freeBtn) return;
-  const r = rider, far = isFree() && !freeJumping && (strand || r && r.state === 'LIE' && Math.min(Math.hypot(r.x - FREE[0].x, r.z - FREE[0].z + 8), Math.hypot(r.x - FREE[1].x, r.z - FREE[1].z + 8)) > 40);
+  boatBtnTick();
+  const r = rider, far = isFree() && !freeJumping && !!(strand || r && r.state === 'LIE' && Math.min(Math.hypot(r.x - FREE[0].x, r.z - FREE[0].z + 8), Math.hypot(r.x - FREE[1].x, r.z - FREE[1].z + 8)) > 40);   // (!!: on foot it was the walker object, never equal to hidden's true/false, so the button never showed)
   if (freeBtn.hidden === far) { freeBtn.hidden = !far; document.body.classList.toggle('fo', far); }   // (fo: the tip up top narrows to clear the button)
   freeGuide();
 }
@@ -511,6 +513,7 @@ function freeFollowTick(own) {
 }
 function freeSnap() {
   if (!isFree()) return null;
+  if (strand && strand.deck) return ['DECK', +strand.lx.toFixed(2), 0, +strand.lz.toFixed(2), +strand.yaw.toFixed(3)];   // (on the boat: where on its deck and which way you face; each copy of the boat rides the same swell)
   if (strand) return ['FOOT', +strand.x.toFixed(2), 0, +strand.z.toFixed(2)];
   if (!rider) return null;
   const p = rig.position, q = rig.quaternion, wv = rider.wave;
@@ -531,7 +534,7 @@ function freePeer(id, a, name, sent) {   // (sent: the sender's own clock when i
   if (P.buf.length) { const L = P.buf[P.buf.length - 1].a; if (Math.hypot(a[1] - L[1], a[3] - L[3]) > 25) P.buf = []; }   // (Paddle out: they're simply there, not sliding across the bay; his note 30 Sep 2026)
   if (name) P.name = name;
   P.buf.push({ t, a }); if (P.buf.length > 12) P.buf.shift(); P.last = now;
-  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=9').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }
+  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=11').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }
 }
 function freeSay(id, text) { const P = peers.get(id); if (P) P.say = { text: String(text).slice(0, 90), until: performance.now() + 5000 }; }
 // every player's own shorts colour (his call 30 Sep 2026: automatic, different for each), picked from their player id,
@@ -554,9 +557,15 @@ function peersTick(dt) {
     const c = B.a, a = A.a[0] === 'FOOT' || c[0] === 'FOOT' ? c : A.a, f = B.t > A.t ? Math.min(1 + 150 / (B.t - A.t), Math.max(0, (at - A.t) / (B.t - A.t))) : 1;
     if (c[0] === 'FOOT') { if (P.os) P.os.group.visible = false; continue; }   // (on the sand: not drawn yet)
     if (!OSmod || !surferGltf) continue;
-    if (!P.os || P.os.boardType !== c[17] || P.stance !== c[18]) { if (P.os) scene.remove(P.os.group); P.os = new OSmod.OtherSurfer(surferGltf, { board: c[17], stance: c[18], shorts: shortsFor(id) }); P.stance = c[18]; scene.add(P.os.group); }
+    if (!P.os || (c[0] !== 'DECK' && (P.os.boardType !== c[17] || P.stance !== c[18]))) {   // (on deck no board is sent: keep theirs)
+      if (P.os) scene.remove(P.os.group); P.os = new OSmod.OtherSurfer(surferGltf, { board: c[17], stance: c[18], shorts: shortsFor(id) }); P.stance = c[18]; scene.add(P.os.group); }
     P.os.setShorts(shortsFor(id));
     const S = P.S || (P.S = { pos: new THREE.Vector3(), q: new THREE.Quaternion() });
+    if (c[0] === 'DECK') {   // on the boat: stood on its deck (their spot on it, on your copy of the boat), facing their way
+      if (!boat) continue; const a2 = a[0] === 'DECK' ? a : c, lx = a2[1] + (c[1] - a2[1]) * f, lz = a2[3] + (c[3] - a2[3]) * f, dy = Math.atan2(Math.sin(c[4] - a2[4]), Math.cos(c[4] - a2[4])), yaw = a2[4] + dy * f;
+      S.pos.copy(boatWorld(lx, DECK_Y, lz)); S.q.setFromAxisAngle(_yUp, Math.PI / 2 - yaw).premultiply(boat.quaternion);
+      S.state = 'DECK'; S.v = B.t > A.t ? Math.hypot(c[1] - a2[1], c[3] - a2[3]) / ((B.t - A.t) / 1000) : 0; S.paddling = false;
+    } else {
     S.pos.set(a[1] + (c[1] - a[1]) * f, a[2] + (c[2] - a[2]) * f, a[3] + (c[3] - a[3]) * f);
     // riding: placed on the wave itself (its peel point and crest line now, on your copy), not where they were 140 ms
     // ago, when the face was a metre further out and they'd sit inside the water; in the water, at your water's height
@@ -565,6 +574,7 @@ function peersTick(dt) {
     else if (c[0] !== 'WIPE') S.pos.y = heightAt(waves, S.pos.x, S.pos.z);
     _pqa.set(a[4], a[5], a[6], a[7]); _pqb.set(c[4], c[5], c[6], c[7]); S.q.copy(_pqa).slerp(_pqb, Math.min(1, f));
     S.state = c[0]; S.stateT = c[8]; S.v = c[9]; S.lean = c[10]; S.turn = c[11]; S.inBarrel = !!c[12]; S.pumping = !!c[13]; S.pumpT = c[14]; S.stalling = c[15]; S.speedK = c[16]; S.paddling = !!c[20];
+    }
     P.os.tick(dt, S, camera);
     // their name, small over their head (his call 30 Sep 2026), fading out far away; not drawn behind you
     if (!P.tag) { let lay = document.getElementById('fsTags'); if (!lay) { lay = document.createElement('div'); lay.id = 'fsTags'; document.body.appendChild(lay); }
@@ -572,7 +582,7 @@ function peersTick(dt) {
     const nmEl = P.tag.children[1], dEl = P.tag.children[2], sayEl = P.tag.firstChild, saying = P.say && now < P.say.until ? P.say.text : '';   // (a chat line floats over their head for 5 s)
     if (nmEl.textContent !== (P.name || '')) nmEl.textContent = P.name || '';
     if (sayEl.textContent !== saying) { sayEl.textContent = saying; sayEl.style.display = saying ? 'block' : 'none'; }
-    _tagV.set(S.pos.x, S.pos.y + (c[0] === 'RIDE' || c[0] === 'POP' ? 2.3 : c[20] ? 0.75 : 1.4), S.pos.z).project(camera);   // (just over their head: standing, lying paddling, or sitting up)
+    _tagV.set(S.pos.x, S.pos.y + (c[0] === 'DECK' ? 2.05 : c[0] === 'RIDE' || c[0] === 'POP' ? 2.3 : c[20] ? 0.75 : 1.4), S.pos.z).project(camera);   // (just over their head: standing, lying paddling, or sitting up)
     // (no distance limit any more, his note 30 Sep 2026: friends were hard to find; far away it also says how far)
     const dd = camera.position.distanceTo(S.pos), onS = P.name && _tagV.z < 1 && Math.abs(_tagV.x) < 1.05 && Math.abs(_tagV.y) < 1.05;
     const dTxt = dd > 40 ? `${Math.round(dd / 10) * 10} M` : ''; if (dEl.textContent !== dTxt) { dEl.textContent = dTxt; dEl.style.display = dTxt ? '' : 'none'; }
@@ -584,7 +594,7 @@ function peersTick(dt) {
     // (against where they are now, not where they're drawn: drawn 140 ms behind, at riding speed that's more than a metre off)
     const L1 = b[n - 1], L0 = n > 1 ? b[n - 2] : L1, ahead = Math.min(0.3, (now - L1.t) / 1000), span = Math.max(1, L1.t - L0.t) / 1000;
     const nx = L1.a[1] + (L1.a[1] - L0.a[1]) / span * ahead * (L0 !== L1), nz = L1.a[3] + (L1.a[3] - L0.a[3]) / span * ahead * (L0 !== L1);
-    if (rider && rider.state !== 'WIPE' && S.state !== 'WIPE' && L1.a[0] !== 'FOOT' && L0.a[0] !== 'FOOT') { const dx = rig.position.x - nx, dz = rig.position.z - nz, d = Math.hypot(dx, dz), R0 = 1.3;
+    if (rider && rider.state !== 'WIPE' && S.state !== 'WIPE' && L1.a[0] !== 'FOOT' && L0.a[0] !== 'FOOT' && L1.a[0] !== 'DECK' && L0.a[0] !== 'DECK') { const dx = rig.position.x - nx, dz = rig.position.z - nz, d = Math.hypot(dx, dz), R0 = 1.3;
       if (d < R0 && d > 0.01) { const k = (R0 - d) / 2; rider.x += dx / d * k; rider.z += dz / d * k; } }
   }
   // name tags: where two would overlap (friends paddling side by side), the nearer friend's shows clearly on top and
@@ -609,6 +619,73 @@ function freeJump() {
   setTimeout(() => { if (strand) endStrand(); FREE.jump = true; spawnRider(); setTimeout(() => { fadeEl.classList.remove('on'); freeJumping = false; }, 120); }, 380);
 }
 if (freeBtn) for (const ev of ['pointerup', 'touchend', 'click']) freeBtn.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); freeJump(); }, { passive: false });   // (pointerup: a mouse click on it never arrived as a click while playing)
+// ---- the boat (his idea 30 Sep 2026): a platform boat anchored in the channel between the peaks (boat.js). Paddle up
+// to its ladder and Climb on; walk round the deck (the walking thumbs and keys, as the villa) to watch your friends
+// ride past; Back in the water drops you in by the ladder on your board. It rides the swell passing under it
+// where (vetted 30 Sep 2026 with a bot surfing both peaks for 4 rides and the water measured for 40 s): off the big
+// waves' shoulder, seaward of where they're ridden. Rides pass 25-40 m in front of it (the ride line runs from the peak
+// at x -162, z 0 to x -80, z 100), none come through; only swell under it (up to 1.8 m, never steep). The channel between
+// the peaks, the first idea, had 3.5-5.5 m faces passing through and whitewater
+const BOAT = { x: -104, z: 42 }, _yUp = new THREE.Vector3(0, 1, 0);   // (moved in 30 Sep 2026, his note: from -95, 22 the closest ride passed 38 m off and a friend was a speck; now ~18 m, swell up to 2.6 m, never steep)
+let boat = null, boatNear = false, boatBtn = null;
+const _bm = new THREE.Matrix4(), _bi = new THREE.Matrix4(), _bv = new THREE.Vector3();
+function boatTick(dt) {
+  if (!boat) { boat = makeBoat(); scene.add(boat); boat.userData.y = 0; boat.userData.p = 0; boat.userData.r = 0; }
+  boat.visible = true;
+  // afloat: its height, pitch and roll from the water under its four corners, eased (a heavy boat, not a cork)
+  const hb = heightAt(waves, BOAT.x, BOAT.z - 6), hs = heightAt(waves, BOAT.x, BOAT.z + 6), hp = heightAt(waves, BOAT.x - 3, BOAT.z), hq = heightAt(waves, BOAT.x + 3, BOAT.z), u = boat.userData, k = 1 - Math.exp(-4 * dt);
+  u.y += ((hb + hs + hp + hq) / 4 - u.y) * k; u.p += (Math.atan2(hb - hs, 12) - u.p) * k; u.r += (Math.atan2(hp - hq, 6) - u.r) * k;
+  boat.position.set(BOAT.x, u.y, BOAT.z); boat.rotation.set(u.p, 0, u.r, 'YXZ'); boat.updateMatrixWorld(true);
+  const f = boat.userData.flag; if (f) f.rotation.y = Math.PI / 2 + Math.sin(T * 2.3) * 0.25;
+}
+function boatLocal(x, z) { _bi.copy(boat.matrixWorld).invert(); return _bv.set(x, boat.position.y, z).applyMatrix4(_bi); }
+function boatWorld(lx, ly, lz) { return _bv.set(lx, ly, lz).applyMatrix4(boat.matrixWorld); }
+function boatBump(r) {   // (paddlers and surfers go round it, never through: pushed out of its footprint the shortest way)
+  if (!boat) return; const dx = r.x - BOAT.x, dz = r.z - BOAT.z, m = 0.5;
+  if (Math.abs(dx) > HALF.x + m || Math.abs(dz) > HALF.z + m) return;
+  const ox = HALF.x + m - Math.abs(dx), oz = HALF.z + m - Math.abs(dz);
+  if (ox < oz) r.x += Math.sign(dx || 1) * ox; else r.z += Math.sign(dz || 1) * oz;
+  if (r.v) r.v *= 0.5;
+}
+// the buttons top right, one under the other (his call 30 Sep 2026): Go to lineup, Go to boat (from anywhere in the
+// water), Climb on (at its ladder) or Back in the water (on deck), then the list of who's on the beach
+let boatFar = null;
+function boatBtnTick() {
+  if (!boatBtn) { const tr = document.getElementById('fsTR') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'fsTR' }));
+    if (freeBtn) tr.appendChild(freeBtn);
+    const mk = (id, fn, icon) => { const b = document.createElement('div'); b.className = 'ctl'; b.id = id; b.hidden = true; b.innerHTML = icon + '<span></span>'; tr.appendChild(b);
+      for (const ev of ['pointerup', 'touchend', 'click']) b.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); fn(); }, { passive: false }); return b; };
+    const ic = (d) => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+    boatFar = mk('boatGo', () => boatGo(true), ic('M2 10h12l-2 3H4zM8 10V3l4 5H8'));   // (a little boat with a sail)
+    boatBtn = mk('boatBtn', () => boatGo(false), ic('M5 14V3M11 14V3M5 6h6M5 10h6')); }   // (a ladder)
+  const r = rider, onDeck = !!(strand && strand.deck), lying = isFree() && !!boat && !freeJumping && !onDeck && !!r && r.state === 'LIE';
+  boatNear = lying && Math.hypot(r.x - BOAT.x - LADDER.x, r.z - BOAT.z - LADDER.z) < 5;
+  const far = lying && !boatNear && Math.hypot(r.x - BOAT.x, r.z - BOAT.z) > 15;
+  const set = (b, on, t) => { if (b.hidden === on) b.hidden = !on; const sp = b.lastChild; if (on && sp.textContent !== t) sp.textContent = t; };
+  set(boatFar, far, 'GO TO BOAT');
+  set(boatBtn, isFree() && !freeJumping && (boatNear || onDeck), onDeck ? 'BACK IN THE WATER' : 'CLIMB ON');
+}
+function boatGo(far) {
+  if (freeJumping || !isFree() || !boat) return; const onDeck = !!(strand && strand.deck);
+  if (far ? onDeck || !rider || rider.state !== 'LIE' : !onDeck && !boatNear) return;
+  freeJumping = true; boatBtn.hidden = true; boatFar.hidden = true; fadeEl.classList.add('on');
+  setTimeout(() => {
+    if (onDeck && !far) { const p = boatWorld(LADDER.x, 0, LADDER.z + 0.6); FREE.walkIn = { x: p.x, z: p.z, th: Math.PI / 2 }; endStrand(); spawnRider(); audio.splash(0.35); }   // (in by the ladder, facing the beach)
+    else { startStrand(BOAT.x, BOAT.z + 3, Math.PI / 2 + 0.35); strand.deck = true; strand.lx = 0; strand.lz = far ? 1.5 : 4.4; strand.pitch = -0.08; }   // (on deck, looking in toward where the waves are ridden)
+    setTimeout(() => { fadeEl.classList.remove('on'); freeJumping = false; }, 120);
+  }, 380);
+}
+function deckTick(dt, W_) {
+  const kx = inputLock ? 0 : (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0), kz = inputLock ? 0 : (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
+  const mx = W_.mx || kx, mz = W_.mz || kz, fx = Math.cos(W_.yaw), fz = Math.sin(W_.yaw), sp = 1.6 * dt;   // (the boat points along z, not turned: world steps are its steps)
+  W_.lx = Math.max(DECK.x0 + 0.3, Math.min(DECK.x1 - 0.3, W_.lx + (fx * mz - fz * mx) * sp)); W_.lz = Math.max(DECK.z0 + 0.3, Math.min(DECK.z1 - 0.2, W_.lz + (fz * mz + fx * mx) * sp));
+  for (const [x0, x1, z0, z1] of BLOCKS) { const r = 0.3; if (W_.lx > x0 - r && W_.lx < x1 + r && W_.lz > z0 - r && W_.lz < z1 + r) {   // (round the things on deck, not through them: out the nearest side)
+    const o = [W_.lx - (x0 - r), x1 + r - W_.lx, W_.lz - (z0 - r), z1 + r - W_.lz], m = Math.min(...o), i = o.indexOf(m); if (i === 0) W_.lx -= m; else if (i === 1) W_.lx += m; else if (i === 2) W_.lz -= m; else W_.lz += m; } }
+  const moving = Math.hypot(mx, mz) > 0.1; W_.bob = (W_.bob || 0) + (moving ? dt * 8 : 0);
+  const p = boatWorld(W_.lx, DECK_Y + 1.65 + (moving ? Math.sin(W_.bob) * 0.02 : 0), W_.lz); W_.x = p.x; W_.z = p.z; W_.y = p.y;
+  camera.position.copy(p); _pe.set(W_.pitch + boat.rotation.x * 0.5, -W_.yaw - Math.PI / 2, boat.rotation.z * 0.5); camera.quaternion.setFromEuler(_pe);   // (half the boat's rock reaches your eyes)
+  setText(ui.hint, ''); freeOut();
+}
 // ---- the free-surf beach on foot (his layout): you arrive on the sand, walk into the water and drop onto your board to
 // paddle out; paddle into the shallows and you stand up and walk out again. Same thumbs and keys as the villa (left
 // thumb walks, right thumb looks; WASD or arrows, mouse drag to look)
@@ -629,6 +706,7 @@ function endStrand() { strand = null; walker = null; rider = rider || FREE.rider
 function strandTick(dt) {
   updateWaves(dt); railSpray.update(dt); wake.update(dt); track.update(dt);
   const W_ = strand;
+  if (W_.deck) { deckTick(dt, W_); return; }
   const kx = inputLock ? 0 : (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0), kz = inputLock ? 0 : (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
   if ((W_.gT -= dt) <= 0) { W_.gT = 0.08; W_.g = groundAt(W_.x, W_.z); }
   const sea = heightAt(waves, W_.x, W_.z), depth = W_.g > -19 ? sea - W_.g : 1.5, wading = depth > 0.05;   // (past the end of the sand the beach mesh stops: open water, deep enough to paddle)
@@ -2297,7 +2375,7 @@ function updateHUD(dt) {
   // the callout: BARREL while you're in it, or the move you just landed
   tubeShowT = rider.inBarrel ? 0.4 : Math.max(0, tubeShowT - dt);   // (held a moment: a wobble at the tube's edge doesn't flicker the word)
   hudCall(st, dt);
-  hudScore(st === 'RIDE' ? rider.liveScore() : -1, dt);
+  hudScore(st === 'RIDE' && !isFree() ? rider.liveScore() : -1, dt);   // (not on the free beach, his call 30 Sep 2026: it sat under the list of who's there; the score card after each wave stays)
   if ((st === 'WIPE' || st === 'OUT') && endT < 0 && isFree()) { endT = 0; const sc = rider.ride.score || 0; if (rider.ride.t > 0 || st === 'WIPE') { visitWave(sc, 'the free beach'); session.waves++; } if (rider.ride.t > 0 && !spec) freeScore(sc); }   // (the free beach: how that wave went, shown for a moment, no best kept, no leaderboard)
   else if ((st === 'WIPE' || st === 'OUT') && endT < 0) {
     endT = 0;
@@ -2792,7 +2870,7 @@ function tick(dt) {
   }
   if (rider) {
     if (spec) specApply(dt);   // (watching a friend in a contest: their waves and their surfer, no physics of our own)
-    else { updateWaves(dt); rider.update(dt, inp, waves); }
+    else { updateWaves(dt); rider.update(dt, inp, waves); if (isFree()) boatBump(rider); }
     updateRanch(dt);
     rider.caughtT = rider.washed ? 6 : Math.max(0, (rider.caughtT || 0) - dt);   // (remember being washed in for a few seconds: that's why you ended up inside)
     // drifting too far inside or out wide on a lie: bring the surfer back to the lineup (the pool's walls hold you in)
@@ -2915,6 +2993,7 @@ renderer.setAnimationLoop(() => {
   // from just behind it you'd see your own back; it isn't drawn in your view until you're back in the lineup
   if (surfer && !W.on) surfer.visible = !(tick.demo && !rider && mode !== 'villa') && !(rider && rider.state === 'OUT' && !camera.layers.isEnabled(1));   // (the menu: just your board, no body)
   ARMTH.value = rider && rider.standing ? 0.02 : 0.12;   // standing, shoulder skin is kept whole (no holes up the arm); sitting or lying your shoulder is right at the lens, so it's cut away   // (outside views, e.g. tests and replays, show the whole body)
+  if (isFree()) boatTick(dt); else if (boat) { boat.visible = false; if (boatBtn) boatBtn.hidden = true; }
   if (peers.size) peersTick(dt);   // (friends on the free beach)
   if (camera.layers.isEnabled(1) || (tick.demo && !rider && mode !== 'villa')) renderer.render(scene, camera);   // (the menu has no arms to draw: one pass)
   else {

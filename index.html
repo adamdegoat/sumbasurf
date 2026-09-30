@@ -42,9 +42,12 @@
     font: 600 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing: .1em; touch-action: none; }
   #menu svg { width: 14px; height: 14px; }
   /* free-surf beach: back to the nearest peak's lineup (see game.js freeOut), and the quick fade it goes through */
-  #freeOut { position: fixed; z-index: 9; top: max(8px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); height: 32px; padding: 0 14px 0 11px; display: flex; align-items: center; gap: 7px;
+  #freeOut, #boatBtn, #boatGo { position: fixed; z-index: 9; top: max(8px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); height: 32px; padding: 0 14px 0 11px; display: flex; align-items: center; gap: 7px;
     border-radius: 16px; background: rgba(10,20,26,.5); border: 1px solid rgba(255,201,120,.55); color: #ffe2b2; font-size: 13px; font-weight: 700; letter-spacing: .06em; touch-action: manipulation; cursor: pointer; }
-  #freeOut[hidden] { display: none; } #freeOut svg { width: 14px; height: 14px; color: #ffc978; }
+  #freeOut[hidden], #boatBtn[hidden], #boatGo[hidden] { display: none; } #freeOut svg, #boatBtn svg, #boatGo svg { width: 14px; height: 14px; color: #ffc978; }
+  #fsTR { position: fixed; z-index: 9; top: max(8px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; }   /* (the free beach's buttons top right, one under the other, then who's there) */
+  #fsTR > .ctl { position: static !important; pointer-events: auto; }
+  #fsTR > #fsPlayers { position: static !important; }
   /* free-surf beach: which way to the nearest peak (see game.js freeGuide) */
   #freeGuide { position: fixed; z-index: 8; left: 50%; top: 30%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 3px; pointer-events: none; }
   #freeGuide.mk { transform: translate(-50%, 0); }   /* (in view: the arrow's tip just under the buoy) */
@@ -459,7 +462,7 @@
     #rotate .rtWhy { font-size: 14px; margin-top: 6px; } #rtTurn { margin-top: 14px; padding: 10px 20px; } #rotate .rtMid { padding: 8px 0 14px; } #rotate .rtLock { font-size: 12px; padding: 10px 12px; } }
   body:not(.villa):not(.strand) .vui, body:not(.playing) .ctl, body:not(.reef) #ear { display: none !important; }   /* (who shows where wins over the looks below) */
   /* ---- in-game controls, same family as the menu: warm driftwood pills, the poster face, amber for what's active */
-  #menu, #freeOut, #ear, #vGo, #vZoom, #vWatch, #vSit, #vPanel button, #ranch button { font-family: var(--disp) !important; letter-spacing: .05em !important; }
+  #menu, #freeOut, #boatBtn, #boatGo, #ear, #vGo, #vZoom, #vWatch, #vSit, #vPanel button, #ranch button { font-family: var(--disp) !important; letter-spacing: .05em !important; }
   #menu, #ear, #vZoom, #vWatch { border-radius: 999px !important; border: 1px solid var(--line) !important; background: linear-gradient(180deg, rgba(40,28,18,.66), rgba(24,17,11,.76)) !important;
     box-shadow: inset 0 1px 0 rgba(255,236,200,.12), 0 2px 10px rgba(0,0,0,.18); color: var(--sand) !important; display: inline-flex; align-items: center; gap: 7px; }
   #menu { height: 32px; font-weight: 700 !important; font-size: 13px !important; padding: 0 14px 0 11px !important; } #ear { font-size: 12px !important; font-weight: 600 !important; height: 30px; }
@@ -793,13 +796,19 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260930-1645</small>
+    <small id="build">build 260930-1716</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-30-boat', wd: true, date: '30 Sep 2026', time: '5:14 pm', title: 'A boat to watch from', items: [
+      'Free surf now has a boat anchored beside the big waves. Paddle up to its ladder and tap Climb on, or tap Go to boat.',
+      'Walk round the deck and watch your friends ride right past. Up to 6 of you fit, and you see each other walking round.',
+      'Tap Back in the water to jump back in by the ladder.',
+      'The small score counter no longer shows in free surf; your score still shows after each wave.',
+    ] },
     { id: '2026-09-30-follow', wd: true, date: '30 Sep 2026', time: '4:44 pm', title: 'Find your friends', items: [
       'Tap a friend\'s name on the list at the top right and you paddle over to them. Steer or paddle yourself to stop.',
       'Names now show over your friends at any distance, with how far away they are.',
@@ -1164,6 +1173,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1034"></script>
+<script type="module" src="js/game.js?v=1039"></script>
 </body>
 </html>
