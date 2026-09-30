@@ -244,7 +244,8 @@ export class OtherSurfer {
     const B = this.B, paddling = S.state === 'LIE' && S.paddling;
     this.weights(dt, paddling ? { paddle: 1 } : { sit: 1 }, 8);
     if (this.clips.paddle) this.clips.paddle.timeScale = 0.7 + (S.v || 0) / 3;
-    this.pos0.lerp(_d.set(0, paddling ? -0.93 : -0.36, paddling ? -0.5 : -0.25), 1 - Math.exp(-8 * dt)); this.body.position.copy(this.pos0);
+    // (lying: -0.76 puts the belly on the deck, checked in close-ups; at -0.93 the spine sat level with the deck, half the body inside the board: his catch 30 Sep 2026)
+    this.pos0.lerp(_d.set(0, paddling ? -0.76 : -0.36, paddling ? -0.5 : -0.25), 1 - Math.exp(-8 * dt)); this.body.position.copy(this.pos0);
     this.q0.slerp(_q2.identity(), 1 - Math.exp(-10 * dt)); this.body.quaternion.copy(this.q0);
     this.mixer.update(dt); this.body.updateMatrixWorld(true);
     this.paddleW = ease(this.paddleW, paddling ? 1 : 0, dt, 6); this.sitW = ease(this.sitW, paddling ? 0 : 1, dt, 6);
