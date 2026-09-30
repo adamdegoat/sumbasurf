@@ -796,13 +796,19 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260930-1825</small>
+    <small id="build">build 260930-1846</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-30-perfect10', date: '30 Sep 2026', time: '6:42 pm', title: 'Tougher judges, and a perfect 10', items: [
+      'Top scores are harder to reach: three good moves is a solid 8, and 9.5 takes a full wave of strong moves.',
+      'Bigger, heavier waves are worth more than the easy ones for the same ride.',
+      'A perfect 10 is now possible, but only for a wave the judges cannot fault: no fall, ridden to the end, a long deep barrel and six strong moves.',
+      'We are sorry: to keep things fair, everyone\'s best scores and the leaderboards start fresh. We tuned the judging to be fairer and more realistic, and we would rather everyone chase the new scores on the same terms.',
+    ] },
     { id: '2026-09-30-lighter', date: '30 Sep 2026', time: '6:00 pm', title: 'Lighter on your device', items: [
       'The game now does less drawing work each frame, so it is easier on your phone or computer over a long session.',
     ] },
@@ -1179,6 +1185,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1046"></script>
+<script type="module" src="js/game.js?v=1047"></script>
 </body>
 </html>

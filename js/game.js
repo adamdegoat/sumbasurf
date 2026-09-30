@@ -2,19 +2,19 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=193';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=188';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=194';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=189';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER } from './board.js?v=19';
 import { SurfAudio } from './audio.js?v=24';
 import { ranch, POOL } from './ranch.js?v=9';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=128';
-import { villa, VILLA } from './villa.js?v=160';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=129';
+import { villa, VILLA } from './villa.js?v=161';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=55';
-import { wildlife } from './wildlife.js?v=59';
+import { crew } from './crew.js?v=56';
+import { wildlife } from './wildlife.js?v=60';
 import { droneShow } from './show.js?v=13';
 import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=5';
 
@@ -609,7 +609,7 @@ function peersTick(dt) {
 let fsScoreT = 0;
 function freeScore(v) {
   let el = document.getElementById('fsScore'); if (!el) { el = document.createElement('div'); el.id = 'fsScore'; el.className = 'hud'; el.innerHTML = '<b></b><small></small>'; document.body.appendChild(el); }
-  const judge = v < 2 ? 'Poor' : v < 5 ? 'Fair' : v < 6.5 ? 'Good' : v < 8 ? 'Very good' : 'Excellent';   // (the contest judges' own words, as on the score screen)
+  const judge = v < 2 ? 'Poor' : v < 5 ? 'Fair' : v < 6.5 ? 'Good' : v < 8 ? 'Very good' : v < 10 ? 'Excellent' : 'Perfect';   // (the contest judges' own words, as on the score screen)
   el.querySelector('b').textContent = v.toFixed(1); el.querySelector('small').textContent = judge.toUpperCase();
   el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); document.body.classList.add('fsScoring'); clearTimeout(fsScoreT); fsScoreT = setTimeout(() => { el.classList.remove('on'); document.body.classList.remove('fsScoring'); }, 3000);
 }
@@ -953,9 +953,9 @@ function surfSteer(sx, stall) {
 const LEVELS = [['Amateur', 5, '5.0 to 6.9'], ['Advanced', 7, '7.0 to 8.4'], ['Pro Surfer', 8.5, '8.5 and up']];
 const levelOf = (v) => { let k = -1; LEVELS.forEach(([, t], i) => { if (v >= t) k = i; }); return k; };
 // your best ride per level, kept on this phone (quietly does nothing if storage is blocked)
-// (best7: the harder, realistic scoring of 30 Sep 2026 started everyone's bests afresh, his call; best6 before it (29 Sep), best5, best4 before 28 Sep)
-const bestFor = (m) => { try { return +localStorage.getItem('balisurf.best7.' + m) || 0; } catch (e) { return 0; } };
-const saveBest = (m, v) => { try { localStorage.setItem('balisurf.best7.' + m, String(v)); } catch (e) {} showBests(); if (typeof mmPanel === 'function') mmPanel(); };
+// (best8: the tougher top end and the perfect 10 of 30 Sep 2026 evening started everyone's bests afresh, his call; best7 that morning, best6 (29 Sep), best5, best4 before 28 Sep)
+const bestFor = (m) => { try { return +localStorage.getItem('balisurf.best8.' + m) || 0; } catch (e) { return 0; } };
+const saveBest = (m, v) => { try { localStorage.setItem('balisurf.best8.' + m, String(v)); } catch (e) {} showBests(); if (typeof mmPanel === 'function') mmPanel(); };
 // moments other code can listen for (the Wavedash copy's saves, badges and leaderboards; on sumbasurf.app nothing listens)
 const ssEvent = (n, d) => { try { dispatchEvent(new CustomEvent('ss:' + n, { detail: d })); } catch (e) {} };
 function showBests() {
@@ -2386,7 +2386,7 @@ function updateHUD(dt) {
     // the score screen, trimmed (his call 28 Sep 2026): the score, how it ended (big after a wipeout: it says what went
     // wrong), the three moves that counted most, then the level and your best. No heat total, no stats row.
     ui.msgT.textContent = rider.why; ui.msgT.classList.toggle('big', st === 'WIPE');
-    const judge = r.score < 2 ? 'Poor' : r.score < 5 ? 'Fair' : r.score < 6.5 ? 'Good' : r.score < 8 ? 'Very good' : 'Excellent';   // (the contest judges' own words for the range, 28 Sep 2026)
+    const judge = r.score < 2 ? 'Poor' : r.score < 5 ? 'Fair' : r.score < 6.5 ? 'Good' : r.score < 8 ? 'Very good' : r.score < 10 ? 'Excellent' : 'Perfect';   // (the contest judges' own words for the range, 28 Sep 2026)
     ui.msgN.innerHTML = r.t > 0 ? `${r.score.toFixed(1)}<small>${judge.toUpperCase()}${newBest ? '  \u00b7  NEW BEST' : ''}</small>` : '';
     ui.msgS.innerHTML = '';
     { const J = r.t > 0 ? rider.liveScore(st === 'WIPE', true) : null, NM = { TURN: 'Turn', SNAP: 'Snap', CUTBACK: 'Cutback', FLOATER: 'Floater', AIR: 'Air', 'AIR 360': 'Air 360', 'HANG FIVE': 'Hang five', 'HANG TEN': 'Hang ten', BARREL: 'Barrel' , ROUNDHOUSE: 'Roundhouse', 'LATE DROP': 'Late drop' };

@@ -169,7 +169,7 @@ export function heightAt(waves, x, z) { return waterAt(waves, x, z, _q).y; }
 //    of two different kinds, three strong in all. Without that a wave tops out just under 8.
 // detail = the judges' sheet: what counted, each line's share of the score (they add up to it).
 const SC = { drop: 1.5, fellK: 0.45, rep: 0.65, repTurn: 0.6, repBarrel: 0.45, W: [1, 0.8, 0.65, 0.5, 0.38, 0.28, 0.2, 0.14], Wtail: 0.1,
-  varK: 0.35, varMax: 1.4, pocketK: 0.05, pocketMax: 1.2, flowK: 0.01, flowMax: 0.3, finish: 0.5, K: 6.5 };
+  varK: 0.35, varMax: 1.4, pocketK: 0.05, pocketMax: 1.2, flowK: 0.01, flowMax: 0.3, finish: 0.5, K: 9 };   // (K 6.5 -> 9, his call 30 Sep 2026: three well-done moves already scored 9.1-9.6 anywhere; now about 8, and 9.5 takes a full, heavy wave)
 const SIGNATURE = new Set(['BARREL', 'AIR', 'AIR 360', 'HANG TEN']);
 export function scoreRide(r, fell = false, detail = false) {
   const ms = fell ? r.moves.filter((m) => m.t < r.t - SC.drop) : r.moves;
@@ -187,13 +187,19 @@ export function scoreRide(r, fell = false, detail = false) {
   const strong = ms.filter((m) => m.strong && m.name !== 'TURN'), strongKinds = new Set(strong.map((m) => m.name.replace('AIR 360', 'AIR'))).size;
   const excellentOk = !fell && ms.some((m) => SIGNATURE.has(m.name)) && strongKinds >= 2 && strong.length >= 3;
   if (!excellentOk && score > 7.5) score = 7.5 + 0.4 * (1 - Math.exp(-(score - 7.5) / 0.4));   // (not the whole package: very good, never excellent)
-  score = Math.round(10 * score) / 10;
+  // a perfect 10 (his call 30 Sep 2026, "really hard"): real judges give one for a wave they can't fault. Here it takes
+  // everything at once: no fall, ridden to the end, a deep barrel of 4 s or more, at least six strong moves of three
+  // kinds or more, and a wave already scoring 9.75 on its own (tested 30 Sep 2026: none of 574 recorded rides, nor a
+  // very good five-move wave; an elite seven-move wave with a long deep barrel on a heavy wave). Otherwise tops out at 9.9
+  const barrel = ms.find((m) => m.name === 'BARREL' && m.strong && (m.dur || 0) >= 4 && (m.notes || []).includes('deep'));
+  const perfect = excellentOk && !!barrel && !!r.end && strong.length >= 6 && strongKinds >= 3 && score >= 9.75;
+  score = perfect ? 10 : Math.min(9.9, Math.round(10 * score) / 10);
   if (!detail) return score;
   const share = (x) => (raw > 0 ? score * x * (fell ? SC.fellK : 1) * (r.judge ?? 1) / raw : 0);   // (each line's share of the final score: fall and spot included, so the lines add up to it)
   const lines = items.filter((it) => it.w > 0.05).slice(0, 6).map((it) => ({ name: it.m.name, dur: it.m.dur, notes: it.n > 1 ? [...it.m.notes, 'repeated'] : it.m.notes, pts: share(it.w) }));
   if (variety) lines.push({ name: 'VARIETY', notes: [], pts: share(variety) });
   if (flow + finish > 0.05) lines.push({ name: finish ? 'SPEED + CLEAN FINISH' : 'SPEED', notes: [], pts: share(flow + finish) });
-  return { score, lines, fell, excellentOk };
+  return { score, lines, fell, excellentOk, perfect };
 }
 // The wave's score, out of 10 like a contest judge: the best moves count most (each one after counts less), doing the
 // same move again is worth less and less, different kinds of big move earn a variety bonus, speed and a clean finish a
