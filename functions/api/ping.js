@@ -1,5 +1,5 @@
-// The owner's player alert on Telegram: ONE message per player, when they leave (his call 29 Sep 2026: nothing when
-// they come in). The game (sumbasurf.app and the Wavedash copy) posts here when its page is hidden after some surfing:
+// The owner's player alert on Telegram: a short line when a player starts surfing or walks into the villa (his call
+// 30 Sep 2026, to see the traffic as it happens), and one message when they leave. The game (sumbasurf.app and the Wavedash copy) posts here when its page is hidden after some surfing:
 //   { kind: new|back, who, dev, src, host, mins, waves, best, bestAt, spots, boards, again }
 // The bot key lives in the Cloudflare project's settings (the TG_TOKEN secret), never in code. Nothing a player sends
 // reaches the chat as their own text: every name comes from a fixed list and every number is clamped.
@@ -42,6 +42,19 @@ export async function onRequestPost({ request, env }) {
       try { country = new Intl.DisplayNames(['en'], { type: 'region' }).of(country) || country; } catch (e) {}
       const dev = DEV.includes(b.dev) ? b.dev : '', where = [country, dev, b.host === 'wavedash' ? 'on Wavedash' : ''].filter(Boolean).join(', ');
       await tg(env, chat, `Feedback from ${name || 'someone'}${where ? ` (${where})` : ''}:\n${text}`);
+    } catch (e) {}
+    return none;
+  }
+  if (b.kind === 'in') {   // they just started surfing or walked into the villa: one short line (his call 30 Sep 2026), its own once-a-minute limit so the note when they leave still goes
+    if (env.KV && ip) { if (await env.KV.get('in:' + ip)) return none; await env.KV.put('in:' + ip, '1', { expirationTtl: 60 }); }
+    try {
+      const chat = await chatId(env); if (!chat) return none;
+      let country = request.cf && request.cf.country || '';
+      try { country = new Intl.DisplayNames(['en'], { type: 'region' }).of(country) || country; } catch (e) {}
+      const dev = DEV.includes(b.dev) ? b.dev : '', src = SOURCES.includes(b.src) ? b.src : '', wd = b.host === 'wavedash';
+      const where = SPOTS.includes(b.where) ? b.where : '', who = b.seen === 'back' ? 'Returning player' : 'New player';
+      const top = `${b.who === 'claude' ? 'Claude testing: ' : ''}${who} started${where ? ` at ${where}` : ''}`;
+      await tg(env, chat, `${top}\n${[country, dev, wd ? 'on Wavedash' : src ? `from ${src}` : ''].filter(Boolean).join(', ')}`);
     } catch (e) {}
     return none;
   }

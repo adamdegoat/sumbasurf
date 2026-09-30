@@ -743,6 +743,9 @@ function hello(where) {   // (called each time they start somewhere: the first t
     const ua = navigator.userAgent, touch = navigator.maxTouchPoints > 1;
     const dev = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && touch) || (/Android/i.test(ua) && !/Mobile/i.test(ua)) ? 'tablet' : /iPhone|Android|Mobile/i.test(ua) ? 'phone' : touch ? 'touchscreen computer' : 'computer';
     visit = { kind, who, dev, src: cameFrom(), ms: 0, since: performance.now(), waves: 0, best: 0, bestAt: '', spots: new Set(), boards: new Set(), sentAt: -1, sentMs: 0, sent: 0 };
+    // and a short note the moment they start (his call 30 Sep 2026: to see the traffic as it happens, not only when they leave)
+    const body = JSON.stringify({ kind: 'in', seen: kind, who, dev, src: visit.src, host: ON_WD ? 'wavedash' : 'app', where });
+    fetch((ON_WD ? 'https://sumbasurf.app' : '') + '/api/ping', { method: 'POST', body, keepalive: true, mode: ON_WD ? 'no-cors' : 'same-origin' }).catch(() => {});
   }
   if (visit) visit.spots.add(where);
 }
