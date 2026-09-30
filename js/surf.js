@@ -33,6 +33,8 @@ export const RIDE = {
   catchLate: 1.7,                      // seconds after the wave first lifts you that it can still take you (bigger boards: longer)
   turnMin: 1,                          // share of the shortboard's turn rate that counts as a real turn
   air: true,                           // can this board launch an air
+  slipSoft: 0.3, slipHard: 0.62,       // how far the tail can hang out before the fins pull it back (rad): gently from soft, never past hard
+  slideMove: false,                    // the alaia's slide: held well past what fins allow, scored as a move (finned boards: off)
 };
 
 // The boards. Each changes the physics the way the real thing does (relative to the 6'2" shortboard above):
@@ -41,6 +43,10 @@ export const RIDE = {
 //             drift early; less grip on steep heavy waves
 //   longboard 9'2": paddles fast and catches waves early; very stable and glides; slow, wide turns; no snaps or airs
 //   gun       9'6" big-wave board: paddles into huge waves early; holds a line at high speed with lots of grip; stiff turns
+//   alaia     7'2" wooden plank with no fins (the old Hawaiian board; his pick 30 Sep 2026): thin, so it paddles slowly,
+//             catches waves late and bogs when it slows; no fins, so it's the fastest glide of all and the tail lets go
+//             easily: throw it sideways and it slides down the face, then catch it again. Too far or too long and it
+//             slides right out. No airs. Slides, not spins: a spin whips your view round (his call)
 const BASE = { ...RIDE, walk: false };   // (walk: false here, or a longboard picked earlier left every board walking to the nose on PUMP, found 29 Sep 2026)
 const BOG_FALL = 1.1;
 const NOSE_STEP = 0.38, NOSE_BACK = 0.24, PEARL_T = 0.8, WOB_MAX = 0.3, WOB_STEER = 3.2;   // (the rock at the nose: how far it can tip before you fall, rad; how hard your thumb pushes it back)   // (one cross-step up or down the longboard, s; how long the nose can be out of the pocket before it digs in)   // seconds a board can sit below planing speed in a stall before the tail sinks and you fall
@@ -48,6 +54,9 @@ export const BOARDS = {
   short: {},
   fish: { planeV: 3.0, snap: 0.85, paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.3, relFrom: 0.3, leanRate: 10.0, yawLag: 0.06, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85, catchPaddle: 0.6, catchLate: 1.9, catchReach: 1.4 },
   long: { planeV: 2.3, walk: true, snap: 0.3, paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.85, catchK: 0.65, catchPaddle: 0.35, catchLate: 2.5, catchReach: 3.0, air: false, turnMin: 0.55 },
+  alaia: { planeV: 4.2, snap: 1.1, paddleThrust: 2.2, paddleMax: 2.1, lieDrag: 0.32, lieLat: 1.6, drag: 0.055, drag2: 0.009, leanMax: 1.15, leanRate: 8.0, yawLag: 0.07, railBite: 0.26,
+    finGrip: 2.3, gripMax: 11, relFrom: 0.22, tailLet: 0.18, tailBack: 0.45, skidLoss: 0.05, glide: 0.82, pump: 0.42, popTime: 0.66, catchK: 1.2, catchPaddle: 1.05, catchLate: 1.4, catchReach: 0.85,
+    air: false, slipSoft: 0.55, slipHard: 1.2, slideMove: true },
   gun: { planeV: 3.0, snap: 0.45, paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.72, catchK: 0.75, catchPaddle: 0.5, catchLate: 2.0, catchReach: 1.8, turnMin: 0.75 },
 };
 export function setBoard(name) { Object.assign(RIDE, BASE, BOARDS[name] || {}); }
@@ -59,7 +68,7 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 // what each move is worth before how well and where you did it (28 Sep 2026: turns, snaps and cutbacks raised so a
 // wave of hard, committed turns in the pocket can score like a barrel, as real judges score it)
 const LINK_TOP = new Set(['SNAP', 'CUTBACK', 'FLOATER', 'AIR', 'AIR 360']);   // (the moves a bottom turn sets up)
-export const MOVE_BASE = { TURN: 1.0, CARVE: 3.8, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0, 'HANG FIVE': 3.6, 'HANG TEN': 5.2, ROUNDHOUSE: 5.8, 'LATE DROP': 4.0 };   // (airs kept above the turns: the hardest move scores most)
+export const MOVE_BASE = { SLIDE: 4.2, TURN: 1.0, CARVE: 3.8, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0, 'HANG FIVE': 3.6, 'HANG TEN': 5.2, ROUNDHOUSE: 5.8, 'LATE DROP': 4.0 };   // (airs kept above the turns: the hardest move scores most)
 export const MOVE_BASE_OLD = { TURN: 0.9, SNAP: 2.2, CUTBACK: 2.4, FLOATER: 2.0, AIR: 3.0, 'AIR 360': 4.2 };
 const JUDGE_K = 6;   // (28 Sep 2026: with quality over quantity below, 3 to 5 great moves reach the 8s; was 8)   // how hard the top of the scale is (calibrated with test riders: see HANDOVER)
 
@@ -240,7 +249,7 @@ export class Rider {
     this.turn = 0; this.lean = 0; this.skid = 0; this.relS = 1; this.v = 0; this.hx = 0; this.hz = 0; this.gAlong = 0;
     this.wave = null; this.s = 99; this.zl = 99; this.inBarrel = false; this.onFace = false; this.lowT = 0;
     this.air = null; this.vyS = 0; this.hitV = 0; this.vyPk = 0; this.prevY = undefined;
-    this.pumpWas = false; this.pumpN = 0; this.pumpGap = 9; this.pumpT = 9; this.pumpQ = 0; this.weave = 0; this.pumping = false; this.foamT = 0; this.backT = 0; this.wwFloatT = 0; this.tubeOut = 0; this.turnHold = 0; this.recentPaddle = 0; this.slide = 0; this.stalling = 0;
+    this.pumpWas = false; this.pumpN = 0; this.pumpGap = 9; this.pumpT = 9; this.pumpQ = 0; this.weave = 0; this.pumping = false; this.foamT = 0; this.backT = 0; this.wwFloatT = 0; this.tubeOut = 0; this.turnHold = 0; this.recentPaddle = 0; this.slide = 0; this.slideT = 0; this.slidePk = 0; this.slideOutT = 0; this.stalling = 0;
     this.ride = { t: 0, top: 0, barrel: 0, pocket: 0, turns: 0, cutbacks: 0, snaps: 0, speed: 0, end: 0, score: 0, moves: [], tubeT: 0, leanPk: 0, gPk: 0, tubeDeep: 0, combo: 0, lastMoveT: -9 }; this.turnSign = 0; this.tyMin = this.tyMax = undefined; this.cbArmed = false; this.snapArm = 0; this.snapK = 0; this.snapPk = 0; this.lipPush = 0; this.lipHit = false; this.trick = null;
   }
   set(state) { this.state = state; this.stateT = 0; }
@@ -404,10 +413,12 @@ export class Rider {
       if (Math.hypot(rx, rz) > 1.5) {
         // measured against the water the board is sliding on, not the ground
         const vd = Math.atan2(rz, rx); let slip = this.th - vd; slip = Math.atan2(Math.sin(slip), Math.cos(slip));
-        const a = Math.abs(slip), soft = 0.3 + 0.5 * sk, hard = 0.62 + 0.7 * sk;   // (in a snap the tail swings right out)
+        const a = Math.abs(slip), soft = P.slipSoft + 0.5 * sk, hard = P.slipHard + 0.7 * sk;   // (in a snap the tail swings right out)
         this.slide = a;   // how far the tail is hanging out (rad): drives the spray fan and the hiss
         if (a > soft) { const na = a > hard ? hard : a - (a - soft) * Math.min(1, h * 6); this.th = vd + Math.sign(slip) * na; }
       }
+      // (the alaia: held right out at the limit too long, it loses the water and slides out from under you)
+      if (P.slideMove) { if ((this.slide || 0) > 0.93 * P.slipHard) { this.slideOutT = (this.slideOutT || 0) + h; if (this.slideOutT > 0.6) return this.wipe('Slid out: the alaia lost the water'); } else this.slideOutT = Math.max(0, (this.slideOutT || 0) - 2 * h); }
       const dr = P.drag * along + P.drag2 * along * Math.abs(along) + 1.6 * sk * (this.slide || 0) * Math.sign(along);   // (a snap scrubs speed: the tail sliding across the water)
       ax += -dr * dx; az += -dr * dz;
       // stalling: weight on the tail and the trailing hand dragged in the face, a strong brake (you let the wave catch you)
@@ -584,6 +595,14 @@ export class Rider {
           this.move('TURN', crit, 0, 0.35 + 0.65 * smooth(0.15, 0.45, this.tyMax - this.tyMin)); }   // (a real carve on the face near the wave's power: a wiggle out on the flats isn't a turn)
           this.ride.gPk = 0; this.turnSign = sg; this.turnHold = 0; this.tyMin = this.tyMax = hFace; }   // (a turn is judged on how much of the face it used: flat S-bends in the middle score a third)
         else this.turnHold = (this.turnHold || 0) + h;
+      }
+      // the alaia's slide (his pick 30 Sep 2026): the tail thrown out well past what fins would hold (35 deg+, peaking 43 deg+) for at least
+      // 0.3 s, then caught again with the board still running. Only the alaia (slideMove); every finned board skips this
+      if (P.slideMove) {
+        if ((this.slide || 0) > 0.62 && this.stateT > 1.5) { if (!(this.slideT > 0)) this.slideOn = onFront; this.slideT = (this.slideT || 0) + h; this.slidePk = Math.max(this.slidePk || 0, this.slide); }   // (not the settle just after you stand up)
+        else if ((this.slide || 0) < 0.45 && this.slideT > 0) {   // (caught again: the tail back under you)
+          if (this.slideT >= 0.3 && this.slidePk >= 0.75 && this.v > 0.45 * C.speed && this.slideOn) { this.ride.slides = (this.ride.slides || 0) + 1; this.move('SLIDE', crit, this.slideT, (0.8 + 0.4 * smooth(0.75, 1.15, this.slidePk)) * (0.45 + 0.55 * smooth(5.0, 7.0, C.H))); }   // (worth less on a small, soft wave, as a judge scores it: Pantai Kuda (5 m) about half, 7 m and up in full; his call 30 Sep 2026, it out-scored every board there)
+          this.slideT = 0; this.slidePk = 0; }
       }
       // a cutback: from running down the line, turn right round to face the breaking part, still with speed
       const hd = Math.cos(this.th);

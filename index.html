@@ -638,6 +638,8 @@
   /* the board and stance picks inside the free surf panel (they move in from the spot panel: see freeroom.js); the BEST
      tag is about the spot picked, so not here; on a phone on its side they squeeze onto one line */
   #start .fsPanel .boards button.best::after { display: none; }
+  /* five boards (the alaia joined 30 Sep 2026): the spot panel lays them out 3 + 2 on every screen, so the panel is no taller than with four */
+  #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards { display: grid; grid-template-columns: repeat(3, max-content); gap: 6px; }
   @media (max-height: 460px) {
     #start .fsPanel .mmPicks { margin-top: 2px; padding-top: 5px; gap: 5px; flex-wrap: nowrap; flex-direction: row; align-items: center; }
     #start .fsPanel .mmPicks .boardrow, #start .fsPanel .mmPicks .stancerow { display: flex; }
@@ -829,13 +831,19 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260930-2237</small>
+    <small id="build">build 260930-2346</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-30-alaia', wd: true, date: '30 Sep 2026', time: '11:46 pm', title: 'New board: the Alaia', items: [
+      'A new board joins the quiver: the Alaia, the old Hawaiian wooden board with no fins.',
+      'It has the fastest glide of all and it is very loose. Throw the tail out, slide sideways down the face, then catch it again. A clean slide scores as its own move.',
+      'It paddles slowly, catches waves late and sinks under you if you slow down. Push a slide too far and it slides right out.',
+      'Pick it in the menu, in free surf or on the contest heat board. Best at Tanjung Uma and Watu Kanan.',
+    ] },
     { id: '2026-09-30-about', wd: true, date: '30 Sep 2026', time: '11:00 pm', title: 'About us', items: [
       'New About us button in the menu corner: who makes SumbaSurf, and how to reach us on Instagram or X for business and partnerships.',
     ] },
@@ -1249,6 +1257,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1062"></script>
+<script type="module" src="js/game.js?v=1064"></script>
 </body>
 </html>

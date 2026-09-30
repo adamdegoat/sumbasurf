@@ -5,7 +5,7 @@
 //   const FM = await import('./test/film.js'); const T2 = await import('./test/trailer2.js'); await T2.prep(); T2.add(FM); await FM.run('fPad')
 import * as THREE from 'three';
 import { brain, carveBrain } from './sim2.js';
-import { heightAt } from '../js/surf.js?v=189';
+import { heightAt } from '../js/surf.js?v=190';
 const G = () => window.__g;
 const realNow = window.__realNow || (window.__realNow = performance.now.bind(performance));
 let VT = 0, vOn = false; performance.now = () => (vOn ? VT : realNow());

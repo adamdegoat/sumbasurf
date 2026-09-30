@@ -61,8 +61,16 @@ const PAINT = {
     if (Math.abs(Math.abs(v) - 0.7) < 0.03) return [0.98, 0.97, 0.94];
     return mix(PINK, PEACH, sm(0.4, 0.95, Math.abs(v))); },
   // alaia: one plank of paulownia, oiled, its grain running nose to tail
-  alaia: (u, v) => { const k = 0.86 + 0.14 * Math.sin(v * 38 + Math.sin(u * 7) * 2.5) * Math.sin(v * 11 + 1.3);
-    return [0.66 * k, 0.45 * k, 0.26 * k]; },
+  // (1 Oct 2026, the alaia became a board you ride: the grain was drawn across the board's own width, so it bunched into
+  // a point at the nose like corduroy. Now it runs straight along the plank in real measure and off the rails at the
+  // nose, as sawn wood does, with an uneven spacing, a few darker growth lines, a tone that shifts along it, oiled rails)
+  alaia: (u, v, deck) => { const O = SHAPES.alaia.OUT; let i = 1; while (i < O.length - 1 && O[i][0] < u) i++;
+    const f = Math.min(1, Math.max(0, (u - O[i - 1][0]) / (O[i][0] - O[i - 1][0]))), x = v * (O[i - 1][1] + (O[i][1] - O[i - 1][1]) * f);   // (across the plank in real terms)
+    const g = x * 30 + 0.6 * Math.sin(u * 5.3 + x * 3) + 0.35 * Math.sin(u * 13.1 + 1.7);   // (the grain, wavering gently along its length)
+    let k = 0.9 + 0.055 * Math.sin(g * 2.1) + 0.03 * Math.sin(g * 9.7 + 0.6 * Math.sin(x * 57));
+    if (Math.abs(Math.sin(g * 0.37 + 0.8)) > 0.985) k -= 0.1;   // (a few darker growth lines)
+    k *= (0.96 + 0.04 * Math.sin(u * 9 + 2.1)) * (1 - 0.16 * sm(0.86, 1, Math.abs(v))) * (deck ? 1 : 0.93);   // (tone along the plank, the oiled rails darker, the bottom a touch darker)
+    return [0.68 * k, 0.47 * k, 0.28 * k]; },
 };
 // the paint job as a sharp picture, pixel by pixel (it used to be one colour per mesh point, ~2 cm apart across the
 // board, which smeared the logo, stripes and pad into blobs). One sheet per board type, made once and shared

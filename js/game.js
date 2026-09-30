@@ -3,18 +3,18 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=194';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=189';
-import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER } from './board.js?v=19';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=190';
+import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER } from './board.js?v=20';
 import { SurfAudio } from './audio.js?v=24';
 import { ranch, POOL } from './ranch.js?v=9';
 import { SPOTS, spotGroup, builtSpots } from './spots.js?v=129';
-import { villa, VILLA } from './villa.js?v=161';
+import { villa, VILLA } from './villa.js?v=162';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=56';
-import { wildlife } from './wildlife.js?v=60';
+import { crew } from './crew.js?v=57';
+import { wildlife } from './wildlife.js?v=61';
 import { droneShow } from './show.js?v=13';
 import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=5';
 
@@ -106,6 +106,7 @@ const BOARD_INFO = {
   short: ['Shortboard', "6'2\" thruster. The high-performance board: sharp, snappy turns, snaps off the lip and airs. It's small, so it paddles slowly and you have to take off late and steep, and it loses speed if you stop pumping.", 'Tanjung Uma, Batu Hitam, Watu Kanan, Karang Hiu, Pantai Bintang, the Ranch', [2, 4, 5, 2, 5]],
   fish: ['Fish', "5'8\" wide twin fin with a swallow tail. Loose and fast: planes easily, paddles well and flies down the line on soft or slow waves with little pumping. Turns are skatey and the tail drifts early; on steep, heavy waves it's twitchy and loses grip.", 'Pantai Kuda, Watu Kanan, Pantai Bintang, the Ranch', [4, 5, 4, 3, 4]],
   long: ['Longboard', "9'2\" single fin. Smooth and relaxed: paddles fast and catches waves early, rock steady, glides forever. Turns are slow, wide arcs, like steering a boat, and it can't do snaps or airs. Clumsy in steep barrels.", 'Pantai Kuda (learning)', [5, 3, 1, 5, 0]],
+  alaia: ['Alaia', "7'2\" wooden plank with no fins, the old Hawaiian board. The fastest glide of all and very loose: throw the tail out and slide sideways down the face, then catch it again. Thin, so it paddles slowly, catches waves late and sinks under you if you slow down. Push a slide too far and it slides right out. No airs.", 'Tanjung Uma, Watu Kanan', [1, 5, 4, 1, 0]],
   gun: ['Gun', "9'6\" big-wave board with a pointed nose and pin tail. Paddles into giant waves early, before they get too steep, and holds its line at high speed with lots of grip. Stiff, long turns; sluggish on small waves.", 'Gunung Laut', [5, 4, 2, 5, 2]],
 };
 // the board picker in the menu: each board's outline in its own colours, the one you're riding lit up
@@ -113,10 +114,11 @@ const BOARD_SVG = {
   short: ['M20 17 C20 11 40 8 62 8 C84 8 98 13 102 17 C98 21 84 26 62 26 C40 26 20 23 20 17Z', '#f4f1ea', '#e8715a'],
   fish: ['M22 9 L28 17 L22 25 C40 29 70 28 86 24 C94 21 97 18 97 17 C97 16 94 13 86 10 C70 6 40 5 22 9Z', '#e0b23a', '#1f8a8a'],
   long: ['M4 17 C4 11 22 8 60 8 C100 8 116 12 116 17 C116 22 100 26 60 26 C22 26 4 23 4 17Z', '#efe4c8', '#2f5d8a'],
-  gun: ['M3 17 C18 12 48 9 70 9 C94 9 110 14 118 17 C110 20 94 25 70 25 C48 25 18 22 3 17Z', '#c8322a', '#f4f1ea'] };
+  gun: ['M3 17 C18 12 48 9 70 9 C94 9 110 14 118 17 C110 20 94 25 70 25 C48 25 18 22 3 17Z', '#c8322a', '#f4f1ea'],
+  alaia: ['M12 11 L12 23 C40 25 82 25 100 22 C108 20 111 18 111 17 C111 16 108 14 100 12 C82 9 40 9 12 11Z', '#b8804a', '#6b4423'] };
 function boardPicker() {
   const box = document.getElementById('boards'); if (!box || box.childElementCount) return;
-  for (const t of ['short', 'fish', 'long', 'gun']) { const [d, fill, rail] = BOARD_SVG[t], b = document.createElement('button'); b.dataset.board = t;
+  for (const t of ['short', 'fish', 'long', 'gun', 'alaia']) { const [d, fill, rail] = BOARD_SVG[t], b = document.createElement('button'); b.dataset.board = t;
     b.innerHTML = `<svg viewBox="0 0 120 34"><path d="${d}" fill="${fill}" stroke="${rail}" stroke-width="2.5"/><path d="M${t === 'gun' ? 8 : 26} 17 H${t === 'long' ? 112 : 96}" stroke="${rail}" stroke-width="1" opacity=".6"/></svg><span>${BOARD_INFO[t][0]}</span><small>${BOARD_INFO[t][2]}</small>`;
     const pick = (e) => { e.preventDefault(); e.stopPropagation(); useBoard(t); }; b.addEventListener('click', pick); b.addEventListener('touchend', pick, { passive: false }); box.appendChild(b); }
   for (const b of box.children) b.classList.toggle('on', b.dataset.board === boardType); document.getElementById('boardName').textContent = BOARD_INFO[boardType][0];
@@ -142,7 +144,7 @@ function applyStance() { stanceQ.setFromAxisAngle(WORLD_UP, physStance() === 're
 setTimeout(stancePicker, 0);
 function useBoard(t) {
   boardType = t; try { localStorage.setItem('sumbasurf.board', t); } catch (e) {}
-  rig.remove(board); board.geometry.dispose(); board = makeBoard(t, true); board.position.z = Math.max(0, (BOARD_LENGTH(t) - 1.88) * 0.33); board.scale.x = MIRROR ? -1 : 1; rig.add(board);   // (at a mirrored spot, mirrored back: the logo reads right)
+  rig.remove(board); board.geometry.dispose(); board = makeBoard(t, true); board.position.z = Math.max(0, (BOARD_LENGTH(t) - 1.88) * 0.33); board.position.y = t === 'alaia' ? 0.034 : 0;   /* (the alaia is 2.8 cm thick, half a shortboard: its deck raised to where theirs is, or lying on it the water washed over it as a pale sheet; the feet follow via deckAt) */ board.scale.x = MIRROR ? -1 : 1; rig.add(board);   // (at a mirrored spot, mirrored back: the logo reads right)
   boardTail = board.position.z - BOARD_LENGTH(t) / 2 + 0.04; setBoard(t);
   for (const b of document.querySelectorAll('[data-board]')) b.classList.toggle('on', b.dataset.board === t);
   document.getElementById('boardName').textContent = BOARD_INFO[t][0]; if (document.body.classList.contains('playing') && mode !== 'villa') ui.cond.textContent = modeName(mode) + '  \u00b7  ' + BOARD_INFO[t][0] + '  \u00b7  ' + stanceName();
@@ -535,7 +537,7 @@ function freePeer(id, a, name, sent) {   // (sent: the sender's own clock when i
   if (P.buf.length) { const L = P.buf[P.buf.length - 1].a; if (Math.hypot(a[1] - L[1], a[3] - L[3]) > 25) P.buf = []; }   // (Paddle out: they're simply there, not sliding across the bay; his note 30 Sep 2026)
   if (name) P.name = name;
   P.buf.push({ t, a }); if (P.buf.length > 12) P.buf.shift(); P.last = now;
-  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=19').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }
+  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=20').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }
 }
 function freeSay(id, text) { const P = peers.get(id); if (P) P.say = { text: String(text).slice(0, 90), until: performance.now() + 5000 }; }
 // every player's own shorts colour (his call 30 Sep 2026: automatic, different for each), picked from their player id,

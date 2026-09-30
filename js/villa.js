@@ -6,7 +6,7 @@
 // spot's dz. The waves break at x 0 (coast z about -60) and peel off toward +x, toward the point. A banyan beside the
 // house carries a spiral stair up to a deck in its canopy, the highest seat on the point.
 import * as THREE from 'three';
-import { makeBoard } from './board.js?v=19';
+import { makeBoard } from './board.js?v=20';
 import { landMaterial, waterMaterial } from './wave.js?v=194';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 

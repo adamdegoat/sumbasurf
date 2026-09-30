@@ -13,7 +13,7 @@
 // Every target is eased so a change of pose is a movement, never a snap.
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=19';
+import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=20';
 
 const UP = new THREE.Vector3(0, 1, 0), INTO_WAVE = new THREE.Vector3(0, 0, -1);
 const V = () => new THREE.Vector3(), Q = () => new THREE.Quaternion();
