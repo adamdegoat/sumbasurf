@@ -142,6 +142,8 @@
   .invBtns a, .invBtns button { min-height: 46px; padding: 0 20px; border-radius: 999px; display: inline-flex; align-items: center; font: 700 16px/1 var(--disp); letter-spacing: .03em; text-transform: uppercase; cursor: pointer; touch-action: manipulation; text-decoration: none; }
   #invGo { background: #ffcf8a; color: #15110c; border: 0; }
   #invNo { background: none; color: rgba(246,236,220,.8); border: 1px solid rgba(253,247,238,.25); }
+  #invNo { flex-direction: column; justify-content: center; gap: 3px; }
+  #invNo small { font: 600 11px/1 var(--disp); letter-spacing: .08em; color: rgba(246,236,220,.6); }
   body.playing #inv { display: none !important; }
   /* full screen (his call 30 Sep 2026): phones and tablets only, until they play from the home screen; a guide to
      saving the game as an app (iPhone) or going full screen now (Android). On Wavedash it sits beside Leaderboard */
@@ -643,7 +645,7 @@
   <div class="pnBox">
     <h3>SumbaSurf is on Wavedash</h3>
     <p><b>Multiplayer surf contests</b> with your friends, plus leaderboards and badges. Free to play, on your phone too.</p>
-    <div class="invBtns"><a id="invGo" href="https://wavedash.com/games/sumbasurf" rel="noopener">Play on Wavedash</a><button id="invNo" type="button">Keep playing here</button></div>
+    <div class="invBtns"><a id="invGo" href="https://wavedash.com/games/sumbasurf" rel="noopener">Play on Wavedash</a><button id="invNo" type="button">Keep playing here<small>Single player</small></button></div>
   </div>
 </div>
 <button id="fbBtn" type="button" aria-haspopup="dialog" aria-controls="fb">Feedback</button>
@@ -660,7 +662,7 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260930-0834</small>
+    <small id="build">build 260930-1133</small>
   </div>
 </div>
 <script>
@@ -946,13 +948,12 @@
     const fsOpen = () => { fill(); fsG.hidden = false; }, fsClose = () => { fsG.hidden = true; };
     onTap(fsBtn, fsOpen); onTap(document.getElementById('fsClose'), fsClose); onTap(fsG, (e) => { if (e.target === fsG) fsClose(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !fsG.hidden) fsClose(); }); }
-  // the Wavedash invite (see #inv): phones and tablets on sumbasurf.app only, once per device, a moment after the menu is
-  // up; never inside the Wavedash copy, never on the owner's devices (?me=1), never on this Mac unless ?inv=1
-  { const inv = document.getElementById('inv'), K = 'sumbasurf.wdInvite2', force = /[?&]inv=1\b/.test(location.search);
-    let skip = false; try { skip = !!localStorage.getItem(K) || !!localStorage.getItem('sumbasurf.me'); } catch (e) {}
+  // the Wavedash invite (see #inv): phones and tablets on sumbasurf.app only, EVERY visit (his call 30 Sep 2026; once per
+  // page load, a moment after the menu is up, owner's phone too); never inside the Wavedash copy, never on this Mac unless ?inv=1
+  { const inv = document.getElementById('inv'), force = /[?&]inv=1\b/.test(location.search), skip = false;
     const desk = matchMedia('(hover: hover) and (pointer: fine)').matches && !navigator.maxTouchPoints;
     const ok = force || (!skip && !desk && !globalThis.Wavedash && !/wavedash/.test(location.hostname) && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname));
-    const done = () => { inv.hidden = true; try { localStorage.setItem(K, '1'); } catch (e) {} };
+    const done = () => { inv.hidden = true; };
     if (ok) { const t = setInterval(() => { const st = document.getElementById('start');
       if (!window.__g || !st || st.style.display === 'none' || document.body.classList.contains('playing') || !pn.hidden || !document.getElementById('fb').hidden) return;
       clearInterval(t); setTimeout(() => { if (!document.body.classList.contains('playing')) inv.hidden = false; }, 1200); }, 500); }
