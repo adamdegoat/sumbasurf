@@ -196,6 +196,8 @@
   #invNo { background: none; color: rgba(246,236,220,.8); border: 1px solid rgba(253,247,238,.25); }
   #invNo { flex-direction: column; justify-content: center; gap: 3px; }
   #invNo small { font: 600 11px/1 var(--disp); letter-spacing: .08em; color: rgba(246,236,220,.6); }
+  #invCopy { display: block; margin: 12px auto 0; padding: 6px 10px; border: 0; background: none; font: 600 13px/1 var(--disp); letter-spacing: .06em; color: rgba(246,236,220,.72); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }   /* (copy the link, for in-app browsers where the button can't open it: his ask 30 Sep 2026) */
+  #invCopy.ok { color: #ffc978; text-decoration: none; }
   body.playing #inv { display: none !important; }
   /* full screen (his call 30 Sep 2026): phones and tablets only, until they play from the home screen; a guide to
      saving the game as an app (iPhone) or going full screen now (Android). On Wavedash it sits beside Leaderboard */
@@ -780,6 +782,7 @@
     <h3>SumbaSurf is on Wavedash</h3>
     <p><b>Free surf and surf contests</b> with your friends, plus leaderboards and badges. Free to play, on your phone too.</p>
     <div class="invBtns"><a id="invGo" href="https://wavedash.com/games/sumbasurf" rel="noopener">Play on Wavedash</a><button id="invNo" type="button">Keep playing here<small>Single player</small></button></div>
+    <button id="invCopy" type="button">Copy Wavedash link</button>
   </div>
 </div>
 <button id="fbBtn" type="button" aria-haspopup="dialog" aria-controls="fb">Feedback</button>
@@ -796,13 +799,16 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260930-1911</small>
+    <small id="build">build 260930-1953</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-30-poses', date: '30 Sep 2026', time: '7:49 pm', title: 'Friends look right on the wave', items: [
+      'Friends riding waves now keep a natural stance in hard turns and in the barrel, with the back arm held out properly.',
+    ] },
     { id: '2026-09-30-perfect10', date: '30 Sep 2026', time: '6:42 pm', title: 'Tougher judges, and a perfect 10', items: [
       'Top scores are harder to reach: three good moves is a solid 8, and 9.5 takes a full wave of strong moves.',
       'Bigger, heavier waves are worth more than the easy ones for the same ride.',
@@ -1135,6 +1141,10 @@
       clearInterval(t); setTimeout(() => { if (!document.body.classList.contains('playing')) inv.hidden = false; }, 1200); }, 500); }
     onTap(document.getElementById('invNo'), done);
     onTap(document.getElementById('invGo'), (e) => { e.preventDefault(); done(); location.href = 'https://wavedash.com/games/sumbasurf'; });   // (on the touch itself: a plain link tap on a phone often never came here)
+    { const cb = document.getElementById('invCopy'), URL_WD = 'https://wavedash.com/games/sumbasurf';
+      const copied = () => { cb.textContent = 'Link copied'; cb.classList.add('ok'); setTimeout(() => { cb.textContent = 'Copy Wavedash link'; cb.classList.remove('ok'); }, 2500); };
+      const old = () => { const t = document.createElement('textarea'); t.value = URL_WD; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); copied(); } catch (e) {} t.remove(); };
+      onTap(cb, (e) => { e.preventDefault(); e.stopPropagation(); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(URL_WD).then(copied, old); else old(); }); }
     onTap(inv, (e) => { if (e.target === inv) done(); }); }
   // feedback (see #fbBtn): sent as plain text so the Wavedash copy, on another address, can send it too
   const fb = document.getElementById('fb'), fbBtn = document.getElementById('fbBtn'), fbName = document.getElementById('fbName'), fbText = document.getElementById('fbText'), fbSend = document.getElementById('fbSend'), fbNote = document.getElementById('fbNote');
@@ -1185,6 +1195,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1050"></script>
+<script type="module" src="js/game.js?v=1059"></script>
 </body>
 </html>

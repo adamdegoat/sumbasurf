@@ -132,7 +132,7 @@ export class OtherSurfer {
     if (st !== 'RIDE' && st !== 'POP') return this.water(dt, S);
     const fwd = _a.set(0, 0, 1).applyQuaternion(S.q), bup = _b.set(0, 1, 0).applyQuaternion(S.q);
     // ---- eased drivers
-    const leanN = Math.max(-1, Math.min(1, S.lean || 0));
+    const leanN = Math.max(-0.55, Math.min(0.55, S.lean || 0));   // (the body shows a hard turn's lean only up to about half: at full lean the twist, bend and head turn together contorted it, his catch 30 Sep 2026)
     this.lean = ease(this.lean, leanN, dt, 9);
     this.load = ease(this.load, Math.min(1.4, Math.abs(S.turn || 0) * (S.v || 0) / 9.8), dt, 8);
     this.barrel = ease(this.barrel, S.inBarrel ? 1 : 0, dt, 3);
@@ -141,7 +141,8 @@ export class OtherSurfer {
     // ---- the body over the board: leaning into the turn and a little toward the wave, turned side-on
     this.bodyFwd.set(fwd.x, 0, fwd.z).normalize();
     const side = _c.crossVectors(this.bodyFwd, UP).normalize();   // (the board's right)
-    this.bodyUp.copy(bup).lerp(UP, 0.35).addScaledVector(INTO_WAVE, Math.tan(0.12 + 0.1 * this.barrel)).addScaledVector(side, Math.tan(0.3 * this.lean)).normalize();
+    this.bodyUp.copy(UP).addScaledVector(INTO_WAVE, Math.tan(0.12 + 0.1 * this.barrel)).addScaledVector(side, Math.tan(0.3 * this.lean)).normalize();   // (from true up, not the board's: going vertical in a snap the board's up went past level and turned the body upside down, his catch 30 Sep 2026)
+    { const ang = this.bodyUp.angleTo(UP), MAXT = 0.36; if (ang > MAXT) this.bodyUp.lerp(UP, 1 - MAXT / ang).normalize(); }   // (never tipped more than ~20 deg from upright: past that, with the crouch and stoop on top, a hard turn folded the body over onto the deck, his catch 30 Sep 2026)
     this.bodyUp.addScaledVector(this.bodyFwd, -this.bodyUp.dot(this.bodyFwd)).normalize();
     this.bodyX.crossVectors(this.bodyUp, this.bodyFwd); this.bodyQ.setFromRotationMatrix(_m.makeBasis(this.bodyX, this.bodyUp, this.bodyFwd));
     this.inv.copy(S.q).invert(); _q3.copy(this.inv).multiply(this.bodyQ).multiply(this.stanceQ);
@@ -150,7 +151,7 @@ export class OtherSurfer {
     if (pe2 < 1) _q3.slerp(_q2.identity(), 1 - pe2);
     if (st === 'POP') this.q0.copy(_q3); else this.q0.slerp(_q3, 1 - Math.exp(-20 * dt)); this.body.quaternion.copy(this.q0);
     // ---- knees: soft in trim, low under load (bottom turn), in the barrel and at the press of each pump; up out of a top turn
-    const bt0 = this.btTt(); const want = Math.min(0.78, 0.18 + 0.1 * (S.speedK || 0.5) + 0.35 * this.barrel + 0.22 * this.pumpA + 0.22 * this.load + 0.18 * bt0.bt + 0.15 * this.stall - 0.1 * bt0.tt);
+    const bt0 = this.btTt(); const want = Math.min(0.5, 0.18 + 0.1 * (S.speedK || 0.5) + 0.35 * this.barrel + 0.22 * this.pumpA + 0.22 * this.load + 0.18 * bt0.bt + 0.15 * this.stall - 0.1 * bt0.tt);
     this.crouch = ease(this.crouch, st === 'POP' ? 0.8 : want, dt, 10);
     this.weights(dt, { crouch: this.crouch, stand: 1 - this.crouch }, st === 'POP' ? 30 : 12);   // (the pop-up leaves the paddling pose at once: blended slowly the two clips mixed into a crumpled shape)
     // weight shift: hips back over the tail into a bottom turn or a stall, forward out of a top turn; across toward the
@@ -167,10 +168,18 @@ export class OtherSurfer {
     const sway = Math.sin(this.t * 1.1) * 0.05;
     turnBone(B.spine_02, bu, (this.twist + sway) * 0.38); turnBone(B.spine_03, bu, (this.twist + sway) * 0.38);
     turnBone(B.spine_01, bf, -this.lean * 0.3 * this.sideSign());
-    const stoop = 0.16 + 0.16 * this.barrel + 0.08 * this.load + 0.06 * this.pumpA;
+    const stoop = (0.16 + 0.16 * this.barrel + 0.08 * this.load + 0.06 * this.pumpA) * (1 - 0.45 * Math.min(1, Math.abs(this.lean)));   // (less stoop the harder the lean: both at once folded the body over)
     _d.crossVectors(bf, bu).normalize(); turnBone(B.spine_02, _d, stoop);
-    turnBone(B.head, bu, this.sideSign() * 0.6 - this.twist * 0.5);   // (looking down the line: surfers look where they're going)
+    turnBone(B.head, bu, this.sideSign() * 0.5 - this.twist * 0.3);   // (looking down the line: surfers look where they're going)
     turnBone(B.head, _d, -stoop * 0.9);   // (and the head stays up, eyes level, however low the chest goes: a doubled-over surfer reads as falling)
+    // (his catch 30 Sep 2026: in a hard turn the bends above stacked up and the chest and head went near flat, the body
+    // folded over the deck. The upper body is held within ~42 deg of upright and the head within ~45 of its neck)
+    if (st === 'RIDE') {
+      const pv = B.pelvis.getWorldPosition(V()), d = B.head.getWorldPosition(V()).sub(pv), ang = d.angleTo(UP), MAX = 0.73;
+      if (ang > MAX) { const ax = V().crossVectors(d, UP).normalize(), fix = ang - MAX; turnBone(B.spine_01, ax, fix * 0.4); turnBone(B.spine_02, ax, fix * 0.35); turnBone(B.spine_03, ax, fix * 0.25); }
+      const nk = B.neck_01.getWorldPosition(V()), dh = B.head.getWorldPosition(V()).sub(nk), ah = dh.angleTo(UP), MH = 0.8;
+      if (ah > MH) turnBone(B.neck_01, V().crossVectors(dh, UP).normalize(), (ah - MH) * 0.8);
+    }
     if (st === 'POP') this.popArms(pe2); else this.arms(dt, S, bt0);
   }
   sideSign() {   // which way along the board the body's left side points (worked out from the thighs, not assumed)
@@ -338,7 +347,7 @@ export class OtherSurfer {
         mix(0.08, -0.12, -0.5, tt);                                         // top turn / cutback: leads round, pointing down the face
         mix(0.42, -0.36, 0.1, this.barrel);                                 // barrel: forward and low, compact
       } else {
-        o(-0.22, -0.46 + sw, chest ? -0.12 : 0.05);                        // trim: relaxed by the back hip
+        o(-0.34, -0.38 + sw, chest ? 0.12 : -0.12);                         // trim: relaxed by the back hip, on the chest side (it sat behind the hips and poked out through the shorts like a tail: his catch 30 Sep 2026)
         mix(0.02, -0.72, 0.36, bt);                                         // bottom turn: inside hand dropping to the water
         mix(0.28, -0.3, -0.26, tt);                                         // top turn: follows across, high
         mix(chest ? -0.3 : 0.05, chest ? -0.34 : -0.62, chest ? 0.46 : 0.08, this.barrel);   // barrel: frontside the trailing hand runs along the face; backside down to the rail
