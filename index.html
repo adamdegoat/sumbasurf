@@ -89,7 +89,14 @@
   @keyframes cpulse { 0%, 100% { transform: rotate(-4deg) scale(1); } 50% { transform: rotate(-4deg) scale(1.05); } }
   @media (prefers-reduced-motion: reduce) { #tube.slam .cword, #tube.slam.big .cword, #tube.live .cword { animation: none; } }
   body.hinting #cond { opacity: 0; } #cond { transition: opacity .3s; }
-  #hint { top: max(12px, env(safe-area-inset-top)); left: 22%; right: 22%; text-align: center; font-size: 14px; font-weight: 600; }
+  #hint { top: max(10px, env(safe-area-inset-top)); left: 22%; right: 22%; text-align: center; text-shadow: none; }
+  #hint span { display: inline-block; padding: 4px 10px 3px; border-radius: 11px; background: rgba(24,18,13,.42); border: 1px solid rgba(255,201,120,.22);
+    color: #f6ecdc; font: 600 13px/1.2 var(--disp); letter-spacing: .02em; }   /* (small, his note 30 Sep 2026: bigger tips blocked the wave) */
+  #hint b { color: #ffc978; font-weight: 800; letter-spacing: .05em; }
+  #hint.in span { animation: hintIn .38s cubic-bezier(.2,.8,.25,1) both; }
+  #hint.gone span { opacity: 0; transform: translateY(-4px); transition: opacity .25s, transform .25s; }
+  @keyframes hintIn { from { opacity: 0; transform: translateY(-8px) scale(.97); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { #hint.in span { animation: none; } }
   /* patch notes: a quiet link in the menu corner (inside the phone's safe area, clear of the rounded corner and the home
      bar in full screen) and a panel of the recent updates; the build stamp lives at the foot of the panel */
   #pnBtn { position: fixed; z-index: 9; right: max(14px, calc(env(safe-area-inset-right) + 10px)); bottom: max(12px, calc(env(safe-area-inset-bottom) + 8px));
@@ -322,7 +329,7 @@
     #load { margin-top: 2px; min-height: 0; }
   }
   @media (max-height: 320px) { #start > p.intro { display: none; } #start h1 { margin-bottom: 4px; } }
-  @media (max-height: 420px) { #hint { left: 15%; right: 15%; font-size: 13px; } }   /* (a short phone on its side: a tip fits on one line between the menu pill and the speed) */
+  @media (max-height: 420px) { #hint { left: 15%; right: 15%; } #hint span { font-size: 12px; padding: 3px 9px 2px; } }   /* (a short phone on its side: a tip fits on one line between the menu pill and the speed) */
   #start .villarow .stl { margin-left: 10px; } #start #stances svg { width: 22px; height: 12px; }   /* (the filled foot is the front one) */
   /* the villa: walk (left thumb), look (right thumb), tap a board in the rack */
   body:not(.villa) .vui { display: none !important; }
@@ -662,7 +669,7 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260930-1133</small>
+    <small id="build">build 260930-1242</small>
   </div>
 </div>
 <script>
@@ -1009,6 +1016,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=972"></script>
+<script type="module" src="js/game.js?v=973"></script>
 </body>
 </html>
