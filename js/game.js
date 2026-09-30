@@ -16,7 +16,7 @@ import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v
 import { crew } from './crew.js?v=55';
 import { wildlife } from './wildlife.js?v=59';
 import { droneShow } from './show.js?v=13';
-import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=4';
+import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=5';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
@@ -622,11 +622,9 @@ if (freeBtn) for (const ev of ['pointerup', 'touchend', 'click']) freeBtn.addEve
 // ---- the boat (his idea 30 Sep 2026): a platform boat anchored in the channel between the peaks (boat.js). Paddle up
 // to its ladder and Climb on; walk round the deck (the walking thumbs and keys, as the villa) to watch your friends
 // ride past; Back in the water drops you in by the ladder on your board. It rides the swell passing under it
-// where (vetted 30 Sep 2026 with a bot surfing both peaks for 4 rides and the water measured for 40 s): off the big
-// waves' shoulder, seaward of where they're ridden. Rides pass 25-40 m in front of it (the ride line runs from the peak
-// at x -162, z 0 to x -80, z 100), none come through; only swell under it (up to 1.8 m, never steep). The channel between
-// the peaks, the first idea, had 3.5-5.5 m faces passing through and whitewater
-const BOAT = { x: -104, z: 42 }, _yUp = new THREE.Vector3(0, 1, 0);   // (moved in 30 Sep 2026, his note: from -95, 22 the closest ride passed 38 m off and a friend was a speck; now ~18 m, swell up to 2.6 m, never steep)
+// where: down the line from the big waves' peak, just seaward of where they're ridden (the ride runs from the peak at
+// x -162, z 0 toward x -60, z 120). The channel between the peaks, the first idea, had 3.5-5.5 m faces and whitewater
+const BOAT = { x: -52, z: 92 }, _yUp = new THREE.Vector3(0, 1, 0);   // (moved 30 Sep 2026, twice at his notes: at -95, 22 a friend was a speck; at -104, 42 you mostly saw the back of the wave. Here, further down the line, riders come toward you on the face: 6 bot rides in 3 styles, closest 16 m; swell up to 1.7 m, slope .11)
 let boat = null, boatNear = false, boatBtn = null;
 const _bm = new THREE.Matrix4(), _bi = new THREE.Matrix4(), _bv = new THREE.Vector3();
 function boatTick(dt) {
@@ -671,7 +669,7 @@ function boatGo(far) {
   freeJumping = true; boatBtn.hidden = true; boatFar.hidden = true; fadeEl.classList.add('on');
   setTimeout(() => {
     if (onDeck && !far) { const p = boatWorld(LADDER.x, 0, LADDER.z + 0.6); FREE.walkIn = { x: p.x, z: p.z, th: Math.PI / 2 }; endStrand(); spawnRider(); audio.splash(0.35); }   // (in by the ladder, facing the beach)
-    else { startStrand(BOAT.x, BOAT.z + 3, Math.PI / 2 + 0.35); strand.deck = true; strand.lx = 0; strand.lz = far ? 1.5 : 4.4; strand.pitch = -0.08; }   // (on deck, looking in toward where the waves are ridden)
+    else { startStrand(BOAT.x, BOAT.z + 3, -2.4); strand.deck = true; strand.lx = 0; strand.lz = far ? -3 : 4.4; strand.pitch = -0.08; }   // (on deck, looking up the line toward the peak, where the rides come from)
     setTimeout(() => { fadeEl.classList.remove('on'); freeJumping = false; }, 120);
   }, 380);
 }

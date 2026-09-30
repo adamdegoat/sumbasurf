@@ -1,6 +1,6 @@
 // The boat on the free-surf beach (his idea 30 Sep 2026): a wide wooden platform boat anchored in the channel between
 // the two peaks, where nothing breaks. Paddle up to its ladder, climb on and walk round the deck to watch your friends
-// ride past; room for all 6. Two painted hulls under a teak deck, a thatched shade roof over the front half, rope rails
+// ride past; room for all 6. Two painted hulls under a teak deck, a thatched shade roof over the back half (the front left open toward the break), rope rails
 // round the sides, a swim ladder off the back, a rack of boards, a cooler and a couple of beanbags.
 // Built in its own frame: x across (port -, starboard +), z along (bow -, stern +), y up from the waterline.
 import * as THREE from 'three';
@@ -11,7 +11,7 @@ export const DECK = { x0: -2.75, x1: 2.75, z0: -5.6, z1: 5.3 };   // where you c
 export const LADDER = { x: 0, z: 6.9 };      // just off the back, in the water: where you climb on and drop back in
 export const HALF = { x: 3.5, z: 7.2 };
 // what you walk round on deck (x0, x1, z0, z1): the shade posts, the board rack, the cooler, the beanbags, the rope coil
-export const BLOCKS = [[-3.1, -2.7, -5.5, -5.1], [2.7, 3.1, -5.5, -5.1], [-3.1, -2.7, -0.8, -0.4], [2.7, 3.1, -0.8, -0.4], [2.5, 3.2, 2.2, 4.6], [1.85, 2.75, -4.7, -4.1],
+export const BLOCKS = [[-3.1, -2.7, 0.4, 0.8], [2.7, 3.1, 0.4, 0.8], [-3.1, -2.7, 4.9, 5.3], [2.7, 3.1, 4.9, 5.3], [2.5, 3.2, 2.2, 4.6], [1.85, 2.75, 0.95, 1.45],
   [-2.2, -1.0, -4.0, -2.8], [0.9, 2.1, -2.8, -1.6], [0.8, 1.6, -5.6, -4.8]];      // its footprint in the water (the hulls and the step): paddlers go round it
 
 const mats = new Map();
@@ -43,12 +43,13 @@ export function makeBoat() {
   for (const z of [-5.2, -1.8, 1.6, 4.9]) box(g, 6.4, 0.18, 0.3, 0x5a3d25, 0, DECK_Y - 0.19, z);
   box(g, 6.6, 0.16, 0.16, 0x6e4a2c, 0, DECK_Y + 0.02, -5.9); box(g, 6.6, 0.16, 0.16, 0x6e4a2c, 0, DECK_Y + 0.02, 5.6);   // (edge trims)
   box(g, 0.16, 0.16, 11.6, 0x6e4a2c, -3.25, DECK_Y + 0.02, -0.15); box(g, 0.16, 0.16, 11.6, 0x6e4a2c, 3.25, DECK_Y + 0.02, -0.15);
-  // the shade: four bamboo posts and a thatched roof over the front half, a ridge along it
+  // the shade: four bamboo posts and a thatched roof over the back half, a ridge along it (moved off the front 30 Sep 2026:
+  // from the boat's spot down the line, the rides come from ahead and to port, and the roof and its posts stood in the view)
   const bamboo = 0xc9a86a, thatch = 0x8b6b3c;
-  for (const [x, z] of [[-2.9, -5.3], [2.9, -5.3], [-2.9, -0.6], [2.9, -0.6]]) cyl(g, 0.07, 0.08, 2.35, bamboo, x, DECK_Y + 1.17, z);
-  for (const s of [-1, 1]) { const r = box(g, 3.5, 0.14, 5.6, thatch, s * 1.55, DECK_Y + 2.62, -2.95, 0, 0, -s * 0.28);
-    box(g, 3.6, 0.06, 5.7, 0x6f532e, s * 1.55, DECK_Y + 2.53, -2.95, 0, 0, -s * 0.28).material = mat(0x6f532e, 0x3b2b17); }   // (the underside: lit a little by the light off the water, or it drew as a black slab)
-  box(g, 0.22, 0.2, 5.8, 0x5c4424, 0, DECK_Y + 3.07, -2.95);
+  for (const [x, z] of [[-2.9, 0.6], [2.9, 0.6], [-2.9, 5.1], [2.9, 5.1]]) cyl(g, 0.07, 0.08, 2.35, bamboo, x, DECK_Y + 1.17, z);
+  for (const s of [-1, 1]) { const r = box(g, 3.5, 0.14, 5.6, thatch, s * 1.55, DECK_Y + 2.62, 2.85, 0, 0, -s * 0.28);
+    box(g, 3.6, 0.06, 5.7, 0x6f532e, s * 1.55, DECK_Y + 2.53, 2.85, 0, 0, -s * 0.28).material = mat(0x6f532e, 0x3b2b17); }   // (the underside: lit a little by the light off the water, or it drew as a black slab)
+  box(g, 0.22, 0.2, 5.8, 0x5c4424, 0, DECK_Y + 3.07, 2.85);
   // rope rails: posts round the sides and the front, open at the back where the ladder is
   const post = 0x6e4a2c, rope = 0xd9c9a3;
   const posts = [[-3.2, 5.2], [-3.2, 2.6], [-3.2, 0], [-3.2, -2.6], [-3.2, -5.8], [0, -5.85], [3.2, -5.8], [3.2, -2.6], [3.2, 0], [3.2, 2.6], [3.2, 5.2]];
@@ -61,15 +62,15 @@ export function makeBoat() {
   // a board rack on the starboard side (away from the break, so it never stands in the view), three boards in it
   box(g, 0.14, 0.9, 2.2, 0x5a3d25, 2.85, DECK_Y + 0.45, 3.4);
   [[0xf2efe6, 3.8], [0x3f8fb0, 3.4], [0xe0a13a, 3.0]].forEach(([c, z]) => { const b = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 1.55, 3, 8), mat(c)); b.scale.set(1, 1, 0.22); b.position.set(2.62, DECK_Y + 1.0, z); b.rotation.set(0, Math.PI / 2, 0.12); g.add(b); });
-  // a cooler and two beanbags under the shade, a coil of rope at the bow
-  box(g, 0.8, 0.5, 0.5, 0x2f7fa8, 2.3, DECK_Y + 0.25, -4.4); box(g, 0.84, 0.08, 0.54, 0xf2efe6, 2.3, DECK_Y + 0.53, -4.4);
+  // a cooler under the shade, two beanbags out on the open front to watch from, a coil of rope at the bow
+  box(g, 0.8, 0.5, 0.5, 0x2f7fa8, 2.3, DECK_Y + 0.25, 1.2); box(g, 0.84, 0.08, 0.54, 0xf2efe6, 2.3, DECK_Y + 0.53, 1.2);
   for (const [x, z, c] of [[-1.6, -3.4, 0xd4643c], [1.5, -2.2, 0x3e7a6a]]) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 7), mat(c)); b.scale.set(1, 0.55, 1); b.position.set(x, DECK_Y + 0.28, z); g.add(b); }
   cyl(g, 0.38, 0.38, 0.14, rope, 1.2, DECK_Y + 0.07, -5.2, 0, 0, 10);
   // the anchor line off the bow, down into the water
   line(g, new THREE.Vector3(0, DECK_Y + 0.1, -5.9), new THREE.Vector3(0, -3, -11), 0.03, rope);
-  // a little flag on a pole at the stern corner
-  cyl(g, 0.03, 0.03, 2.6, 0xdedede, 3.1, DECK_Y + 1.3, 5.3);
-  const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.5), new THREE.MeshLambertMaterial({ color: 0xffc23a, side: THREE.DoubleSide })); flag.position.set(3.1, DECK_Y + 2.35, 4.9); flag.rotation.y = Math.PI / 2; g.add(flag);
+  // a little flag on a pole at the starboard bow (clear of the view toward the break, off to port)
+  cyl(g, 0.03, 0.03, 2.6, 0xdedede, 3.1, DECK_Y + 1.3, -5.5);
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.5), new THREE.MeshLambertMaterial({ color: 0xffc23a, side: THREE.DoubleSide })); flag.position.set(3.1, DECK_Y + 2.35, -5.9); flag.rotation.y = Math.PI / 2; g.add(flag);
   g.userData.flag = flag;
   return merged(g, flag);
 }
