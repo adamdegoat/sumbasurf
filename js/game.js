@@ -877,17 +877,9 @@ function povCamera(dt) {
   snapCam = false;
   // head pitch: riding, look down the line and at the nose; lying, look ahead over the nose; at the drop, look down the face
   const dropK = st === 'POP' ? 4 * popIn : st === 'RIDE' ? 4 * Math.max(0, 1 - rider.stateT / 0.5) : 0;   // the pop: eyes down on the board between your hands, then back up to the line
-  let pitchLook = -9, pitchT = standing ? POVCAM.pitch - POVCAM.drop * dropK : sitting ? -0.53 : -0.4;   // sitting: tipped down enough to see your knees and hands on the board   // take-off: look down at the board and the face; lying: down enough to see your arms paddling
-  // sitting or lying facing out to sea: look up at a wave that's coming (a 15 m wave's crest is well above the horizon)
-  if (!standing && settling()) pitchT = -0.22;   // (settling onto the board after a ride: eyes level on the water around you, not snapping up to hunt for the next wave)
-  else if (!standing) {
-    const inc = incoming();
-    if (inc.w && inc.t < 14 && inc.t > -1 && Math.sin(rider.th) < 0.3) {
-      const dist = Math.max(4, inc.t * inc.w.cond.speed + 6), up = Math.atan2(inc.w.cond.H * 0.9 - 0.8, dist);
-      pitchLook = Math.max(pitchLook, up - 0.3);
-    }
-  }
-  if (pitchLook > pitchT) pitchT = pitchLook;
+  // waiting in the water, lying or sitting (his call 30 Sep 2026): one fixed view, eyes level on the water at the height
+  // they used to lift to when a wave came, so you watch the sets coming yourself and nothing shifts on its own
+  let pitchT = standing ? POVCAM.pitch - POVCAM.drop * dropK : -0.22;
   if (!standing && isRanch()) pitchT = Math.max(pitchT, -0.2);   // at the Sumba Ranch, eyes up on the machine wall where your wave comes from
   pitchT += 0.14 * tubeEase + 0.07 * stallV + 0.035 * bogV * Math.sin(T * 7.3) + 0.12 * noseV + (standing && noseV > 0.01 ? 0.25 * noseV * Math.min(0, Math.asin(Math.max(-1, Math.min(1, pose.fwd.y)))) : 0); if (glK > 0.001) pitchT += (glP - pitchT) * glK;   // (on the nose your eyes follow the board's slope: heading down the face you look down it, so the tip stays in view)   // (up on the nose your eyes drop a little; when it starts to dig in you glance down at it, so you see the tip going under)   // (a stall: you sit back and your eyes tip up a little; sinking, they bob)   // (in the barrel your eyes lift ~8 deg, so you see the tube arching over you)   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
   pov.pitch += (pitchT - pov.pitch) * Math.min(1, dt * (st === 'POP' ? 4 + 20 * Math.min(1, popClock() / 0.3) : st === 'RIDE' ? 5 + 19 * Math.max(0, 1 - rider.stateT / 0.4) : 5));   // (and out of it without a kink: the rates hand over gradually when you're up)   // (the pop: eyes snap down to the board between your hands)
