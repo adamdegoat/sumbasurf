@@ -4,6 +4,7 @@
 // round the sides, a swim ladder off the back, a rack of boards, a cooler and a couple of beanbags.
 // Built in its own frame: x across (port -, starboard +), z along (bow -, stern +), y up from the waterline.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const DECK_Y = 1.05;                  // the deck's top above the waterline
 export const DECK = { x0: -2.75, x1: 2.75, z0: -5.6, z1: 5.3 };   // where you can walk on it (inside the rails)
@@ -70,5 +71,17 @@ export function makeBoat() {
   cyl(g, 0.03, 0.03, 2.6, 0xdedede, 3.1, DECK_Y + 1.3, 5.3);
   const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.5), new THREE.MeshLambertMaterial({ color: 0xffc23a, side: THREE.DoubleSide })); flag.position.set(3.1, DECK_Y + 2.35, 4.9); flag.rotation.y = Math.PI / 2; g.add(flag);
   g.userData.flag = flag;
+  return merged(g, flag);
+}
+// (heat check 30 Sep 2026: built as 85 pieces it cost 85 draws a frame whenever it was in view, more than the rest of the
+// scene; joined into one mesh per material it's about 12, looking the same. The flag stays apart: it waves)
+function merged(g, keep) {
+  g.updateMatrixWorld(true); const byMat = new Map();
+  for (const o of [...g.children]) { if (o === keep || !o.isMesh) continue;
+    const geo = o.geometry.index ? o.geometry.clone() : o.geometry.clone(); geo.applyMatrix4(o.matrix);
+    for (const k of Object.keys(geo.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') geo.deleteAttribute(k);
+    if (!geo.index) geo.setIndex([...Array(geo.attributes.position.count).keys()]);
+    (byMat.get(o.material) || byMat.set(o.material, []).get(o.material)).push(geo); g.remove(o); }
+  for (const [m, list] of byMat) { const geo = mergeGeometries(list, false); if (geo) g.add(new THREE.Mesh(geo, m)); }
   return g;
 }

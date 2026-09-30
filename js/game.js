@@ -16,7 +16,7 @@ import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v
 import { crew } from './crew.js?v=55';
 import { wildlife } from './wildlife.js?v=59';
 import { droneShow } from './show.js?v=13';
-import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=3';
+import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=4';
 
 const Q = new URLSearchParams(location.search);
 // ---------- renderer with hidden automatic quality (drops sharpness if the phone struggles, raises it back if not)
