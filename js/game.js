@@ -2,19 +2,19 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=187';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=186';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=188';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=187';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER } from './board.js?v=19';
 import { SurfAudio } from './audio.js?v=23';
 import { ranch, POOL } from './ranch.js?v=9';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=120';
-import { villa, VILLA } from './villa.js?v=154';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=121';
+import { villa, VILLA } from './villa.js?v=155';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=53';
-import { wildlife } from './wildlife.js?v=57';
+import { crew } from './crew.js?v=54';
+import { wildlife } from './wildlife.js?v=58';
 import { droneShow } from './show.js?v=13';
 
 const Q = new URLSearchParams(location.search);
@@ -602,9 +602,9 @@ function surfSteer(sx, stall) {
 const LEVELS = [['Amateur', 5, '5.0 to 6.9'], ['Advanced', 7, '7.0 to 8.4'], ['Pro Surfer', 8.5, '8.5 and up']];
 const levelOf = (v) => { let k = -1; LEVELS.forEach(([, t], i) => { if (v >= t) k = i; }); return k; };
 // your best ride per level, kept on this phone (quietly does nothing if storage is blocked)
-// (best6: the wave-difficulty judging of 29 Sep 2026 started everyone's bests afresh again, his call; best5 before it, best4 before 28 Sep)
-const bestFor = (m) => { try { return +localStorage.getItem('balisurf.best6.' + m) || 0; } catch (e) { return 0; } };
-const saveBest = (m, v) => { try { localStorage.setItem('balisurf.best6.' + m, String(v)); } catch (e) {} showBests(); if (typeof mmPanel === 'function') mmPanel(); };
+// (best7: the harder, realistic scoring of 30 Sep 2026 started everyone's bests afresh, his call; best6 before it (29 Sep), best5, best4 before 28 Sep)
+const bestFor = (m) => { try { return +localStorage.getItem('balisurf.best7.' + m) || 0; } catch (e) { return 0; } };
+const saveBest = (m, v) => { try { localStorage.setItem('balisurf.best7.' + m, String(v)); } catch (e) {} showBests(); if (typeof mmPanel === 'function') mmPanel(); };
 // moments other code can listen for (the Wavedash copy's saves, badges and leaderboards; on sumbasurf.app nothing listens)
 const ssEvent = (n, d) => { try { dispatchEvent(new CustomEvent('ss:' + n, { detail: d })); } catch (e) {} };
 function showBests() {

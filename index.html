@@ -660,13 +660,20 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 260930-0215</small>
+    <small id="build">build 260930-0834</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-09-30-scoring', date: '30 Sep 2026', time: '8:34 am', title: 'New scoring: every best starts fresh', items: [
+      'Scoring now works like a real surf contest. The whole wave counts: more good moves and more time close to the curl add up.',
+      'Falling costs you. A wipeout loses your last moves and more than half the score, so finishing the wave matters.',
+      'The same move again is worth less each time. Excellent (8 and up) takes a clean finish, a barrel, air or Hang Ten, and strong moves of two different kinds.',
+      'Every spot is judged fairly for its waves, and Pantai Kuda can now reach Pro too.',
+      'Because of this, all best scores start fresh today. Time to set new ones.',
+    ] },
     { id: '2026-09-30-fullscreen', date: '30 Sep 2026', time: '2:15 am', title: 'Play full screen', items: [
       'On a phone, tap Full screen in the menu for a quick guide to playing without the browser bars: add SumbaSurf to your home screen, or on Android go full screen straight away.',
     ] },
@@ -1001,6 +1008,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=971"></script>
+<script type="module" src="js/game.js?v=972"></script>
 </body>
 </html>

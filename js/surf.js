@@ -157,13 +157,51 @@ export const PUMP_STROKE = 0.75, PUMP_PERIOD = 0.75;   // (a stroke fills the wh
 const _q = {}, _c = {}, IDLE = { paddle: false, pump: false, steer: 0 };
 export function heightAt(waves, x, z) { return waterAt(waves, x, z, _q).y; }
 
+// The wave's score, out of 10 like a contest judge (30 Sep 2026, his call: "proper, harder and realistic"; the rules
+// before are kept below as scoreRidePrev, for tests). Calibrated on 574 recorded test rides (7 spots; a flicker that
+// always falls, a steady carver, a pro): see HANDOVER.
+//  - A fall costs: the moves of your last 1.5 s don't count and the wave is worth less than half (a fall ends a real
+//    wave's score). A flailing ride that always ends in the water stays under about 6.
+//  - The whole wave counts: up to about six moves add up (each one after counts a little less), clean time close to
+//    the curl counts too, so a long, well-surfed wave beats a short one with the same best move.
+//  - Doing the same move again is worth less each time (a third barrel far less: the wave barrels over you on its own).
+//  - Excellent (8 and up) takes a finished wave (no fall), a signature move (barrel, air or hang ten) and strong moves
+//    of two different kinds, three strong in all. Without that a wave tops out just under 8.
+// detail = the judges' sheet: what counted, each line's share of the score (they add up to it).
+const SC = { drop: 1.5, fellK: 0.45, rep: 0.65, repTurn: 0.6, repBarrel: 0.45, W: [1, 0.8, 0.65, 0.5, 0.38, 0.28, 0.2, 0.14], Wtail: 0.1,
+  varK: 0.35, varMax: 1.4, pocketK: 0.05, pocketMax: 1.2, flowK: 0.01, flowMax: 0.3, finish: 0.5, K: 6.5 };
+const SIGNATURE = new Set(['BARREL', 'AIR', 'AIR 360', 'HANG TEN']);
+export function scoreRide(r, fell = false, detail = false) {
+  const ms = fell ? r.moves.filter((m) => m.t < r.t - SC.drop) : r.moves;
+  const hasBig = ms.some((m) => m.name !== 'TURN');   // (a hard carve is the wave's main move only on a wave of carves: next to barrels and snaps it's a linking turn again)
+  const seen = {}, items = [...ms].sort((a, b) => b.pts - a.pts).map((m) => { const n = (seen[m.name] = (seen[m.name] || 0) + 1), pts = hasBig && m.name === 'TURN' && m.base === MOVE_BASE.CARVE ? m.pts * MOVE_BASE.TURN / MOVE_BASE.CARVE : m.pts;
+    return { m, n, v: pts * Math.pow(m.name === 'TURN' ? SC.repTurn : m.name === 'BARREL' ? SC.repBarrel : SC.rep, n - 1) }; }).sort((a, b) => b.v - a.v);
+  items.forEach((it, i) => (it.w = it.v * (SC.W[i] ?? SC.Wtail)));
+  let raw = items.reduce((a, it) => a + it.w, 0);
+  const kinds = new Set(ms.filter((m) => m.name !== 'TURN').map((m) => m.name.replace('AIR 360', 'AIR'))).size, variety = Math.min(SC.varMax, SC.varK * Math.max(0, kinds - 1));
+  const flow = Math.min(SC.flowMax, r.speed * SC.flowK) + Math.min(SC.pocketMax, (r.pocket || 0) * SC.pocketK), finish = r.end && !fell ? SC.finish : 0;
+  raw += variety + flow + finish;
+  if (fell) raw *= SC.fellK;
+  raw *= r.judge ?? 1;   // (the spot: see CONDITIONS judge)
+  let score = 10 * (1 - Math.exp(-raw / SC.K));
+  const strong = ms.filter((m) => m.strong && m.name !== 'TURN'), strongKinds = new Set(strong.map((m) => m.name.replace('AIR 360', 'AIR'))).size;
+  const excellentOk = !fell && ms.some((m) => SIGNATURE.has(m.name)) && strongKinds >= 2 && strong.length >= 3;
+  if (!excellentOk && score > 7.5) score = 7.5 + 0.4 * (1 - Math.exp(-(score - 7.5) / 0.4));   // (not the whole package: very good, never excellent)
+  score = Math.round(10 * score) / 10;
+  if (!detail) return score;
+  const share = (x) => (raw > 0 ? score * x * (fell ? SC.fellK : 1) * (r.judge ?? 1) / raw : 0);   // (each line's share of the final score: fall and spot included, so the lines add up to it)
+  const lines = items.filter((it) => it.w > 0.05).slice(0, 6).map((it) => ({ name: it.m.name, dur: it.m.dur, notes: it.n > 1 ? [...it.m.notes, 'repeated'] : it.m.notes, pts: share(it.w) }));
+  if (variety) lines.push({ name: 'VARIETY', notes: [], pts: share(variety) });
+  if (flow + finish > 0.05) lines.push({ name: finish ? 'SPEED + CLEAN FINISH' : 'SPEED', notes: [], pts: share(flow + finish) });
+  return { score, lines, fell, excellentOk };
+}
 // The wave's score, out of 10 like a contest judge: the best moves count most (each one after counts less), doing the
 // same move again is worth less and less, different kinds of big move earn a variety bonus, speed and a clean finish a
 // little. A move you fall on doesn't count. And the judges' rule for the excellent range (8 and up): it takes more than
 // one thing. Without two different strong moves (or three strong ones), a wave tops out just under 8, however long
 // the barrel. detail = the judges' sheet: what counted, each line's share of the score (they add up to it).
 // old = the scoring before 28 Sep 2026 (for comparing in tests only)
-export function scoreRide(r, fell = false, detail = false, old = false) {
+export function scoreRidePrev(r, fell = false, detail = false, old = false) {
   const ms = (fell ? r.moves.filter((m) => m.t < r.t - 0.8) : r.moves).map((m) => (old && MOVE_BASE_OLD[m.name] && m.base ? { ...m, pts: m.pts * (m.base - MOVE_BASE[m.name] + MOVE_BASE_OLD[m.name]) / m.base } : m));
   const hasBig = ms.some((m) => m.name !== 'TURN');   // (a hard carve is the wave's main move only on a wave of carves: next to barrels and snaps it's a linking turn again)
   const seen = {}, items = [...ms].sort((a, b) => b.pts - a.pts).map((m) => { const n = (seen[m.name] = (seen[m.name] || 0) + 1), pts = hasBig && m.name === 'TURN' && m.base === MOVE_BASE.CARVE ? m.pts * MOVE_BASE.TURN / MOVE_BASE.CARVE : m.pts; return { m, n, v: pts * Math.pow(m.name === 'TURN' ? 0.7 : 0.5, n - 1) }; }).sort((a, b) => b.v - a.v);   // (your best one of each move counts in full, the others less)
