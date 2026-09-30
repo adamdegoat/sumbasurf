@@ -186,6 +186,9 @@ export class SurfAudio {
   musicBeat() { if (!this.mAn || this.mel.paused) return 0; this.mAn.getByteFrequencyData(this.mBins); let e = 0; for (let i = 1; i < 6; i++) e += this.mBins[i]; e /= 5 * 255; this.mB = Math.max(e, (this.mB || 0) * 0.9); return Math.max(0, (e - this.mB * 0.7) * 3.3); }
   quiet(on) { this.qOn = on; if (this.ok) this.set(this.master.gain, on ? 0 : 0.55 * (this.gK ?? 1), 0.3); }
   gameLevel(k) { if (!this.ok || this.gK === k) return; this.gK = k; if (!this.qOn) this.set(this.master.gain, 0.55 * k, 0.6); }   // (the game's own sounds turned down, for the earpiece)   // the game's own sounds off (in the menu), the music carries on
-  wake() { if (this.ok && this.ctx.state !== 'running') this.ctx.resume(); }
-  pause(on) { if (!this.ok) return; on ? this.ctx.suspend() : this.ctx.resume(); if (this.mel) { if (on) this.mel.pause(); else if (this.mWant > 0.001) this.mel.play().catch(() => {}); } }
+  // back from another app or tab: the phone often refuses to restart sound until the next touch, so every touch also
+  // restarts the song if it should be playing (it used to stay silent after coming back)
+  wake() { if (!this.ok) return; if (this.ctx.state !== 'running') this.ctx.resume(); if (this.mel && this.mel.paused && this.mWant > 0.001 && !document.hidden) this.mel.play().catch(() => {}); }
+  pause(on) { if (!this.ok) return; if (on) { this.ctx.suspend(); if (this.mel) this.mel.pause(); return; }
+    this.ctx.resume().catch(() => {}).then(() => this.wake()); }
 }

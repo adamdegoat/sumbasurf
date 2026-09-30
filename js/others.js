@@ -68,14 +68,16 @@ function boardFor(type) {
   const ghost = new THREE.Mesh(b.geometry, gm); ghost.name = 'ghost'; ghost.renderOrder = 5; b.add(ghost);
   BOARDS.set(type, b); return b;
 }
-function bodyMat(m) { let c = MATS.get(m.uuid); if (!c) { c = m.clone(); c.side = THREE.FrontSide; c.transparent = false; MATS.set(m.uuid, c); } return c; }
+// (drawn after the see-through board copy, so the copy never shows through the surfer lying on it: his catch 30 Sep
+// 2026, a friend paddling looked merged into the board. Solid all the same: full opacity, writes its depth)
+function bodyMat(m) { let c = MATS.get(m.uuid); if (!c) { c = m.clone(); c.side = THREE.FrontSide; c.transparent = true; c.opacity = 1; c.depthWrite = true; MATS.set(m.uuid, c); } return c; }
 
 export class OtherSurfer {
   // gltf: the loaded surfer.glb (the same body as yours); opts: board type, stance ('goofy' | 'regular')
   constructor(gltf, { board = 'short', stance = 'goofy', shorts = null } = {}) {
     this.group = new THREE.Group();
     this.body = cloneSkinned(gltf.scene);
-    this.body.traverse((o) => { o.layers.set(0); if (o.isMesh) { o.frustumCulled = false; o.material = bodyMat(o.material);
+    this.body.traverse((o) => { o.layers.set(0); if (o.isMesh) { o.frustumCulled = false; o.renderOrder = 10; o.material = bodyMat(o.material);
       if (/shorts/i.test(o.name)) { o.material = o.material.clone(); this.shortsMat = o.material; if (shorts != null) o.material.color.set(shorts); } } });   // (one set of materials for every other surfer, but their own shorts colour)
     this.shorts = shorts; this.boardType = board; this.board = boardFor(board).clone(true); this.ghost = this.board.getObjectByName('ghost');
     this.group.add(this.board, this.body);
