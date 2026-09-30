@@ -51,7 +51,7 @@ export async function onRequestPost({ request, env }) {
       let country = request.cf && request.cf.country || '';
       try { country = new Intl.DisplayNames(['en'], { type: 'region' }).of(country) || country; } catch (e) {}
       const dev = DEV.includes(b.dev) ? b.dev : '', where = [country, dev, b.host === 'wavedash' ? 'on Wavedash' : ''].filter(Boolean).join(', ');
-      await tg(env, chat, `Feedback from ${name || 'someone'}${where ? ` (${where})` : ''}:\n${text}`);
+      await tg(env, chat, `FEEDBACK\nFrom ${name || 'someone'}${where ? ` (${where})` : ''}:\n${text}`);   // (a label line first, so each kind of alert reads at a glance: his ask 1 Oct 2026)
     } catch (e) {}
     return none;
   }
@@ -64,7 +64,7 @@ export async function onRequestPost({ request, env }) {
       const dev = DEV.includes(b.dev) ? b.dev : '', src = SOURCES.includes(b.src) ? b.src : '', wd = b.host === 'wavedash';
       const where = SPOTS.includes(b.where) ? b.where : '', who = b.seen === 'back' ? 'Returning player' : 'New player';
       const top = `${b.who === 'claude' ? 'Claude testing: ' : ''}${who} started${where ? ` at ${where}` : ''}`;
-      await tg(env, chat, `${top}\n${[country, dev, wd ? 'on Wavedash' : src ? `from ${src}` : ''].filter(Boolean).join(', ')}`);
+      await tg(env, chat, `JOINED\n${top}\n${[country, dev, wd ? 'on Wavedash' : src ? `from ${src}` : ''].filter(Boolean).join(', ')}`);
     } catch (e) {}
     return none;
   }
@@ -84,7 +84,7 @@ export async function onRequestPost({ request, env }) {
     const who = b.again ? 'Same player again' : back ? 'Returning player' : 'New player';
     const top = [who, country, dev, wd ? 'on Wavedash' : src ? `from ${src}` : ''].filter(Boolean).join(', ');
     const did = [mins < 1 ? 'under 1 min' : `${mins} min`, waves ? plural(waves, 'wave') : 'no waves'].join(', ');   // (play time and waves only: no score, no board, his call 30 Sep 2026)
-    const text = `${test ? 'Claude testing: ' : ''}${top}\n${did}`;
+    const text = `SESSION REPORT\n${test ? 'Claude testing: ' : ''}${top}\n${did}`;
     await tg(env, chat, text);
   } catch (e) {}   // (Telegram down: the game never notices)
   return none;
