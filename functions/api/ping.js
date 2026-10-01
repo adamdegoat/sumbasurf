@@ -38,8 +38,8 @@ async function seen(kind, ip) {
 // (1 Oct 2026: one Telegram message per player got the bot muted for hours when many arrived at once. Each alert now goes
 // to the sumbasurf-alerts Worker, which sends everything from one minute as ONE message; straight to Telegram only if
 // that Worker isn't connected)
-async function send(env, kind, text) {
-  if (env.MINUTE) { const s = env.MINUTE.get(env.MINUTE.idFromName('main')); await s.fetch('https://alerts/add', { method: 'POST', body: JSON.stringify({ kind, text }) }); return; }
+async function send(env, kind, text, d) {   // (d: the arrival's facts, which the minute's summary counts up)
+  if (env.MINUTE) { const s = env.MINUTE.get(env.MINUTE.idFromName('main')); await s.fetch('https://alerts/add', { method: 'POST', body: JSON.stringify({ kind, text, d }) }); return; }
   const chat = await chatId(env); if (chat) await tg(env, chat, text);
 }
 const num = (v, lo, hi) => { v = +v; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo; };
@@ -83,7 +83,7 @@ export async function onRequestPost({ request, env }) {
       let fs = ''; if (where === 'Free surf' && b.fs && typeof b.fs === 'object') { const n = Math.round(num(b.fs.n, 1, 6)); fs = b.fs.host ? (n > 1 ? `, own beach with ${plural(n - 1, 'friend')}` : ', own beach') : `, joined ${n > 1 ? plural(n - 1, 'friend') : 'a beach'}`; }
       const line1 = [back ? 'BACK' : 'NEW', ...(back ? [visits > 1 ? ord(visits) + ' visit' : '', when] : [country, dev])].filter(Boolean).join(' · ');
       const came = wd ? 'Wavedash' : src ? `from ${src}` : '', line2 = [...(back ? [country, dev] : []), [came, where ? where + fs : ''].filter(Boolean).join(' → ')].filter(Boolean).join(' · ');
-      await send(env, 'in', `${test ? 'Claude testing: ' : ''}${line1} · ${line2}`);   // (one line each now: a minute's message lists everyone)
+      await send(env, 'in', `${test ? 'Claude testing: ' : ''}${line1} · ${line2}`, { back, country, came: wd ? 'Wavedash' : src || 'unknown', test });   // (the minute's message counts these up: his call 1 Oct 2026, a short summary, not a line each)
     } catch (e) { console.log('alert: failed', hide(env, e && e.message || e)); }
     return none;
   }
