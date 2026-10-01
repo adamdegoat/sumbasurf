@@ -55,6 +55,25 @@ function reachArm(ua, la, hd, T, pole, w) {
 // shared by every other surfer: one board of each type (geometry, painted materials, the see-through copy) cloned per
 // surfer, and one copy of each body material (drawn plainly in the world, not through your own body's lens)
 const BOARDS = new Map(), MATS = new Map();
+// far away, a lighter body (1 Oct 2026, his call): the same skeleton, skin and clothes, but drawn with about a quarter of
+// the triangles (surfer_far.json: a second list of triangles over the very same points, made once with meshoptimizer
+// from surfer.glb). Only bodies more than ~25 m off use it, a figure a few dozen pixels tall. Each list is matched to
+// its mesh by the mesh's own counts and checked point by point; anything that doesn't match, or a file that doesn't
+// load, simply leaves the full body in place
+let FAR = null, farLoading = false; const FARGEO = new Map();
+function farLoad() { if (FAR || farLoading) return; farLoading = true; fetch(new URL('../surfer_far.json?v=1', import.meta.url)).then((r) => r.json()).then((j) => { FAR = (j && j.v === 1 && j.m) || {}; }).catch(() => { FAR = {}; }); }
+function farGeo(g) {
+  if (!FAR) return null;
+  if (FARGEO.has(g)) return FARGEO.get(g);
+  let lod = null; const P = g.attributes.position, s = g.index && P && FAR[`${g.index.count}:${P.count}`];
+  if (s && !g.groups.length && !g.morphAttributes.position) try {
+    const bin = atob(s), u = new Uint16Array(bin.length >> 1); let ok = u.length > 0 && u.length % 3 === 0;
+    for (let i = 0; ok && i < u.length; i++) { u[i] = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8); if (u[i] >= P.count) ok = false; }
+    if (ok) { lod = new THREE.BufferGeometry(); for (const k in g.attributes) lod.setAttribute(k, g.attributes[k]); lod.setIndex(new THREE.BufferAttribute(u, 1));
+      if (!g.boundingSphere) g.computeBoundingSphere(); lod.boundingSphere = g.boundingSphere; lod.boundingBox = g.boundingBox; }
+  } catch (e) { lod = null; }
+  FARGEO.set(g, lod); return lod;
+}
 function boardFor(type, design = 0) {   // (design: the paint they picked, see board.js DESIGNS)
   const key = type + ':' + design; let b = BOARDS.get(key); if (b) return b;
   b = makeBoard(type, false, design); b.position.z = Math.max(0, (BOARD_LENGTH(type) - 1.88) * 0.33);
@@ -81,6 +100,14 @@ export class OtherSurfer {
       if (/shorts/i.test(o.name)) { o.material = o.material.clone(); this.shortsMat = o.material; if (shorts != null) o.material.color.set(shorts); } } });   // (one set of materials for every other surfer, but their own shorts colour)
     this.shorts = shorts; this.boardType = board; this.design = design; this.board = boardFor(board, design).clone(true); this.ghost = this.board.getObjectByName('ghost');
     this.group.add(this.board, this.body);
+    // (one skeleton for the whole body: the four meshes of a body each came with their own copy, the same bones, so the
+    // graphics chip was sent four identical sets of bones every frame; only shared where they really are identical)
+    this.skins = []; this.body.traverse((o) => { if (o.isSkinnedMesh) this.skins.push(o); });
+    const sk0 = this.skins[0] && this.skins[0].skeleton;
+    if (sk0) for (const m of this.skins) { const sk = m.skeleton; if (sk === sk0 || sk.bones.length !== sk0.bones.length) continue;
+      let same = true; for (let i = 0; same && i < sk.bones.length; i++) if (sk.bones[i] !== sk0.bones[i] || !sk.boneInverses[i].equals(sk0.boneInverses[i])) same = false;
+      if (same) m.skeleton = sk0; }
+    this.lodM = this.skins.map((m) => [m, m.geometry]); this.far = false; farLoad();
     this.B = {}; this.body.traverse((o) => { if (o.isBone) { this.B[o.name] = o; o.scale.set(1, 1, 1); } });   // (full size: your own body's head is shrunk to nothing so it's never in your eyes, and a copy took that along)
     this.body.traverse((o) => { if (o.isMesh && /hair/i.test(o.name + (o.material && o.material.name))) this.hair = o; });
     this.mixer = new THREE.AnimationMixer(this.body); this.clips = {};
@@ -114,10 +141,19 @@ export class OtherSurfer {
     const seen = !cam || this._fr.intersectsSphere(this._sp);
     this.group.visible = seen; if (!seen) { this.place(S); return; }   // (kept where they are even out of view: turning to look, they're never somewhere old for a frame)
     this.ghost.visible = d < 30;
+    const far = this.far ? d > 23 : d > 27;   // (a little apart, so someone paddling at 25 m doesn't flick between the two)
+    if (far !== this.far) { let ok = !far; for (const [m, full] of this.lodM) { const lg = far ? farGeo(full) : null; if (lg) ok = true; m.geometry = lg || full; } this.far = far && ok; }
     const every = d < 15 ? 1 : d < 40 ? 2 : d < 80 ? 3 : 5;   // (measured 30 Sep 2026: posing costs ~0.24 ms a surfer a frame on his Mac, ~1 ms on a slow phone)
     if (this.hair) this.hair.visible = d < 70;   // (8k of the body's 39k triangles, a speck that far out)
     if (this.frame % every && this.posedOnce) { this.place(S); return; }
-    this.update(this.acc, S); this.acc = 0; this.posedOnce = true;
+    this.update(Math.min(this.acc, 0.25), S); this.acc = 0; this.posedOnce = true;   // (capped: back in view after a while, one huge step made them jump)
+  }
+  // off the beach for good (they left, or changed board and are rebuilt): give back what only this surfer held, its
+  // bones' texture on the graphics chip and its shorts colour (the body's shapes and the board are shared, kept)
+  dispose() {
+    const done = new Set(); for (const m of this.skins || []) if (!done.has(m.skeleton)) { done.add(m.skeleton); m.skeleton.dispose(); }
+    if (this.shortsMat) this.shortsMat.dispose();
+    if (this.mixer) { this.mixer.stopAllAction(); this.mixer.uncacheRoot(this.body); }
   }
   setShorts(c) { if (this.shorts === c || !this.shortsMat) return; this.shorts = c; this.shortsMat.color.set(c); }
   place(S) { this.group.position.copy(S.pos).addScaledVector(_c.set(0, 1, 0).applyQuaternion(S.q), this.lift ?? 0.1); this.group.quaternion.copy(S.q); }

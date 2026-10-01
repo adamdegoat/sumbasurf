@@ -151,15 +151,21 @@ export class SurfAudio {
     if (!this.js) { const ctx = this.ctx, g = ctx.createGain(); g.gain.value = 0; const fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = 700; fl.Q.value = 1.2;
       const os = [62, 64.5, 124].map((f, i) => { const o = ctx.createOscillator(); o.type = i === 2 ? 'square' : 'sawtooth'; o.frequency.value = f; o.connect(fl); o.start(); return o; });
       const trem = ctx.createGain(); trem.gain.value = 0.75; const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 9; lg.gain.value = 0.25; lfo.connect(lg).connect(trem.gain); lfo.start();   // (the burble: the level wobbles ~9 times a second, between half and full; silent when g is down)
-      fl.connect(trem).connect(g).connect(this.master); this.js = { g, os, fl }; }
-    this.set(this.js.g.gain, k * 0.09, 0.3); const f = 52 + rev * 34; this.js.os.forEach((o, i) => this.set(o.frequency, f * [1, 1.04, 2][i], 0.35)); this.set(this.js.fl.frequency, 450 + rev * 650, 0.35);
+      fl.connect(trem).connect(g).connect(this.master); this.js = { g, os, fl, out: g, lfo }; }
+    this.idleOff('js', k); this.set(this.js.g.gain, k * 0.09, 0.3); const f = 52 + rev * 34; this.js.os.forEach((o, i) => this.set(o.frequency, f * [1, 1.04, 2][i], 0.35)); this.set(this.js.fl.frequency, 450 + rev * 650, 0.35);
+  }
+  // (1 Oct 2026: once turned down to nothing, the engine or the drone is taken apart 2 s later, when it's long silent,
+  // instead of humming on at zero volume for the rest of the session; the next call simply builds it again)
+  idleOff(key, k) {
+    const tk = key + 'Off'; clearTimeout(this[tk]); this[tk] = 0; if (k > 0) return;
+    this[tk] = setTimeout(() => { const n = this[key]; if (!n) return; this[key] = null; for (const o of n.lfo ? n.os.concat(n.lfo) : n.os) { try { o.stop(); } catch (e) {} } try { n.out.disconnect(); } catch (e) {} }, 2000);
   }
   droneBuzz(k, work = 0) {
     if (!this.ok) return;
     if (!this.dr) { const ctx = this.ctx, g = ctx.createGain(); g.gain.value = 0; const fl = ctx.createBiquadFilter(); fl.type = 'bandpass'; fl.frequency.value = 900; fl.Q.value = 0.8;
       const os = [185, 192, 371].map((f, i) => { const o = ctx.createOscillator(); o.type = i === 2 ? 'square' : 'sawtooth'; o.frequency.value = f; o.connect(fl); o.start(); return o; });
-      fl.connect(g).connect(this.master); this.dr = { g, os }; }
-    this.set(this.dr.g.gain, k * 0.045, 0.25); const f = 185 + work * 70; this.dr.os.forEach((o, i) => this.set(o.frequency, f * [1, 1.037, 2][i], 0.3));
+      fl.connect(g).connect(this.master); this.dr = { g, os, out: g }; }
+    this.idleOff('dr', k); this.set(this.dr.g.gain, k * 0.045, 0.25); const f = 185 + work * 70; this.dr.os.forEach((o, i) => this.set(o.frequency, f * [1, 1.037, 2][i], 0.3));
   }
   musicStart(tracks) {
     if (!this.ok || this.mel) return; this.tracks = tracks; this.order = [];

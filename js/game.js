@@ -5,7 +5,7 @@ import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=214';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=197';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER, DESIGNS, SEASON, bakeDesigns } from './board.js?v=23';
-import { SurfAudio } from './audio.js?v=26';
+import { SurfAudio } from './audio.js?v=27';
 import { ranch, POOL } from './ranch.js?v=9';
 import { SPOTS, spotGroup, builtSpots } from './spots.js?v=151';
 import { villa, VILLA } from './villa.js?v=190';
@@ -572,7 +572,7 @@ function freePeer(id, a, name, sent) {   // (sent: the sender's own clock when i
   if (P.buf.length) { const L = P.buf[P.buf.length - 1].a; if (Math.hypot(a[1] - L[1], a[3] - L[3]) > 25) P.buf = []; }   // (Paddle out: they're simply there, not sliding across the bay; his note 30 Sep 2026)
   if (name) P.name = name;
   P.buf.push({ t, a }); if (P.buf.length > 12) P.buf.shift(); P.last = now;
-  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=23').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }
+  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=24').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }
 }
 function freeSay(id, text) { const P = peers.get(id); if (P) P.say = { text: String(text).slice(0, 90), until: performance.now() + 5000 }; }
 // every player's own shorts colour (his call 30 Sep 2026: automatic, different for each), picked from their player id,
@@ -583,7 +583,7 @@ function shortsFor(id) { if (shortsMap && shortsMap[id] != null) return shortsMa
 // the players in the order they joined: each takes the colour its id points at, or the next one nobody earlier has, so
 // no two share one and someone arriving later never changes anyone's
 function freeShorts(ids) { const used = new Set(), m = {}; for (const id of ids) { let h = 0; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; let k = h % SHORTS.length; while (used.has(k)) k = (k + 1) % SHORTS.length; used.add(k); m[id] = SHORTS[k]; } shortsMap = m; }
-function freePeerGone(id) { const P = peers.get(id); if (P && P.os) scene.remove(P.os.group); if (P && P.tag) P.tag.remove(); peers.delete(id); }
+function freePeerGone(id) { const P = peers.get(id); if (P && P.os) { scene.remove(P.os.group); P.os.dispose && P.os.dispose(); } if (P && P.tag) P.tag.remove(); peers.delete(id); }
 function freePeersClear() { for (const id of [...peers.keys()]) freePeerGone(id); }
 function peersTick(dt) {
   const now = performance.now(), at = now - 140; tagsOn.length = 0;
@@ -597,7 +597,7 @@ function peersTick(dt) {
     if (!OSmod || !surferGltf) continue;
     const dz = c[0] === 'DECK' ? (P.os ? P.os.design : 0) : Math.max(0, Math.min(2, Math.floor(+c[23] || 0)));   // (their board's paint)
     if (!P.os || (c[0] !== 'DECK' && (P.os.boardType !== c[17] || P.stance !== c[18] || P.os.design !== dz))) {   // (on deck no board is sent: keep theirs)
-      if (P.os) scene.remove(P.os.group); P.os = new OSmod.OtherSurfer(surferGltf, { board: c[17], stance: c[18], shorts: shortsFor(id), design: dz }); P.stance = c[18]; scene.add(P.os.group); }
+      if (P.os) { scene.remove(P.os.group); P.os.dispose && P.os.dispose(); } P.os = new OSmod.OtherSurfer(surferGltf, { board: c[17], stance: c[18], shorts: shortsFor(id), design: dz }); P.stance = c[18]; scene.add(P.os.group); }
     P.os.setShorts(shortsFor(id));
     const S = P.S || (P.S = { pos: new THREE.Vector3(), q: new THREE.Quaternion() });
     if (c[0] === 'DECK') {   // on the boat: stood on its deck (their spot on it, on your copy of the boat), facing their way
