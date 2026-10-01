@@ -7,3 +7,9 @@ compatibility_date = "2026-09-01"
 [[kv_namespaces]]
 binding = "KV"
 id = "732d4a884f85425892100a965667f697"
+
+# player alerts go out once a minute from a separate Worker, sumbasurf-alerts (see ../alerts): it gathers them here
+[[durable_objects.bindings]]
+name = "MINUTE"
+class_name = "Minute"
+script_name = "sumbasurf-alerts"

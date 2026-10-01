@@ -35,6 +35,13 @@ async function seen(kind, ip) {
     await c.put(key, new Response('1', { headers: { 'cache-control': 'max-age=60' } })); } catch (e) {}
   return false;
 }
+// (1 Oct 2026: one Telegram message per player got the bot muted for hours when many arrived at once. Each alert now goes
+// to the sumbasurf-alerts Worker, which sends everything from one minute as ONE message; straight to Telegram only if
+// that Worker isn't connected)
+async function send(env, kind, text) {
+  if (env.MINUTE) { const s = env.MINUTE.get(env.MINUTE.idFromName('main')); await s.fetch('https://alerts/add', { method: 'POST', body: JSON.stringify({ kind, text }) }); return; }
+  const chat = await chatId(env); if (chat) await tg(env, chat, text);
+}
 const num = (v, lo, hi) => { v = +v; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo; };
 const list = (a, ok) => (Array.isArray(a) ? [...new Set(a.filter((x) => ok.includes(x)))] : []).slice(0, 10);
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
@@ -53,18 +60,16 @@ export async function onRequestPost({ request, env }) {
     const text = clean(b.text, 500), name = clean(b.name, 40).replace(/\n/g, ' ');
     if (text.length < 2) return none;
     try {
-      const chat = await chatId(env); if (!chat) return none;
       let country = request.cf && request.cf.country || '';
       try { country = new Intl.DisplayNames(['en'], { type: 'region' }).of(country) || country; } catch (e) {}
       const dev = DEV.includes(b.dev) ? b.dev : '', where = [country, dev, b.host === 'wavedash' ? 'on Wavedash' : ''].filter(Boolean).join(', ');
-      await tg(env, chat, `FEEDBACK\nFrom ${name || 'someone'}${where ? ` (${where})` : ''}:\n${text}`);   // (a label line first, so each kind of alert reads at a glance: his ask 1 Oct 2026)
+      await send(env, 'fb', `FEEDBACK\nFrom ${name || 'someone'}${where ? ` (${where})` : ''}:\n${text}`);   // (a label line first, so each kind of alert reads at a glance: his ask 1 Oct 2026)
     } catch (e) {}
     return none;
   }
   if (b.kind === 'in') {   // they just started surfing or walked into the villa: one short line (his call 30 Sep 2026), its own once-a-minute limit so the note when they leave still goes
     if (await seen('in', ip)) { console.log('alert: skipped, once a minute'); return none; }
     try {
-      const chat = await chatId(env); if (!chat) { console.log('alert: no chat to send to'); return none; }
       let country = request.cf && request.cf.country || '';
       try { country = new Intl.DisplayNames(['en'], { type: 'region' }).of(country) || country; } catch (e) {}
       const dev = DEV.includes(b.dev) ? b.dev : '', src = SOURCES.includes(b.src) ? b.src : '', wd = b.host === 'wavedash';
@@ -78,7 +83,7 @@ export async function onRequestPost({ request, env }) {
       let fs = ''; if (where === 'Free surf' && b.fs && typeof b.fs === 'object') { const n = Math.round(num(b.fs.n, 1, 6)); fs = b.fs.host ? (n > 1 ? `, own beach with ${plural(n - 1, 'friend')}` : ', own beach') : `, joined ${n > 1 ? plural(n - 1, 'friend') : 'a beach'}`; }
       const line1 = [back ? 'BACK' : 'NEW', ...(back ? [visits > 1 ? ord(visits) + ' visit' : '', when] : [country, dev])].filter(Boolean).join(' · ');
       const came = wd ? 'Wavedash' : src ? `from ${src}` : '', line2 = [...(back ? [country, dev] : []), [came, where ? where + fs : ''].filter(Boolean).join(' → ')].filter(Boolean).join(' · ');
-      await tg(env, chat, `${test ? 'Claude testing: ' : ''}${line1}\n${line2}`);
+      await send(env, 'in', `${test ? 'Claude testing: ' : ''}${line1} · ${line2}`);   // (one line each now: a minute's message lists everyone)
     } catch (e) { console.log('alert: failed', hide(env, e && e.message || e)); }
     return none;
   }
