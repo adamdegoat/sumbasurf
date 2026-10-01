@@ -2,13 +2,13 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=212';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=214';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=197';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER, DESIGNS, SEASON, bakeDesigns } from './board.js?v=23';
 import { SurfAudio } from './audio.js?v=26';
 import { ranch, POOL } from './ranch.js?v=9';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=149';
-import { villa, VILLA } from './villa.js?v=187';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=151';
+import { villa, VILLA } from './villa.js?v=189';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
@@ -411,7 +411,10 @@ function updateWaves(dt) {
         if (C.tubeMax) { if (!rider.pinchAt) rider.pinchAt = C.tubeMax + Math.random() * 1.2;
           if ((rider.ride.tubeT || 0) > rider.pinchAt) { rider.pinchAt = 1e9; if (rider.s > -1.55 * C.H) rider.spitOut = 1.8; else rider.wipe('Too deep when it pinched: the barrel closed on you'); } }   // (in the normal tube spot, -1.3 H, the closing barrel spits you out; drifted any deeper, it shuts on you)
       } else if (rider && rider.wave === w && !(rider.ride.tubeT > 0)) { rider.spitAt = 0; rider.pinchAt = 0; }
-      if (w.secK === undefined || w.secK <= 0) { w.secT -= dt; if (w.secT <= 0) { w.secK = 1.1; w.secA = w.secSoft ? C.softA : 1; w.secSoft = false; w.secT = 5 + wr(w) * 5; if (w.spitT !== undefined) w.spitT = 0.25; } }   // (a heavy wave's section throws hard over you: race it or it closes on you)
+      // (C.endBarrel, Watu Kanan: over its last stretch of reef, by the waterfall, the wave bends and a soft section throws
+      //  right over you once, a barrel to pull into, not a closeout racing past)
+      if (C.endBarrel && !w.endThrow && w.peelX > (w.xEnd ?? REEF.xEnd) - C.endBarrel) { w.endThrow = true; w.secT = Math.min(w.secT, 0.1); w.secSoft = true; }
+      if (w.secK === undefined || w.secK <= 0) { w.secT -= dt; if (w.secT <= 0) { w.secK = 1.1; w.secA = w.secSoft ? C.softA : 1; w.secSoft = false; w.secT = (C.secGap || 5) * (1 + wr(w)); if (w.spitT !== undefined) w.spitT = 0.25; } }   // (a heavy wave's section throws hard over you: race it or it closes on you)
       else { w.secK -= dt; const ph = 1 - w.secK / 1.1, A = C.burst; rate *= ph < 0.75 ? 1 + A * (w.secA || 1) * Math.sin(Math.PI * ph / 0.75) : 1 - 0.4 * (w.secA || 1); }
     }
     // the end near the sand: the rest of the wave closes out, the whole section left throws at once (the break races down
