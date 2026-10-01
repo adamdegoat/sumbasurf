@@ -159,7 +159,7 @@ export function makeBoard(type = 'short', water = false) {   // (water: your own
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(col, 2));
   g.setIndex(idx); g.computeVertexNormals();
-  const board = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: paintSheet(type, S), roughness: 0.2, side: THREE.DoubleSide })   /* (a wet glossy deck: the sun catches it) */);
+  const board = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: paintSheet(type, S), roughness: type === 'alaia' ? 0.55 : 0.2, side: THREE.DoubleSide })   /* (oiled wood is satin, not glassy resin: at 0.2 the alaia mirrored the blue sky and read grey-green on friends, his check 1 Oct 2026) */   /* (a wet glossy deck: the sun catches it) */);
   if (water) { const sheet = board.material.map; const under = new THREE.Mesh(g, underwater(sheet)); under.renderOrder = 20; under.frustumCulled = false; board.add(under); board.userData.under = under; }   // (the part under the water, seen through it)
   // three fins under the tail
   const fin = new THREE.Shape(); fin.moveTo(0, 0); fin.quadraticCurveTo(0.02, -0.1, 0.07, -0.11); fin.lineTo(0.09, 0); fin.lineTo(0, 0);

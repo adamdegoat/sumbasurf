@@ -13,7 +13,7 @@
 // Every target is eased so a change of pose is a movement, never a snap.
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=20';
+import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=21';
 
 const UP = new THREE.Vector3(0, 1, 0), INTO_WAVE = new THREE.Vector3(0, 0, -1);
 const V = () => new THREE.Vector3(), Q = () => new THREE.Quaternion();
@@ -91,6 +91,7 @@ export class OtherSurfer {
     this.body.traverse((b) => { if (b.isBone && FINGER.test(b.name)) b.quaternion.slerp(_q1.identity(), 0.6); });
     for (const a of Object.values(this.clips)) { a.play(); a.weight = 0; } this.clips.crouch.weight = 0.4; this.clips.stand.weight = 0.6;
     this.W = { crouch: 0.4, stand: 0.6 };   // each clip's weight, eased toward what the moment wants (a change of pose is a blend, never a snap)
+    this.seed = Math.random() * 20;   // (each friend's own rhythm for the idle sway on deck: two friends never move in step)
     this.pos0 = V().set(0, -0.36, -0.25); this.q0 = Q(); this.paddlePh = 0; this.paddleW = 0; this.sitW = 0;
     this.stanceQ = Q().setFromAxisAngle(UP, (stance === 'regular' ? -1 : 1) * Math.PI / 2);
     // eased state
@@ -127,6 +128,7 @@ export class OtherSurfer {
     // BOARD_WATER; this plain board sat half under the surface where the water hid it entirely)
     this.group.position.copy(S.pos).addScaledVector(_c.set(0, 1, 0).applyQuaternion(S.q), this.lift ?? 0.1); this.group.quaternion.copy(S.q); this.group.updateMatrixWorld(true);
     const st = S.state; this.body.visible = this.board.visible = true;
+    if (st !== 'LIE') { this.board.rotation.x = 0; this.board.position.y = 0; this.sitW = 0; }   // (the sitting tilt only while in the water)
     if (st === 'DECK') return this.deck(dt, S);
     if (st === 'WIPE') return this.wipe(dt, S);
     if (st !== 'RIDE' && st !== 'POP') return this.water(dt, S);
@@ -250,19 +252,23 @@ export class OtherSurfer {
     const q = this.group.quaternion, down = V().set(0, -1, 0), fwd = V().set(0, 0, 1).applyQuaternion(q), side = V().set(1, 0, 0).applyQuaternion(q), gp = this.group.getWorldPosition(V());
     // (the rest pose leans forward, head down: the back and neck are stood up straight first, the head looking a little down)
     const up = V().set(0, 1, 0).applyQuaternion(q);
-    for (const [bn, cn, k] of [['pelvis', 'spine_01', 0], ['spine_01', 'spine_02', 0.02], ['spine_02', 'spine_03', 0.03], ['spine_03', 'neck_01', 0.04], ['neck_01', 'head', 0.1]])
-      if (B[bn] && B[cn]) aimBone(B[bn], B[cn], V().copy(up).addScaledVector(fwd, k).normalize(), 1);
+    // (1 Oct 2026, his check: stood still they were mannequins, arms straight down. Now at rest the weight sits on one leg,
+    // shifting to the other every few seconds, the hips over it and the chest leaning a touch the other way, breathing)
+    const idle = 1 - this.walkA, sh = Math.sin(this.t * 0.55 + this.seed) * idle, br = Math.sin(this.t * 2.3 + this.seed) * idle;
+    for (const [bn, cn, k, sw] of [['pelvis', 'spine_01', 0, 0.05], ['spine_01', 'spine_02', 0.02, -0.04], ['spine_02', 'spine_03', 0.03 + 0.012 * br, -0.03], ['spine_03', 'neck_01', 0.04 + 0.01 * br, -0.02], ['neck_01', 'head', 0.12, 0.03]])
+      if (B[bn] && B[cn]) aimBone(B[bn], B[cn], V().copy(up).addScaledVector(fwd, k).addScaledVector(side, sw * sh).normalize(), 1);
     for (const s of ['l', 'r']) {
       const th = B['thigh_' + s], sd = Math.sign(th.getWorldPosition(V()).sub(gp).dot(side)) || 1, ph = Math.sin(this.walkPh + (s === 'l' ? 0 : Math.PI)) * this.walkA;
-      aimBone(th, B['calf_' + s], V().copy(down).addScaledVector(fwd, 0.42 * ph).addScaledVector(side, 0.05 * sd).normalize(), 1);
-      aimBone(B['calf_' + s], B['foot_' + s], V().copy(down).addScaledVector(fwd, 0.42 * ph - 0.35 * Math.max(0, -Math.cos(this.walkPh + (s === 'l' ? 0 : Math.PI))) * this.walkA).normalize(), 1);   // (the knee bends as the leg comes through)
+      const soft = Math.max(0, sh * sd) * 0.9;   // (the leg on the other side from the weight: knee relaxed forward)
+      aimBone(th, B['calf_' + s], V().copy(down).addScaledVector(fwd, 0.42 * ph + 0.12 * soft).addScaledVector(side, (0.05 + 0.03 * idle) * sd).normalize(), 1);
+      aimBone(B['calf_' + s], B['foot_' + s], V().copy(down).addScaledVector(fwd, 0.42 * ph - 0.35 * Math.max(0, -Math.cos(this.walkPh + (s === 'l' ? 0 : Math.PI))) * this.walkA - 0.1 * soft).normalize(), 1);   // (the knee bends as the leg comes through)
       if (B['ball_' + s]) aimBone(B['foot_' + s], B['ball_' + s], V().copy(fwd).addScaledVector(down, 0.15).normalize(), 1);
       const ua = B['upperarm_' + s], asd = Math.sign(ua.getWorldPosition(V()).sub(gp).dot(side)) || 1;
-      aimBone(ua, B['lowerarm_' + s], V().copy(down).addScaledVector(side, 0.14 * asd).addScaledVector(fwd, -0.3 * ph).normalize(), 1);   // (each arm swings with the other leg)
-      aimBone(B['lowerarm_' + s], B['hand_' + s], V().copy(down).addScaledVector(fwd, 0.18 - 0.2 * ph).addScaledVector(side, 0.05 * asd).normalize(), 1);
+      aimBone(ua, B['lowerarm_' + s], V().copy(down).addScaledVector(side, (0.14 + 0.05 * idle) * asd).addScaledVector(fwd, -0.45 * ph + 0.04 * idle).normalize(), 1);   // (each arm swings with the other leg; at rest a little out from the body)
+      aimBone(B['lowerarm_' + s], B['hand_' + s], V().copy(down).addScaledVector(fwd, 0.32 - 0.3 * ph).addScaledVector(side, 0.04 * asd).normalize(), 1);   // (elbows a little bent, not locked straight)
     }
     const yl = B.foot_l.getWorldPosition(V()).y, yr = B.foot_r.getWorldPosition(V()).y;
-    this.body.position.y += S.pos.y + 0.09 - Math.min(yl, yr) + Math.abs(Math.sin(this.walkPh)) * 0.025 * this.walkA; this.body.updateMatrixWorld(true);
+    this.body.position.y += S.pos.y + 0.09 - Math.min(yl, yr) + Math.abs(Math.sin(this.walkPh)) * 0.025 * this.walkA; this.body.position.x += 0.03 * sh; this.body.updateMatrixWorld(true);   // (hips over the leg that carries them)
   }
   weights(dt, want, rate) {   // ease every clip toward its wanted weight (missing = 0)
     for (const [n, a] of Object.entries(this.clips)) { const w = ease(this.W[n] || 0, want[n] || 0, dt, rate); this.W[n] = w; a.weight = w; }
@@ -285,6 +291,9 @@ export class OtherSurfer {
     this.paddleW = ease(this.paddleW, paddling ? 1 : 0, dt, 6); this.sitW = ease(this.sitW, paddling ? 0 : 1, dt, 6);
     this.hand.l.ok = this.hand.r.ok = false;   // (riding hands start afresh after)
     this.crouch = 0.8; this.lean = 0; this.twist = 0;   // (so the pop-up starts from a crouch)
+    // (1 Oct 2026, his check: sitting, the board floated flat on top like a bench. A sitting surfer's weight sinks the tail:
+    // nose up, the board and the surfer a little lower in the water)
+    this.board.rotation.x = -0.16 * this.sitW; this.board.position.y = -0.06 * this.sitW; this.body.position.y += -0.06 * this.sitW; this.body.updateMatrixWorld(true);
     if (this.sitW > 0.05) this.straddle(this.sitW);
     if (this.paddleW > 0.05) this.crawl(dt, S, this.paddleW);
   }
@@ -314,7 +323,7 @@ export class OtherSurfer {
       aimBone(B['thigh_' + s], B['calf_' + s], V().set(0, -0.3, 0).addScaledVector(bs, side * 0.32).addScaledVector(bf, 1.1).normalize(), 0.9 * w);
       aimBone(B['calf_' + s], B['foot_' + s], V().set(0, -1, 0).addScaledVector(bf, 0.1).addScaledVector(bs, side * 0.1).normalize(), 0.8 * w);
     }
-    const hip = B.pelvis.getWorldPosition(V()), deckY = g.position.y - (this.lift ?? 0.1) + 0.07 + (this.lift ?? 0.1);
+    const hip = B.pelvis.getWorldPosition(V()), deckY = g.position.y - (this.lift ?? 0.1) + 0.07 + (this.lift ?? 0.1) + (0.136 - 0.06) * w;   // (the deck ahead of the knees is higher with the nose up: see water())
     for (const s of ['l', 'r']) {
       const ua = B['upperarm_' + s], side = ua.getWorldPosition(V()).sub(g.position).dot(bs) > 0 ? 1 : -1;
       const T = V().copy(hip).addScaledVector(bf, 0.85).addScaledVector(bs, side * 0.2); T.y = deckY;

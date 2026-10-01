@@ -4,11 +4,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=194';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=190';
-import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER } from './board.js?v=20';
+import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER } from './board.js?v=21';
 import { SurfAudio } from './audio.js?v=24';
 import { ranch, POOL } from './ranch.js?v=9';
 import { SPOTS, spotGroup, builtSpots } from './spots.js?v=129';
-import { villa, VILLA } from './villa.js?v=162';
+import { villa, VILLA } from './villa.js?v=163';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
@@ -537,7 +537,7 @@ function freePeer(id, a, name, sent) {   // (sent: the sender's own clock when i
   if (P.buf.length) { const L = P.buf[P.buf.length - 1].a; if (Math.hypot(a[1] - L[1], a[3] - L[3]) > 25) P.buf = []; }   // (Paddle out: they're simply there, not sliding across the bay; his note 30 Sep 2026)
   if (name) P.name = name;
   P.buf.push({ t, a }); if (P.buf.length > 12) P.buf.shift(); P.last = now;
-  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=20').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }
+  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=21').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }
 }
 function freeSay(id, text) { const P = peers.get(id); if (P) P.say = { text: String(text).slice(0, 90), until: performance.now() + 5000 }; }
 // every player's own shorts colour (his call 30 Sep 2026: automatic, different for each), picked from their player id,
