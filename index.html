@@ -42,9 +42,11 @@
     font: 600 11px/1 "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing: .1em; touch-action: none; }
   #menu svg { width: 14px; height: 14px; }
   /* free-surf beach: back to the nearest peak's lineup (see game.js freeOut), and the quick fade it goes through */
-  #freeOut, #boatBtn, #boatGo, #towBtn { position: fixed; z-index: 9; top: max(8px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); height: 32px; padding: 0 14px 0 11px; display: flex; align-items: center; gap: 7px;
+  #freeOut, #boatBtn, #boatGo, #towBtn, #fsDrone { position: fixed; z-index: 9; top: max(8px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); height: 32px; padding: 0 14px 0 11px; display: flex; align-items: center; gap: 7px;
     border-radius: 16px; background: rgba(10,20,26,.5); border: 1px solid rgba(255,201,120,.55); color: #ffe2b2; font-size: 13px; font-weight: 700; letter-spacing: .06em; touch-action: manipulation; cursor: pointer; }
-  #freeOut[hidden], #boatBtn[hidden], #boatGo[hidden], #towBtn[hidden] { display: none; } #freeOut svg, #boatBtn svg, #boatGo svg, #towBtn svg { width: 14px; height: 14px; color: #ffc978; }
+  #freeOut[hidden], #boatBtn[hidden], #boatGo[hidden], #towBtn[hidden], #fsDrone[hidden] { display: none; } #freeOut svg, #boatBtn svg, #boatGo svg, #towBtn svg, #fsDrone svg { width: 14px; height: 14px; color: #ffc978; }
+  #fsDrone.on { color: #2a1a0c; background: linear-gradient(180deg, #ffd694, #f2ad52); border-color: rgba(255,236,200,.7); } #fsDrone.on svg { color: #2a1a0c; }
+  body.strand.drone #vAlt { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 46px); }   /* (free surf: clear of the chat bar) */
   /* the monster wave (1 Oct 2026): TOW IN where the free beach has GO TO LINEUP, a little bigger and brighter (it is how every ride starts), and the
      countdown to the let-go, big in the middle in the move callouts' sticker style */
   #towBtn { height: 36px; padding: 0 16px 0 12px; font-size: 14px; background: rgba(40,26,10,.72); border-color: #ffc978; }
@@ -412,7 +414,7 @@
   #start .villarow .stl { margin-left: 10px; } #start #stances svg { width: 22px; height: 12px; }   /* (the filled foot is the front one) */
   /* the villa: walk (left thumb), look (right thumb), tap a board in the rack */
   body:not(.villa):not(.strand) .vui { display: none !important; }
-  body.strand .vui:not(#vMove):not(#vLook):not(#vStick), body.strand #paddle, body.strand #stall, body.strand #pad { display: none !important; }   /* (the free-surf beach on foot: only the walk and look thumbs) */
+  body.strand .vui:not(#vMove):not(#vLook):not(#vStick):not(#vUp):not(#vDn):not(#vAlt), body.strand:not(.drone) :is(#vUp, #vDn, #vAlt), body.strand #paddle, body.strand #stall, body.strand #pad { display: none !important; }   /* (the free-surf beach on foot: only the walk and look thumbs) */
   body.villa #paddle, body.villa #stall, body.villa #pad, body.villa #touch { display: none !important; }
   #vMove { position: fixed; left: 0; top: 56px; bottom: 0; width: 45%; z-index: 7; touch-action: none; }
   #vLook { position: fixed; right: 0; top: 56px; bottom: 0; width: 55%; z-index: 7; touch-action: none; }
@@ -523,7 +525,7 @@
     #rotate .rtWhy { font-size: 14px; margin-top: 6px; } #rtTurn { margin-top: 14px; padding: 10px 20px; } #rotate .rtMid { padding: 8px 0 14px; } #rotate .rtLock { font-size: 12px; padding: 10px 12px; } }
   body:not(.villa):not(.strand) .vui, body:not(.playing) .ctl, body:not(.reef) #ear { display: none !important; }   /* (who shows where wins over the looks below) */
   /* ---- in-game controls, same family as the menu: warm driftwood pills, the poster face, amber for what's active */
-  #menu, #freeOut, #boatBtn, #boatGo, #towBtn, #ear, #vGo, #vZoom, #vWatch, #vSit, #vPanel button, #ranch button { font-family: var(--disp) !important; letter-spacing: .05em !important; }
+  #menu, #freeOut, #boatBtn, #boatGo, #towBtn, #fsDrone, #ear, #vGo, #vZoom, #vWatch, #vSit, #vPanel button, #ranch button { font-family: var(--disp) !important; letter-spacing: .05em !important; }
   #menu, #ear, #vZoom, #vWatch { border-radius: 999px !important; border: 1px solid var(--line) !important; background: linear-gradient(180deg, rgba(40,28,18,.66), rgba(24,17,11,.76)) !important;
     box-shadow: inset 0 1px 0 rgba(255,236,200,.12), 0 2px 10px rgba(0,0,0,.18); color: var(--sand) !important; display: inline-flex; align-items: center; gap: 7px; }
   #menu { height: 32px; font-weight: 700 !important; font-size: 13px !important; padding: 0 14px 0 11px !important; } #ear { font-size: 12px !important; font-weight: 600 !important; height: 30px; }
@@ -970,13 +972,16 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261001-2044</small>
+    <small id="build">build 261001-2120</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-01-boatdrone', wd: true, date: '1 Oct 2026', time: '9:20 pm', title: 'Fly a drone from the boat', items: [
+      'In free surf, stand on the boat and tap FLY DRONE to fly over the whole bay and watch your friends surf from above. Tap LAND to come back to the deck.',
+    ] },
     { id: '2026-10-01-freesurf', wd: true, date: '1 Oct 2026', time: '8:44 pm', title: 'Smoother free surf', items: [
       'Free surf runs lighter with friends on the beach: surfers far away take less work to draw, and your phone stays cooler on long sessions.',
     ] },
@@ -1466,6 +1471,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1130"></script>
+<script type="module" src="js/game.js?v=1133"></script>
 </body>
 </html>

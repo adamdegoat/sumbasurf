@@ -465,7 +465,7 @@ let freeJumping = false;
 function freeOut() {
   if (!freeBtn) return;
   boatBtnTick();
-  const r = rider, far = isFree() && !freeJumping && !!(strand || r && r.state === 'LIE' && Math.min(Math.hypot(r.x - FREE[0].x, r.z - FREE[0].z + 8), Math.hypot(r.x - FREE[1].x, r.z - FREE[1].z + 8)) > 40);   // (!!: on foot it was the walker object, never equal to hidden's true/false, so the button never showed)
+  const r = rider, far = isFree() && !freeJumping && !!(strand && !drone.on || r && r.state === 'LIE' && Math.min(Math.hypot(r.x - FREE[0].x, r.z - FREE[0].z + 8), Math.hypot(r.x - FREE[1].x, r.z - FREE[1].z + 8)) > 40);   // (!!: on foot it was the walker object, never equal to hidden's true/false, so the button never showed)
   if (freeBtn.hidden === far) { freeBtn.hidden = !far; document.body.classList.toggle('fo', far); }   // (fo: the tip up top narrows to clear the button)
   freeGuide();
 }
@@ -550,7 +550,7 @@ function freeFollowTick(own) {
 }
 function freeSnap() {
   if (!isFree()) return null;
-  if (strand && strand.deck) return ['DECK', +strand.lx.toFixed(2), 0, +strand.lz.toFixed(2), +strand.yaw.toFixed(3)];   // (on the boat: where on its deck and which way you face; each copy of the boat rides the same swell)
+  if (strand && strand.deck) return ['DECK', +strand.lx.toFixed(2), 0, +strand.lz.toFixed(2), +(drone.on && drone.save ? drone.save[0] : strand.yaw).toFixed(3)];   // (flying the drone: still facing the way you stood)   // (on the boat: where on its deck and which way you face; each copy of the boat rides the same swell)
   if (strand) return ['FOOT', +strand.x.toFixed(2), 0, +strand.z.toFixed(2)];
   if (!rider) return null;
   const p = rig.position, q = rig.quaternion, wv = rider.wave;
@@ -688,7 +688,7 @@ function boatBump(r) {   // (paddlers and surfers go round it, never through: pu
 }
 // the buttons top right, one under the other (his call 30 Sep 2026): Go to lineup, Go to boat (from anywhere in the
 // water), Climb on (at its ladder) or Back in the water (on deck), then the list of who's on the beach
-let boatFar = null;
+let boatFar = null, fsDroneB = null;
 function boatBtnTick() {
   if (!boatBtn) { const tr = document.getElementById('fsTR') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'fsTR' }));
     if (freeBtn) tr.appendChild(freeBtn);
@@ -696,14 +696,16 @@ function boatBtnTick() {
       for (const ev of ['pointerup', 'touchend', 'click']) b.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); fn(); }, { passive: false }); return b; };
     const ic = (d) => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
     boatFar = mk('boatGo', () => boatGo(true), ic('M2 10h12l-2 3H4zM8 10V3l4 5H8'));   // (a little boat with a sail)
-    boatBtn = mk('boatBtn', () => boatGo(false), ic('M5 14V3M11 14V3M5 6h6M5 10h6')); }   // (a ladder)
+    boatBtn = mk('boatBtn', () => boatGo(false), ic('M5 14V3M11 14V3M5 6h6M5 10h6'));   // (a ladder)
+    fsDroneB = mk('fsDrone', () => { const n = performance.now(); if (n - (fsDroneB.tapT || 0) < 500) return; fsDroneB.tapT = n; fsDroneSet(!drone.on); }, /* (one tap fires pointerup, touchend and click: it must switch once, not on and straight off again) */ '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7.5" y="8" width="5" height="4" rx="1.2"/><path d="M7.5 8 4.5 5M12.5 8l3-3M7.5 12l-3 3M12.5 12l3 3"/><path d="M2 4.5h5M13 4.5h5M2 15.5h5M13 15.5h5"/></svg>'); tr.insertBefore(fsDroneB, tr.firstChild); }   // (the villa's drone icon; first in the list, so FLY DRONE and LAND stay put while the others come and go)
   const r = rider, onDeck = !!(strand && strand.deck), lying = isFree() && !!boat && !freeJumping && !onDeck && !!r && r.state === 'LIE';
   boatNear = lying && Math.hypot(r.x - BOAT.x - LADDER.x, r.z - BOAT.z - LADDER.z) < 5;
   const far = lying && !boatNear && Math.hypot(r.x - BOAT.x, r.z - BOAT.z) > 15;
   const set = (b, on, t) => { if (b.hidden === on) b.hidden = !on; const sp = b.lastChild; if (on && sp.textContent !== t) sp.textContent = t; };
   set(boatFar, far, 'GO TO BOAT');
-  const edge = onDeck && !!boatEdge();   // ('Back in the water' is gone, his call 30 Sep 2026: on deck you jump in from any edge you're facing out over)
+  const edge = onDeck && !drone.on && !!boatEdge();   // ('Back in the water' is gone, his call 30 Sep 2026: on deck you jump in from any edge you're facing out over)
   set(boatBtn, isFree() && !freeJumping && (boatNear || edge), edge ? 'JUMP IN' : 'CLIMB ON');
+  set(fsDroneB, isFree() && !freeJumping && onDeck && !strand.jump, drone.on ? 'LAND' : 'FLY DRONE'); fsDroneB.classList.toggle('on', drone.on);
 }
 const DECK_SPOTS = [[0, -3], [-0.5, -4.6], [0.3, -1.0], [2.2, -3.4], [-1.6, -1.6], [-2.2, -0.2]];   // (clear of the beanbags, the cooler and the rope)
 const deckTaken = () => [...peers.values()].map((P) => P.buf.length && P.buf[P.buf.length - 1].a).filter((a) => a && a[0] === 'DECK');
@@ -748,15 +750,53 @@ function deckTick(dt, W_) {
     return;
   }
   const kx = inputLock ? 0 : (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0), kz = inputLock ? 0 : (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
-  const mx = W_.mx || kx, mz = W_.mz || kz, fx = Math.cos(W_.yaw), fz = Math.sin(W_.yaw), sp = 1.6 * dt;   // (the boat points along z, not turned: world steps are its steps)
+  let mx = W_.mx || kx, mz = W_.mz || kz; const fx = Math.cos(W_.yaw), fz = Math.sin(W_.yaw), sp = 1.6 * dt;   // (the boat points along z, not turned: world steps are its steps)
+  if (drone.on) { fsDroneTick(dt, mx, mz); mx = mz = 0; }   // (flying: the thumbs fly the drone; you stay standing on deck)
   W_.lx = Math.max(DECK.x0 + 0.3, Math.min(DECK.x1 - 0.3, W_.lx + (fx * mz - fz * mx) * sp)); W_.lz = Math.max(DECK.z0 + 0.3, Math.min(DECK.z1 - 0.2, W_.lz + (fz * mz + fx * mx) * sp));
   for (const [x0, x1, z0, z1] of BLOCKS) { const r = 0.3; if (W_.lx > x0 - r && W_.lx < x1 + r && W_.lz > z0 - r && W_.lz < z1 + r) {   // (round the things on deck, not through them: out the nearest side)
     const o = [W_.lx - (x0 - r), x1 + r - W_.lx, W_.lz - (z0 - r), z1 + r - W_.lz], m = Math.min(...o), i = o.indexOf(m); if (i === 0) W_.lx -= m; else if (i === 1) W_.lx += m; else if (i === 2) W_.lz -= m; else W_.lz += m; } }
   const moving = Math.hypot(mx, mz) > 0.1; if (moving) W_.arr = 0; else deckSpread(W_); W_.bob = (W_.bob || 0) + (moving ? dt * 8 : 0);
   const p = boatWorld(W_.lx, DECK_Y + 1.65 + (moving ? Math.sin(W_.bob) * 0.02 : 0), W_.lz); W_.x = p.x; W_.z = p.z; W_.y = p.y;
   camera.position.copy(p); _pe.set(W_.pitch + boat.rotation.x * 0.5, -W_.yaw - Math.PI / 2, boat.rotation.z * 0.5); camera.quaternion.setFromEuler(_pe);   // (half the boat's rock reaches your eyes)
-  setText(ui.hint, FREE.deckT !== undefined && T - FREE.deckT < 10 ? 'Walk to the edge of the boat and jump in' : ''); freeOut();
+  if (drone.on) { camera.position.set(drone.x, drone.y + Math.sin(drone.t * 2.1) * 0.04, drone.z); _pe.set(W_.pitch, -W_.yaw - Math.PI / 2, drone.roll); camera.quaternion.setFromEuler(_pe); }
+  setText(ui.hint, drone.on ? (drone.t < 6 ? (DESK ? 'WASD flies, drag the mouse to turn the camera, Space or E climbs, Q or Shift sinks.' : 'Left thumb flies, right thumb turns the camera. Hold UP or DOWN to climb and sink.') : '')
+    : FREE.deckT !== undefined && T - FREE.deckT < 10 ? 'Walk to the edge of the boat and jump in' : ''); freeOut();
 }
+// the drone from the boat (his idea 1 Oct 2026): anyone standing on the deck can fly the villa's drone over the free
+// beach. Only you see it (his call: nothing is sent, so friends just see you standing on deck). Same thumbs, keys,
+// sound and feel as the villa's (droneTick); takes off from where you stand, or from the open front deck when you're
+// under the shade roof; keeps above the water, the sand and the boat, and stays over the bay
+function fsDroneSet(on) {
+  const W_ = strand; if (on === drone.on) return;
+  if (on) { if (!isFree() || !W_ || !W_.deck || W_.jump || !boat || freeJumping) return;
+    ssEvent('drone');
+    const p = W_.lz > 0.2 ? boatWorld(0, DECK_Y + 1.7, -3.6) : boatWorld(W_.lx, DECK_Y + 1.7, W_.lz);
+    Object.assign(drone, { on: true, x: p.x, y: p.y, z: p.z, vx: 0, vy: 0, vz: 0, up: 0, roll: 0, t: 0, save: [W_.yaw, W_.pitch], g: -20, gT: 0 });
+    W_.pitch = -0.15;
+  } else { drone.on = false; drone.up = 0; if (drone.save && W_) [W_.yaw, W_.pitch] = drone.save; audio.droneBuzz(0); }
+  for (const id of ['vUp', 'vDn']) document.getElementById(id).classList.remove('down');
+  document.body.classList.toggle('drone', drone.on); droneB.classList.toggle('on', drone.on); droneB.querySelector('span').textContent = drone.on ? 'LAND' : 'FLY DRONE';
+  if (fsDroneB) { fsDroneB.classList.toggle('on', drone.on); fsDroneB.lastChild.textContent = drone.on ? 'LAND' : 'FLY DRONE'; }
+}
+function fsDroneTick(dt, mx, mz) {
+  const D = drone, W_ = strand; D.t += dt;
+  const fx = Math.cos(W_.yaw), fz = Math.sin(W_.yaw), lift = D.t < 1.6;   // (first straight up off the deck)
+  const SP = 15, tx = lift ? 0 : (fx * mz - fz * mx) * SP, tz = lift ? 0 : (fz * mz + fx * mx) * SP;
+  const kv = (keys.has('Space') || keys.has('KeyE') ? 1 : 0) - (keys.has('KeyQ') || keys.has('ShiftLeft') || keys.has('ShiftRight') ? 1 : 0);
+  const ty = lift ? 6 : Math.max(-1, Math.min(1, D.up + kv)) * 6;
+  const a = Math.min(1, dt * 2.2); D.vx += (tx - D.vx) * a; D.vz += (tz - D.vz) * a; D.vy += (ty - D.vy) * Math.min(1, dt * 3);
+  D.x += D.vx * dt; D.y += D.vy * dt; D.z += D.vz * dt;
+  D.x = Math.max(FSD.x0, Math.min(FSD.x1, D.x)); D.z = Math.max(FSD.z0, Math.min(REEF.zBeach + FSD.zBeach, D.z));   // (the bay: out past both peaks, in over the beach)
+  if ((D.gT -= dt) <= 0) { D.gT = 0.1; D.g = groundAt(D.x, D.z); }   // (the sand and rocks under it, now and then: a ray down is too dear every frame)
+  const sea = heightAt(waves, D.x, D.z), onBoat = Math.abs(D.x - BOAT.x) < HALF.x + 0.6 && Math.abs(D.z - BOAT.z) < HALF.z + 0.6;
+  const floor = Math.max(sea + 1.1, D.g + 1.5, onBoat && !lift ? boat.position.y + DECK_Y + 3.4 : -99);
+  if (D.y < floor) { D.y += (floor - D.y) * Math.min(1, dt * 5); if (D.vy < 0) D.vy *= 0.5; }
+  D.y = Math.min(D.y, FSD.top);
+  const side = -D.vx * fz + D.vz * fx; D.roll += (-side * 0.014 - D.roll) * Math.min(1, dt * 3);
+  audio.droneBuzz(0.6 + 0.4 * Math.min(1, Math.hypot(D.vx, D.vz) / SP), Math.min(1, Math.hypot(D.vx, D.vy, D.vz) / 12));
+  droneAlt.textContent = `ALT ${Math.max(0, D.y - Math.max(sea, D.g)).toFixed(0)} m    ${Math.hypot(D.x - BOAT.x, D.z - BOAT.z).toFixed(0)} m FROM BOAT`;
+}
+const FSD = { x0: -200, x1: 220, z0: -110, zBeach: 60, top: 80 };
 // ---- the free-surf beach on foot (his layout): you arrive on the sand, walk into the water and drop onto your board to
 // paddle out; paddle into the shallows and you stand up and walk out again. Same thumbs and keys as the villa (left
 // thumb walks, right thumb looks; WASD or arrows, mouse drag to look)
@@ -773,7 +813,7 @@ function startStrand(x, z, yaw) {
   const g = groundAt(x, z); strand = walker = { x, z, yaw, pitch: -0.1, y: Math.max(g, 0) + 1.65, mx: 0, mz: 0, g, gT: 0 };
   document.body.classList.add('strand'); document.body.classList.remove('riding');
 }
-function endStrand() { strand = null; walker = null; rider = rider || FREE.rider; rig.visible = true; document.body.classList.remove('strand'); }
+function endStrand() { if (drone.on) fsDroneSet(false); strand = null; walker = null; rider = rider || FREE.rider; rig.visible = true; document.body.classList.remove('strand'); }
 function strandTick(dt) {
   updateWaves(dt); railSpray.update(dt); wake.update(dt); track.update(dt);
   const W_ = strand;
