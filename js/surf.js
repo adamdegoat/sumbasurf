@@ -439,7 +439,7 @@ export class Rider {
         // the drop (his call 1 Oct 2026): run straight down the face flat out and the bumps at the bottom buck you off; set your rail
         // and angle across before you get there (pointed within ~20 deg of straight down, in the bottom fifth of the face, fast, for
         // half a second: a straight run into the flats, not a bottom turn that's still coming round; 0.35 s at 30 deg caught those)
-        if (sl && hRel < 0.2 && Math.sin(this.th) > 0.94 && speed > 0.9 * C.vSoft && this.stateT < 8) { this.dropT = (this.dropT || 0) + h; if (this.dropT > 0.5) return this.wipe('Straight down too fast: the chop at the bottom bucked you off'); }
+        if (sl && hRel < 0.2 && Math.sin(this.th) > 0.94 && speed > (C.dropV || 0.9) * C.vSoft && this.stateT < 8) { this.dropT = (this.dropT || 0) + h; if (this.dropT > (C.dropHold || 0.5)) return this.wipe('Straight down too fast: the chop at the bottom bucked you off'); }   // (C.dropHold: how long it lets you get away with it; Gunung Laut is kinder than the monster)
         else this.dropT = Math.max(0, (this.dropT || 0) - 2 * h);
       } else this.chatW = 0;
       // stalling: weight on the tail and the trailing hand dragged in the face, a strong brake (you let the wave catch you)

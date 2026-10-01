@@ -966,13 +966,19 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261001-1734</small>
+    <small id="build">build 261001-1819</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-01-laut', date: '1 Oct 2026', time: '6:19 pm', title: 'Gunung Laut, heavier', items: [
+      'Gunung Laut now rides like a real 15 m wave. The board chatters at speed and fights you, and leaning hard at full speed can catch the rail.',
+      'Barrels last a few seconds, then close. In the barrel when it closes and it spits you out, so keep riding. Too deep and it shuts on you. A warning shows just before.',
+      'Point straight down all the way into the flats and the chop bucks you off: turn across the face on the drop.',
+      'It is stricter now, with no take-off help. Top speed tops out near a real 80 km/h.',
+    ] },
     { id: '2026-10-01-designs', date: '1 Oct 2026', time: '5:34 pm', title: 'Board designs', items: [
       'Every board now comes in three designs: its classic look, a new one, and a Halloween one for this season. Pick yours in the villa board room: tap a board, then tap a design to ride it.',
       'Your friends see your design in free surf and in contests. Looks only: every design rides the same.',
@@ -1433,6 +1439,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1108"></script>
+<script type="module" src="js/game.js?v=1115"></script>
 </body>
 </html>

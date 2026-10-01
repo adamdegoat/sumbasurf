@@ -2,19 +2,19 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=203';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=194';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=209';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=196';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER, DESIGNS, SEASON, bakeDesigns } from './board.js?v=23';
 import { SurfAudio } from './audio.js?v=25';
 import { ranch, POOL } from './ranch.js?v=9';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=140';
-import { villa, VILLA } from './villa.js?v=178';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=146';
+import { villa, VILLA } from './villa.js?v=184';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=61';
-import { wildlife } from './wildlife.js?v=65';
+import { crew } from './crew.js?v=63';
+import { wildlife } from './wildlife.js?v=67';
 import { droneShow } from './show.js?v=13';
 import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=5';
 
@@ -405,7 +405,11 @@ function updateWaves(dt) {
       if (rider && rider.wave === w && rider.inBarrel) {
         if (!rider.spitAt) rider.spitAt = 3.2 + Math.random() * 1.8;   // (29 Sep 2026, his call: most barrels 3 to 5 s, was 4.5 to 6.5)
         if ((rider.ride.tubeT || 0) > rider.spitAt) { rider.spitAt += 2.5; if (rider.s > -1.5 * C.H || (C.tube || 0) >= 0.8) { rider.spitOut = 1.8; w.secT = Math.max(w.secT || 0, 3 + Math.random() * 2); if (w.spitT !== undefined) w.spitT = 0.25; } }   // (spat out onto the open face: the next section waits a few seconds, so you ride on and carve before another barrel)   // (at the heavy spots the spit only blows you out if you're near the mouth; the friendly tubes forgive a deeper line)   // (and again every 3 s if you hang on in there)
-      } else if (rider && rider.wave === w && !(rider.ride.tubeT > 0)) rider.spitAt = 0;
+        // a heavy wave's tube doesn't last (C.tubeMax, his call 1 Oct 2026, Gunung Laut "can barrel all the way"): a few seconds
+        // in and it pinches shut. Near the mouth by then and it blows you out; deeper and it closes on you. So you race for the exit
+        if (C.tubeMax) { if (!rider.pinchAt) rider.pinchAt = C.tubeMax + Math.random() * 1.2;
+          if ((rider.ride.tubeT || 0) > rider.pinchAt) { rider.pinchAt = 1e9; if (rider.s > -1.55 * C.H) rider.spitOut = 1.8; else rider.wipe('Too deep when it pinched: the barrel closed on you'); } }   // (in the normal tube spot, -1.3 H, the closing barrel spits you out; drifted any deeper, it shuts on you)
+      } else if (rider && rider.wave === w && !(rider.ride.tubeT > 0)) { rider.spitAt = 0; rider.pinchAt = 0; }
       if (w.secK === undefined || w.secK <= 0) { w.secT -= dt; if (w.secT <= 0) { w.secK = 1.1; w.secA = w.secSoft ? C.softA : 1; w.secSoft = false; w.secT = 5 + wr(w) * 5; if (w.spitT !== undefined) w.spitT = 0.25; } }   // (a heavy wave's section throws hard over you: race it or it closes on you)
       else { w.secK -= dt; const ph = 1 - w.secK / 1.1, A = C.burst; rate *= ph < 0.75 ? 1 + A * (w.secA || 1) * Math.sin(Math.PI * ph / 0.75) : 1 - 0.4 * (w.secA || 1); }
     }
@@ -2570,7 +2574,8 @@ function updateHUD(dt) {
   if (st === 'RIDE' && !hint && !rider.inBarrel && rider.wave && rider.s > 0 && rider.s < 2.2 * rider.wave.cond.H && rider.wave.cond.hollow > 0.5 && session.barrels < 2) hint = rider.y < 0.6 * rider.wave.cond.H ? 'Barrel coming! Stay low and hold STALL' : 'The lip is pitching behind you: drop low to get barreled';
   freeOut();
   { const on = isTow() && !spec && !tow && rider.state === 'LIE'; if (towBtn.hidden === on) { towBtn.hidden = !on; document.body.classList.toggle('fo', on); } }   // (fo: the tip up top narrows to clear it, as for GO TO LINEUP)   // (TOW IN: lying on your board at the monster wave)
-  if (isTow() && st === 'RIDE' && !tow && (rider.dropT || 0) > 0.15) hint = 'Too straight! Turn along the wave or the chop bucks you off';   // (the drop: see surf.js dropT)
+  if (st === 'RIDE' && rider.inBarrel && rider.pinchAt > 0 && rider.pinchAt < 1e8 && (rider.ride.tubeT || 0) > rider.pinchAt - 1.2) hint = 'The barrel is closing: race for the opening!';   // (C.tubeMax: see updateWaves)
+  if ((isTow() || (rider.wave && rider.wave.cond.chatter)) && st === 'RIDE' && !tow && (rider.dropT || 0) > 0.15) hint = 'Too straight! Turn along the wave or the chop bucks you off';   // (the drop: see surf.js dropT)
   if (isTow() && (st === 'LIE' || tow)) hint = tow ? (tow.on ? 'Hold on: the rope drops by itself, then carve down the line' : '') : rider.washed ? 'Caught inside! Tap TOW IN to get back out' : 'Tap TOW IN: the jet ski takes you onto the next wave';
   setText(ui.hint, spec ? '' : pearlV > 0.25 ? (rider.noseHard ? 'Turning too hard on the nose: ease off, walk back' : 'Nose digging in: walk back') : shoulderV > 0.4 ? (DESK ? 'Out on the shoulder: walk back, Shift to stall to the curl' : 'Out on the shoulder: walk back, STALL to the curl') : bogV > 0.3 ? (DESK ? 'Too slow: let go of Shift' : 'Too slow: let go of STALL') : session.waves < 5 || st === 'POP' ? (DESK ? deskHint(hint) : hint) : '');   // (the sinking-tail warning shows every time, not only in the first waves)   // (no coaching while you watch someone else)
   // the callout: BARREL while you're in it, or the move you just landed
