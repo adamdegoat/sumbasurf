@@ -2,7 +2,7 @@
 // landmarks of its own. Distances are in the coast's own frame: the beach is ~185-225 m in from the break, and the
 // whole coast is pushed back by dz (a longer run to the sand makes a longer ride).
 import * as THREE from 'three';
-import { coast, landMaterial, ENV } from './wave.js?v=214';
+import { coast, landMaterial, ENV } from './wave.js?v=218';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const SPOTS = {
@@ -24,6 +24,10 @@ export const SPOTS = {
   // the free-surf beach: a wide pale-sand bay, palms, low green headlands either side, nothing else (kept light so six
   // surfers fit on a phone): see game.js FREE
   free: { name: 'Free surf', dz: 70, xEnd: 200, reefTint: [1.2, 1.22, 1.08], reefK: 0.5, look: { beachW: 52, beachRise: 2.4, sandWet: [0.5, 0.43, 0.32], sandDry: [0.36, 0.3, 0.21], land: [0.15, 0.28, 0.12], palms: 0.8, cliffH: 0.08, rock: [0.5, 0.46, 0.4], cliffGreen: 1, temple: false, stacks: false, boat: false, mountain: [0.3, 0.38, 0.32], mountainScale: 0.45, jungle: 0.45 } },
+  // The Point (free-surf map 2, his call 1 Oct 2026): a long white limestone coast, a white rock point jutting out by the
+  // lineup (the lookout hut on top), the clearest turquoise water, and a cove of white sand and beach shacks where the
+  // ride ends. Sunny and bright, on purpose nothing like The Bay's green headlands. Kept as light as The Bay: see FREE_POINT
+  point: { name: 'Party Point', dz: 200, xEnd: 260, reefTint: [1.3, 1.34, 1.2], reefK: 0.45, look: { beachW: 34, beachRise: 2.4, sandWet: [0.66, 0.62, 0.54], sandDry: [0.36, 0.35, 0.31], land: [0.18, 0.32, 0.12], palms: 0.6, cliffH: 1.25, rock: [0.92, 0.9, 0.84], cliffGreen: 0.5, temple: false, stacks: false, boat: false, mountain: [0.32, 0.4, 0.34], mountainScale: 0.4, jungle: 0.4 } },
   extreme: { name: 'Gunung Laut', dz: 230, xEnd: 430, reefTint: [0.6, 0.65, 0.65], look: { stacks: false, boat: false,  sandWet: [0.18, 0.17, 0.16], sandDry: [0.12, 0.12, 0.11], land: [0.09, 0.14, 0.08], palms: 0.1, cliffH: 2.6, rock: [0.3, 0.3, 0.29], fluted: true, cliffGreen: 0.7, temple: false, mountain: [0.2, 0.23, 0.24], mountainScale: 1.6, jungle: 0.6 } },
   monster: { name: 'Ombak Raksasa', dz: 430, xEnd: 640, reefTint: [0.35, 0.45, 0.5], reefK: 0.12, look: { stacks: false, boat: false, seascape: false, temple: false, sandWet: [0.14, 0.14, 0.14], sandDry: [0.22, 0.21, 0.2], land: [0.08, 0.11, 0.07], palms: 0.05, windy: true, cliffH: 4.0, rock: [0.21, 0.22, 0.23], cliffGreen: 0.3, mountain: [0.24, 0.27, 0.3], mountainScale: 0.8, jungle: 0.4 } },   // Ombak Raksasa (the giant wave, his name 1 Oct 2026): nature only, his call. Sheer dark cliffs twice Gunung Laut's height behind the peak, wind-bent scrub on top, deep dark water off a deep reef, and a giant rock headland at the end of the reef (raksasaNature)
 };
@@ -47,6 +51,7 @@ export function spotGroup(scene, key) {
   if (key === 'hard') lighthouseHead(g);
   if (key === 'hiu') palmPoint(g);
   if (key === 'free') freeBay(g);
+  if (key === 'point') ownDice(g, (h) => { freePoint(h); g.userData.hut = h.userData.hut; }, 59);   // (the hut's deck: where game.js puts you)
   if (key === 'bintang') ownDice(g, nightLights, 11);
   if (key === 'easy') ownDice(g, horseHead);
   if (key === 'easy') ownDice(g, kudaNature, 29);
@@ -212,6 +217,44 @@ function headland(g, o) {
 function freeBay(g) {
   headland(g, { x: -268, tipZ: 100, baseZ: 250, w: 30, h0: 8, h1: 17, rock: [0.5, 0.45, 0.36], grass: [0.17, 0.3, 0.12] });
   headland(g, { x: 290, tipZ: 110, baseZ: 250, w: 32, h0: 10, h1: 19, rock: [0.5, 0.45, 0.36], grass: [0.17, 0.3, 0.12] });
+}
+// The Point: the white rock point beside the lineup with the lookout hut up on stilts (the view down the whole wave;
+// the drone flies from it), and at the far end of the ride the cove: shacks in bright colours, umbrellas, palms
+export const POINT_HUT = { x: -287, u: 0.08 };   // (right at the seaward edge of the rock: the cliff jump lands clear of it)   // (where on the point the hut stands: game.js puts you on its deck)
+function freePoint(g) {
+  const at = headland(g, { x: -300, tipZ: -170, baseZ: 250, w: 30, h0: 12, h1: 26, rock: [0.92, 0.9, 0.84], grass: [0.2, 0.33, 0.13] });
+  headland(g, { x: 290, tipZ: 120, baseZ: 250, w: 30, h0: 10, h1: 20, rock: [0.92, 0.9, 0.84], grass: [0.2, 0.33, 0.13] });   // (the far side of the cove)
+  // the lookout hut (redone 2 Oct 2026, his note: the first one was boxes, 'like Minecraft'): a little Sumba lookout. Round
+  // bamboo stilts with cross braces, a planked deck with a bamboo rail (open on the sea side, where you jump), and a
+  // tall peaked thatch roof like the clan houses' towers (uma), its eaves high enough to frame the view, not block it
+  const t = at(POINT_HUT.u), hx = POINT_HUT.x, hy = t.y - 0.4, hz = t.z, BAMBOO = [0.55, 0.43, 0.2], BAMBOO_D = [0.36, 0.26, 0.14], DECK = [0.42, 0.28, 0.16], THATCH = [0.46, 0.34, 0.18], TOP = hy + 4.35;
+  const pole = (x0, y0, z0, x1, y1, z1, r, c) => { const d = new THREE.Vector3(x1 - x0, y1 - y0, z1 - z0), geo = new THREE.CylinderGeometry(r, r * 1.08, d.length(), 9); geo.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize())); return put(g, geo, c, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, 0.06); };
+  const L = [[-2.3, -2.3], [2.3, -2.3], [-2.3, 2.3], [2.3, 2.3], [0, -2.3], [0, 2.3]];
+  for (const [dx, dz] of L) pole(hx + dx * 1.04, hy - 0.6, hz + dz * 1.04, hx + dx, TOP - 0.1, hz + dz, 0.13, BAMBOO);   // (stilts, leaning in a touch)
+  for (const s2 of [-1, 1]) { pole(hx - 2.3, hy + 0.4, hz + s2 * 2.3, hx + 2.3, TOP - 0.6, hz + s2 * 2.3, 0.06, BAMBOO_D); pole(hx + 2.3, hy + 0.4, hz + s2 * 2.3, hx - 2.3, TOP - 0.6, hz + s2 * 2.3, 0.06, BAMBOO_D); }   // (X braces)
+  put(g, new THREE.BoxGeometry(5.3, 0.14, 5.3), BAMBOO_D, hx, TOP - 0.2, hz, 0.04);   // (the frame under the planks)
+  for (let k = 0; k < 9; k++) put(g, new THREE.BoxGeometry(0.54, 0.1, 5.5), DECK, hx - 2.4 + k * 0.6, TOP - 0.05, hz, 0.12);   // (planks, a hair apart)
+  for (const y of [0.55, 1.0]) { pole(hx - 2.55, TOP + y, hz - 2.55, hx - 2.55, TOP + y, hz + 2.55, 0.05, BAMBOO); pole(hx - 2.55, TOP + y, hz - 2.55, hx + 2.55, TOP + y, hz - 2.55, 0.05, BAMBOO); pole(hx - 2.55, TOP + y, hz + 2.55, hx + 2.55, TOP + y, hz + 2.55, 0.05, BAMBOO); }   // (the rail: back and sides; the sea side open)
+  for (const [dx, dz] of L) pole(hx + dx, TOP, hz + dz, hx + dx, TOP + 2.75, hz + dz, 0.08, BAMBOO);   // (roof posts)
+  const hip = (prof, y0, y1, seg) => { const geo = new THREE.CylinderGeometry(1, 1, 1, 4, seg, false); geo.rotateY(Math.PI / 4); const p = geo.attributes.position;
+    for (let i = 0; i < p.count; i++) { const tt = p.getY(i) + 0.5, k = prof(tt) * Math.SQRT2; p.setXYZ(i, p.getX(i) * k, y0 + (y1 - y0) * tt, p.getZ(i) * k); }
+    geo.computeVertexNormals(); return put(g, geo, THATCH, hx, 0, hz, 0.14); };
+  hip((tt) => 3.7 - 2.1 * tt, TOP + 2.7, TOP + 3.7, 2);                               // (wide eaves, well over your head)
+  hip((tt) => 0.12 + 1.5 * Math.pow(1 - tt, 1.7), TOP + 3.6, TOP + 8.6, 6);            // (the tall peak, the Sumba shape)
+  put(g, new THREE.CylinderGeometry(0.05, 0.05, 1.4, 6), BAMBOO_D, hx, TOP + 9.2, hz, 0);   // (the finial)
+  for (let k = 0; k < 7; k++) pole(hx - 2.3 - 0.1, hy + 0.2 + k * 0.62, hz + 2.75, hx - 2.3 - 0.1, hy + 0.2 + k * 0.62, hz + 1.75, 0.04, BAMBOO_D);   // (ladder rungs up the back)
+  pole(hx - 2.4, hy - 0.4, hz + 2.75, hx - 2.4, TOP, hz + 2.75, 0.05, BAMBOO); pole(hx - 2.4, hy - 0.4, hz + 1.75, hx - 2.4, TOP, hz + 1.75, 0.05, BAMBOO);
+  { const b = new THREE.SphereGeometry(1, 12, 8); b.scale(0.28, 1.05, 0.05); b.rotateZ(-0.12); put(g, b, [1, 0.55, 0.25], hx - 2.2, TOP + 1.05, hz - 2.62, 0.04); }   // (a board leaning on the rail)
+  g.userData.hut = { x: hx, y: TOP, z: hz };   // (the deck's top, in the coast's own frame)
+  // the cove: shacks along the back of the sand, each its own colour, with umbrellas and palms in front
+  const sz = 185 + 34 * 0.7, cols = [[0.95, 0.42, 0.35], [0.25, 0.7, 0.85], [1, 0.79, 0.24], [0.49, 0.77, 0.46], [0.91, 0.36, 0.6], [1, 0.55, 0.24]];
+  for (let k = 0; k < 6; k++) { const x = 115 + k * 22 + Math.random() * 6, c = cols[k];
+    put(g, new THREE.BoxGeometry(7, 3.4, 5), c, x, 1.7 + 2.2, sz + 6, 0.05);
+    const r2 = new THREE.ConeGeometry(5.6, 2, 4); r2.rotateY(Math.PI / 4); put(g, r2, [0.64, 0.52, 0.32], x, 3.4 + 2.2 + 1, sz + 6, 0.1);
+    const ux = x + 4 + Math.random() * 4, uz = sz - 6 + Math.random() * 4;
+    put(g, new THREE.CylinderGeometry(0.06, 0.06, 2.4, 5), [0.9, 0.9, 0.88], ux, 2.2 + 1.2, uz, 0);
+    put(g, new THREE.ConeGeometry(1.7, 0.7, 8), cols[(k + 3) % 6], ux, 2.2 + 2.5, uz, 0.05);
+    palm(g, x - 6, 2, sz - 2 + Math.random() * 4, 9 + Math.random() * 4, 0.3, Math.PI / 2 + (Math.random() - 0.5) * 0.6); }
 }
 // a Balinese temple: a stepped stone terrace, a split gate (candi bentar) in front, and a tall meru tower of stacked
 // black thatch roofs, the one shape you can pick out from far out at sea

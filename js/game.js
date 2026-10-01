@@ -2,13 +2,13 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=214';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=218';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=197';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER, DESIGNS, SEASON, bakeDesigns } from './board.js?v=23';
-import { SurfAudio } from './audio.js?v=27';
+import { SurfAudio } from './audio.js?v=29';
 import { ranch, POOL } from './ranch.js?v=9';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=151';
-import { villa, VILLA } from './villa.js?v=190';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=161';
+import { villa, VILLA } from './villa.js?v=194';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=30';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
@@ -330,7 +330,7 @@ const isRanch = () => mode === 'ranch';
 const modeName = (m) => m === 'villa' ? 'Your villa' : m === 'ranch' ? 'Sumba Ranch' : m === 'random' ? 'Random' : SPOTS[m] ? SPOTS[m].name : CONDITIONS[m].name;
 // which world you're in: the Bali coast, or the wave pool (same water and waves, clipped to the pool, no reef under it)
 function setSpot(m) {
-  const r = m === 'ranch', key = SPOTS[m] ? m : 'medium', S = SPOTS[key];
+  const r = m === 'ranch', key = SPOTS[spotOf(m)] ? spotOf(m) : 'medium', S = SPOTS[key];
   for (const g of builtSpots()) g.visible = false;
   if (!r) { const sg = spotGroup(scene, key); sg.visible = true; if (sg.userData.farVilla) sg.userData.farVilla.visible = m !== 'villa'; }   // (at the villa itself the real house is drawn, not the stand-in seen from the water)
   ranchW.group.visible = r; audio.crowdLevel(r ? 1 : 0); if (r) loadPeople();   // (the people round the pool are your villa friends' bodies: fetched now if they aren't in yet)
@@ -338,7 +338,8 @@ function setSpot(m) {
   { const warm = m === 'villa', W = ENV.weather || {}; hemi.color.set(warm ? 0xfff0dc : W.hemi || 0xcfe6ff); hemi.groundColor.set(warm ? 0x5a4030 : W.hemiGround || 0x3a4a48); sunLight.color.set(warm ? 0xffdcb0 : W.light || 0xfff0dd); }
   hemi.intensity = W.night && !(m === 'villa') ? 1.5 : 1.3; sunLight.intensity = W.night && !(m === 'villa') ? 1.5 : 2.0;   // (29 Sep 2026: players found the night spot too dark: a brighter moon and sky, still night)   // (the night spot: people, boards and the land lit only by the moon)   // (a spot's own light on the land: its weather can warm it or grey it)   // (the villa in warm evening light, reflected off the wood; the surf spots keep their clear daylight)
   ENV.uReefEnd.value = 190 + S.dz; ENV.uReefTint.value.setRGB(...S.reefTint); ENV.uReefK.value = S.reefK || 0.38;
-  if (m === 'free') { ENV.uChan.value.set(FREE[0].xEnd + 4, FREE[1].x - 12, 1); ENV.uReefX0.value = -240; } else { ENV.uChan.value.set(0, 0, 0); ENV.uReefX0.value = -160; }   // (the free-surf beach: the channel between its two reefs, and reef all along its shore)
+  if (m === 'free' && FREE.length > 1) { ENV.uChan.value.set(FREE[0].xEnd + 4, FREE[1].x - 12, 1); ENV.uReefX0.value = -240; }
+  else if (m === 'free') { ENV.uChan.value.set(0, 0, 0); ENV.uReefX0.value = -265; }   // (The Point: reef all the way from the rock point down) else { ENV.uChan.value.set(0, 0, 0); ENV.uReefX0.value = -160; }   // (the free-surf beach: the channel between its two reefs, and reef all along its shore)
   if (r) ENV.uPool.value.set(POOL.x0, POOL.x1, POOL.z0, POOL.z1); else ENV.uPool.value.set(-1e6, 1e6, -1e6, 1e6);
   ENV.uReef.value = r ? 0 : 1;
   REEF = r ? RANCH_REEF : { xEnd: S.xEnd || OCEAN_REEF.xEnd, zBeach: OCEAN_REEF.zBeach + S.dz };   // (each spot's beach is further back or closer in)
@@ -351,12 +352,20 @@ function setSpot(m) {
 // reef, and a channel between the two peaks where nothing breaks (the way out). Both peaks break left (the game's waves
 // all peel the same way: a right is the whole picture drawn mirrored, which can't be done for half a beach).
 //   x: where its waves break (+- jx), z: how far in (0 = the usual lineup), xEnd: where its reef ends (the wave backs off)
+// (1 Oct 2026, his call: a second map, The Point: FREE holds the zones of whichever map you're on, see freeMap)
+const FREE_POINT = [{ cond: 'point', x: -235, jx: 5, z: 0, xEnd: 110, sets: true }];   // ONE long left from the lineup off the white rock point to the cove (~345 m, 45-50 s)
 const FREE = [
   { cond: 'free_out', x: -165, jx: 6, z: 0, xEnd: -18, sets: true },    // 1 the outside peak: the main one (a reef ~150 m long: a Tanjung Uma length ride)
   { cond: 'free_mid', x: 30, jx: 5, z: 16, xEnd: 170, sets: true },     // 2 the second peak, down the beach past the channel (x -18..30)
   // (no small inside waves: his call 30 Sep 2026, they ran through the peaks' waves rolling in and weren't worth it)
 ];
+const FREE_BAY = [...FREE]; FREE.mapId = 'bay';
+const FREE_LIM = { bay: { x0: -190, x1: 210, z0: -90 }, point: { x0: -290, x1: 200, z0: -110 } };   // (how far you can paddle on each map)
+function freeMap(m) { FREE.mapId = m === 'point' ? 'point' : 'bay'; FREE.length = 0; FREE.push(...(FREE.mapId === 'point' ? FREE_POINT : FREE_BAY)); }
+const freeKey = () => FREE.mapId === 'point' ? 'point' : 'free', spotOf = (m) => m === 'free' ? freeKey() : m;   // (the world and weather to build for a mode: free surf's depends on the map)
+const freeLim = () => FREE_LIM[FREE.mapId] || FREE_LIM.bay;
 const isFree = () => mode === 'free';
+const hasBoat = () => isFree() && FREE.mapId !== 'point';   // (the boat is The Bay's; The Point has the lookout hut instead)
 const isTow = () => !!(CONDITIONS[mode] && CONDITIONS[mode].tow);
 const TOWUP = { at: null };   // (where you came up after a monster wipeout)   // (the monster wave: towed in by the jet ski, see towPoint)
 FREE.net = { role: 'solo', onWave: null };   // surfing the free beach together (see wavedash/src/freeroom.js): 'solo', 'host' (makes the waves) or 'client'
@@ -399,7 +408,10 @@ function updateWaves(dt) {
       if (w.secT === undefined) w.secT = 3 + wr(w) * 4;
       // set up in the pocket (standing, just ahead of the curl, low on the face, not racing away) and the next section
       // throws right over you soon: real barrels mostly come to you like this, rather than after a long wait
-      if (C.assist !== false && rider && rider.wave === w && rider.state === 'RIDE' && !rider.inBarrel && rider.s > 0.2 * C.H && rider.s < 2.2 * C.H && rider.y < 0.6 * C.H && !(w.secK > 0) && w.secT > 0.6) { w.secT = 0.6; w.secSoft = true; }   // (a softer section: it covers you rather than racing past)
+      if (w.x0 === undefined) w.x0 = w.peelX;   // (where this wave started breaking: The Point's Bowl is measured from it)
+      // (C.bowl, The Point, his call 1 Oct 2026: the barrels come in The Bowl, the first stretch off the take-off; past it the
+      //  game stops throwing sections over you, so the rest is an open wall to carve and race, not a barrel all the way)
+      if (C.assist !== false && (!C.bowl || w.peelX - w.x0 < C.bowl) && rider && rider.wave === w && rider.state === 'RIDE' && !rider.inBarrel && rider.s > 0.2 * C.H && rider.s < 2.2 * C.H && rider.y < 0.6 * C.H && !(w.secK > 0) && w.secT > 0.6) { w.secT = 0.6; w.secSoft = true; }   // (a softer section: it covers you rather than racing past)
       // a long time in the tube and the barrel breathes out: the spit blows you out onto the open face (if you're sitting
       // too deep by then, the foam ball gets you first). Real barrels last a few seconds; a perfectly even tube went on for
       // half a minute. A barrel spits after 4.5-6.5 s
@@ -410,7 +422,11 @@ function updateWaves(dt) {
         // in and it pinches shut. Near the mouth by then and it blows you out; deeper and it closes on you. So you race for the exit
         if (C.tubeMax) { if (!rider.pinchAt) rider.pinchAt = C.tubeMax + Math.random() * 1.2;
           if ((rider.ride.tubeT || 0) > rider.pinchAt) { rider.pinchAt = 1e9; if (rider.s > -1.55 * C.H) rider.spitOut = 1.8; else rider.wipe('Too deep when it pinched: the barrel closed on you'); } }   // (in the normal tube spot, -1.3 H, the closing barrel spits you out; drifted any deeper, it shuts on you)
+        // (C.bowl, The Point: past The Bowl the wall can cover you for a moment, but it doesn't hold a tube: after ~1.6 s it
+        //  blows you out onto the face and the next section waits, so the long barrels stay in The Bowl, tested 1 Oct 2026)
+        if (C.bowl && w.peelX - w.x0 >= C.bowl && (rider.wallTube = (rider.wallTube || 0) + dt) > 1.6) { rider.wallTube = 0; rider.spitOut = 1.8; w.secT = Math.max(w.secT || 0, 4 + Math.random() * 2); }
       } else if (rider && rider.wave === w && !(rider.ride.tubeT > 0)) { rider.spitAt = 0; rider.pinchAt = 0; }
+      if (rider && rider.wave === w && !rider.inBarrel) rider.wallTube = 0;
       // (C.endBarrel, Watu Kanan: over its last stretch of reef, by the waterfall, the wave bends and a soft section throws
       //  right over you once, a barrel to pull into, not a closeout racing past)
       if (C.endBarrel && !w.endThrow && w.peelX > (w.xEnd ?? REEF.xEnd) - C.endBarrel) { w.endThrow = true; w.secT = Math.min(w.secT, 0.1); w.secSoft = true; }
@@ -465,7 +481,7 @@ let freeJumping = false;
 function freeOut() {
   if (!freeBtn) return;
   boatBtnTick();
-  const r = rider, far = isFree() && !freeJumping && !!(strand && !drone.on || r && r.state === 'LIE' && Math.min(Math.hypot(r.x - FREE[0].x, r.z - FREE[0].z + 8), Math.hypot(r.x - FREE[1].x, r.z - FREE[1].z + 8)) > 40);   // (!!: on foot it was the walker object, never equal to hidden's true/false, so the button never showed)
+  const r = rider, far = isFree() && !freeJumping && !!(strand && !drone.on || r && r.state === 'LIE' && Math.min(...FREE.map((z) => Math.hypot(r.x - z.x, r.z - z.z + 8))) > 40);   // (!!: on foot it was the walker object, never equal to hidden's true/false, so the button never showed)
   if (freeBtn.hidden === far) { freeBtn.hidden = !far; document.body.classList.toggle('fo', far); }   // (fo: the tip up top narrows to clear the button)
   freeGuide();
 }
@@ -484,13 +500,13 @@ function makeBuoy() {
 function freeGuide() {
   const on = isFree() && !!(rider || strand);   // (on the sand too: you look out for them from the beach)
   if (on && !buoys.length) for (let i = 0; i < 2; i++) buoys.push(makeBuoy());
-  buoys.forEach((b, i) => { b.visible = on; if (!on) return; const x = FREE[i].x + 4, z = FREE[i].z - 16, y = heightAt(waves, x, z);
+  buoys.forEach((b, i) => { b.visible = on && i < FREE.length; if (!b.visible) return; const x = FREE[i].x + 4, z = FREE[i].z - 16, y = heightAt(waves, x, z);
     b.position.set(x, y - 0.15, z); b.rotation.set(Math.sin(T * 1.3 + i) * 0.08, T * 0.1, Math.cos(T * 1.1 + i) * 0.08); });
   if (!guideEl) return;
   const r = rider, show = on && !!r && !freeJumping && r.state === 'LIE' && !FREE.follow;   // (not while heading to a friend: one way to go at a time)
   let i = 0, d = Infinity;
-  if (show) for (let k = 0; k < 2; k++) { const dk = Math.hypot(r.x - FREE[k].x, r.z - FREE[k].z + 8); if (dk < d) { d = dk; i = k; } }
-  if (show && Math.hypot(r.x - BOAT.x, r.z - BOAT.z) < 70) { i = 0; d = Math.hypot(r.x - FREE[0].x, r.z - FREE[0].z + 8); }   // (by the boat it's the big waves it sits beside, his catch 30 Sep 2026: the smaller waves across the bay were a few metres nearer)
+  if (show) for (let k = 0; k < FREE.length; k++) { const dk = Math.hypot(r.x - FREE[k].x, r.z - FREE[k].z + 8); if (dk < d) { d = dk; i = k; } }
+  if (show && hasBoat() && Math.hypot(r.x - BOAT.x, r.z - BOAT.z) < 70) { i = 0; d = Math.hypot(r.x - FREE[0].x, r.z - FREE[0].z + 8); }   // (by the boat it's the big waves it sits beside, his catch 30 Sep 2026: the smaller waves across the bay were a few metres nearer)
   const vis = show && d > 40;
   if (guideEl.hidden === vis) guideEl.hidden = !vis;
   if (!vis) return;
@@ -507,7 +523,7 @@ function freeGuide() {
   else { guideEl._x += (x - guideEl._x) * 0.25; guideEl._y += (y - guideEl._y) * 0.25; }
   guideEl.style.left = guideEl._x.toFixed(1) + 'px'; guideEl.style.top = guideEl._y.toFixed(1) + 'px';
   if (FREE.edgeT > 0) FREE.edgeT -= 1 / 60;
-  const m = `${Math.round(d / 10) * 10} M`, t = FREE.edgeT > 0 ? 'Too far out: head back' : FREE.arriveT !== undefined && T - FREE.arriveT < 8 ? 'Paddle out to the waves' : PEAK_NAMES[i];
+  const m = `${Math.round(d / 10) * 10} M`, t = FREE.edgeT > 0 ? 'Too far out: head back' : FREE.arriveT !== undefined && T - FREE.arriveT < 8 ? 'Paddle out to the waves' : FREE.mapId === 'point' ? 'The lineup' : PEAK_NAMES[i];
   if (guideDist.textContent !== m) guideDist.textContent = m;
   if (guideTxt.textContent !== t) guideTxt.textContent = t;
 }
@@ -550,6 +566,7 @@ function freeFollowTick(own) {
 }
 function freeSnap() {
   if (!isFree()) return null;
+  if (strand && strand.hut) return ['HUT', +strand.x.toFixed(2), +(strand.y - 1.65).toFixed(2), +strand.z.toFixed(2), +(drone.on && drone.save ? drone.save[0] : strand.yaw).toFixed(3)];   // (on The Point's hut: where, in the world's numbers)
   if (strand && strand.deck) return ['DECK', +strand.lx.toFixed(2), 0, +strand.lz.toFixed(2), +(drone.on && drone.save ? drone.save[0] : strand.yaw).toFixed(3)];   // (flying the drone: still facing the way you stood)   // (on the boat: where on its deck and which way you face; each copy of the boat rides the same swell)
   if (strand) return ['FOOT', +strand.x.toFixed(2), 0, +strand.z.toFixed(2)];
   if (!rider) return null;
@@ -595,12 +612,16 @@ function peersTick(dt) {
     const c = B.a, a = A.a[0] === 'FOOT' || c[0] === 'FOOT' ? c : A.a, f = B.t > A.t ? Math.min(1 + 150 / (B.t - A.t), Math.max(0, (at - A.t) / (B.t - A.t))) : 1;
     if (c[0] === 'FOOT') { if (P.os) P.os.group.visible = false; continue; }   // (on the sand: not drawn yet)
     if (!OSmod || !surferGltf) continue;
-    const dz = c[0] === 'DECK' ? (P.os ? P.os.design : 0) : Math.max(0, Math.min(2, Math.floor(+c[23] || 0)));   // (their board's paint)
-    if (!P.os || (c[0] !== 'DECK' && (P.os.boardType !== c[17] || P.stance !== c[18] || P.os.design !== dz))) {   // (on deck no board is sent: keep theirs)
+    const dz = c[0] === 'DECK' || c[0] === 'HUT' ? (P.os ? P.os.design : 0) : Math.max(0, Math.min(2, Math.floor(+c[23] || 0)));   // (their board's paint)
+    if (!P.os || (c[0] !== 'DECK' && c[0] !== 'HUT' && (P.os.boardType !== c[17] || P.stance !== c[18] || P.os.design !== dz))) {   // (on deck no board is sent: keep theirs)
       if (P.os) { scene.remove(P.os.group); P.os.dispose && P.os.dispose(); } P.os = new OSmod.OtherSurfer(surferGltf, { board: c[17], stance: c[18], shorts: shortsFor(id), design: dz }); P.stance = c[18]; scene.add(P.os.group); }
     P.os.setShorts(shortsFor(id));
     const S = P.S || (P.S = { pos: new THREE.Vector3(), q: new THREE.Quaternion() });
-    if (c[0] === 'DECK') {   // on the boat: stood on its deck (their spot on it, on your copy of the boat), facing their way
+    if (c[0] === 'HUT') {   // on The Point's lookout hut: standing on its deck, facing their way
+      const a2 = a[0] === 'HUT' ? a : c, dy = Math.atan2(Math.sin(c[4] - a2[4]), Math.cos(c[4] - a2[4]));
+      S.pos.set(a2[1] + (c[1] - a2[1]) * f, a2[2] + (c[2] - a2[2]) * f, a2[3] + (c[3] - a2[3]) * f); S.q.setFromAxisAngle(_yUp, Math.PI / 2 - (a2[4] + dy * f));
+      S.state = 'DECK'; S.v = B.t > A.t ? Math.hypot(c[1] - a2[1], c[3] - a2[3]) / ((B.t - A.t) / 1000) : 0; S.paddling = false;
+    } else if (c[0] === 'DECK') {   // on the boat: stood on its deck (their spot on it, on your copy of the boat), facing their way
       if (!boat) continue; const a2 = a[0] === 'DECK' ? a : c, lx = a2[1] + (c[1] - a2[1]) * f, lz = a2[3] + (c[3] - a2[3]) * f, dy = Math.atan2(Math.sin(c[4] - a2[4]), Math.cos(c[4] - a2[4])), yaw = a2[4] + dy * f;
       S.pos.copy(boatWorld(lx, DECK_Y, lz)); S.q.setFromAxisAngle(_yUp, Math.PI / 2 - yaw).premultiply(boat.quaternion);
       S.state = 'DECK'; S.v = B.t > A.t ? Math.hypot(c[1] - a2[1], c[3] - a2[3]) / ((B.t - A.t) / 1000) : 0; S.paddling = false;
@@ -622,7 +643,7 @@ function peersTick(dt) {
     if (nmEl.textContent !== (P.name || '')) nmEl.textContent = P.name || '';
     if (!P.proT || now - P.proT > 3000) { P.proT = now; const gm = !!(globalThis.ssGM && globalThis.ssGM(id)); nmEl.classList.toggle('gm', gm); nmEl.classList.toggle('pro', !gm && !!(globalThis.ssPro && globalThis.ssPro(id))); }   // (a pro, top 10 at any spot: a gold name; the owner: GAME MASTER in sea green; see wavedash wdboot ssPro/ssGM; checked every 3 s)
     if (sayEl.textContent !== saying) { sayEl.textContent = saying; sayEl.style.display = saying ? 'block' : 'none'; }
-    _tagV.set(S.pos.x, S.pos.y + (c[0] === 'DECK' ? 2.05 : c[0] === 'RIDE' || c[0] === 'POP' ? 2.3 : c[20] ? 0.75 : 1.4), S.pos.z).project(camera);   // (just over their head: standing, lying paddling, or sitting up)
+    _tagV.set(S.pos.x, S.pos.y + (c[0] === 'DECK' || c[0] === 'HUT' ? 2.05 : c[0] === 'RIDE' || c[0] === 'POP' ? 2.3 : c[20] ? 0.75 : 1.4), S.pos.z).project(camera);   // (just over their head: standing, lying paddling, or sitting up)
     // (no distance limit any more, his note 30 Sep 2026: friends were hard to find; far away it also says how far)
     const dd = camera.position.distanceTo(S.pos), onS = P.name && _tagV.z < 1 && Math.abs(_tagV.x) < 1.05 && Math.abs(_tagV.y) < 1.05;
     const dTxt = dd > 40 ? `${Math.round(dd / 10) * 10} M` : ''; if (dEl.textContent !== dTxt) { dEl.textContent = dTxt; dEl.style.display = dTxt ? '' : 'none'; }
@@ -634,7 +655,7 @@ function peersTick(dt) {
     // (against where they are now, not where they're drawn: drawn 140 ms behind, at riding speed that's more than a metre off)
     const L1 = b[n - 1], L0 = n > 1 ? b[n - 2] : L1, ahead = Math.min(0.3, (now - L1.t) / 1000), span = Math.max(1, L1.t - L0.t) / 1000;
     const nx = L1.a[1] + (L1.a[1] - L0.a[1]) / span * ahead * (L0 !== L1), nz = L1.a[3] + (L1.a[3] - L0.a[3]) / span * ahead * (L0 !== L1);
-    if (rider && rider.state !== 'WIPE' && S.state !== 'WIPE' && L1.a[0] !== 'FOOT' && L0.a[0] !== 'FOOT' && L1.a[0] !== 'DECK' && L0.a[0] !== 'DECK') { const dx = rig.position.x - nx, dz = rig.position.z - nz, d = Math.hypot(dx, dz), R0 = 1.3;
+    if (rider && rider.state !== 'WIPE' && S.state !== 'WIPE' && L1.a[0] !== 'FOOT' && L0.a[0] !== 'FOOT' && L1.a[0] !== 'DECK' && L0.a[0] !== 'DECK' && L1.a[0] !== 'HUT' && L0.a[0] !== 'HUT') { const dx = rig.position.x - nx, dz = rig.position.z - nz, d = Math.hypot(dx, dz), R0 = 1.3;
       if (d < R0 && d > 0.01) { const k = (R0 - d) / 2; rider.x += dx / d * k; rider.z += dz / d * k; } }
   }
   // name tags: where two would overlap (friends paddling side by side), the nearer friend's shows clearly on top and
@@ -647,10 +668,116 @@ function peersTick(dt) {
 }
 // the score of a wave on the free beach: a small card for 3 s while you paddle on (his call 30 Sep 2026)
 let fsScoreT = 0;
-function freeScore(v) {
+// ---- Party Point's big moments (his calls 1-2 Oct 2026). PARTY WAVE TIME: a welcome, once, as you arrive (the SET! horn
+// for each set is gone, his call 2 Oct 2026: too confusing, just let them play). PARTY WAVE:
+// riding a wave with friends on it too, the more of you the bigger the word, and a bonus on that ride's score (x2 +15%,
+// x3 +30%... capped at 10). RIP CURRENT: a channel of moving water beside the break that carries you back up to the lineup
+const party = { ride: null, sid: 0, max: 1 }, PARTY_K = 0.15;
+let pwEl = null, ripT = 0, ripPts = null;
+function pwShow(big, small, kind = '') {
+  if (!pwEl) { pwEl = document.createElement('div'); pwEl.id = 'pwBan'; pwEl.innerHTML = '<span></span><small></small>'; document.body.appendChild(pwEl); }
+  pwEl.firstChild.textContent = big; pwEl.lastChild.textContent = small || ''; pwEl.className = kind; void pwEl.offsetWidth; pwEl.classList.add('on');
+}
+const RIP = { ax: -204, az: -33, bx: 141, bz: 287, w: 22, fade: 10, v: 7.5 };   // (the channel's line, from by the lineup down to the cove; its half width; its speed)
+function ripAt(x, z) {   // how much of the current is here (0..1), and how far along the channel (0 at the lineup end)
+  const dx = RIP.bx - RIP.ax, dz = RIP.bz - RIP.az, L2 = dx * dx + dz * dz, t = ((x - RIP.ax) * dx + (z - RIP.az) * dz) / L2;
+  if (t < 0.04 || t > 1.05) return [0, t];
+  const off = Math.abs((x - RIP.ax) * dz - (z - RIP.az) * dx) / Math.sqrt(L2);
+  return [Math.max(0, Math.min(1, 1 - (off - RIP.w) / RIP.fade)), t];
+}
+function pointTick(dt) {
+  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=24').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }   // (the photographer draws you as friends see you)
+  // PARTY WAVE: who else is standing on the wave you're riding (their latest message says which wave: index 19)
+  const r = rider;
+  if (r && r.standing && r.wave && r.wave.sid && !spec) {
+    if (party.ride !== r.ride) { party.ride = r.ride; party.sid = r.wave.sid; party.max = 1; }
+    let n = 1; for (const P of peers.values()) { const a = P.buf.length && P.buf[P.buf.length - 1].a; if (a && (a[0] === 'RIDE' || a[0] === 'POP') && a[19] === r.wave.sid) n++; }
+    if (n > party.max) { party.max = n; if (n >= 2) { pwShow(`PARTY WAVE x${n}`, `+${Math.round(PARTY_K * (n - 1) * 100)}% on this ride`); audio.hoot(1); } }
+  }
+  // RIP CURRENT: lying on your board in the channel, it carries you up toward the lineup (faster than paddling)
+  if (r && !strand && !spec && r.state === 'LIE') {
+    const [k] = ripAt(r.x, r.z);
+    if (k > 0) { const dx = RIP.bx - RIP.ax, dz = RIP.bz - RIP.az, L = Math.hypot(dx, dz); r.x -= dx / L * RIP.v * k * dt; r.z -= dz / L * RIP.v * k * dt;
+      if (k > 0.6 && T > ripT) { ripT = T + 40; pwShow('RIP CURRENT', 'It carries you back up to the lineup', 'set'); } }
+  }
+  ripFoam(dt); photoTick();
+}
+// the rip, to the eye: flecks of foam drifting up the channel on the water (one cloud of points, moved a third of the frames)
+function ripFoam(dt) {
+  const N = 110;
+  if (!ripPts) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
+    ripPts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xf4fbff, size: 0.55, transparent: true, opacity: 0.75, depthWrite: false })); ripPts.frustumCulled = false; ripPts.userData.t = new Float32Array(N); ripPts.userData.o = new Float32Array(N);
+    for (let i = 0; i < N; i++) { ripPts.userData.t[i] = Math.random(); ripPts.userData.o[i] = (Math.random() * 2 - 1) * RIP.w * 0.9; } scene.add(ripPts); ripPts.userData.f = 0; }
+  ripPts.visible = isFree() && FREE.mapId === 'point'; if (!ripPts.visible) return;
+  const U = ripPts.userData, dx = RIP.bx - RIP.ax, dz = RIP.bz - RIP.az, L = Math.hypot(dx, dz), nx = dz / L, nz = -dx / L;
+  for (let i = 0; i < N; i++) { U.t[i] -= RIP.v * dt / L; if (U.t[i] < 0.04) { U.t[i] = 1; U.o[i] = (Math.random() * 2 - 1) * RIP.w * 0.9; } }
+  if ((U.f = (U.f + 1) % 3)) return;
+  const P = ripPts.geometry.attributes.position;
+  for (let i = 0; i < N; i++) { const x = RIP.ax + dx * U.t[i] + nx * U.o[i], z = RIP.az + dz * U.t[i] + nz * U.o[i]; P.setXYZ(i, x, heightAt(waves, x, z) + 0.06, z); }
+  P.needsUpdate = true;
+}
+// ---- the photographer on the rocks at The Bowl (his call 1 Oct 2026): pull into a barrel there and they snap you (and any
+// friends on the wave) with a long lens; after the ride a little photo slides in at the side, tap it for the postcard with
+// everyone's names, to save or share. You're drawn as your friends see you (others.js), not your own first-person body,
+// which has no head and is cut away for your eyes. Costs one extra picture of the world, once, at the moment of the snap
+const PHOTO = { x: -277, y: 7.5, z: 96 };
+let photo = null, photoCam = null, selfOS = null, pcBtn = null, pcCard = null;
+function photoTick() {
+  const r = rider; if (!r || spec) return;
+  const w = r.wave;
+  if (r.standing && w && w.sid && r.inBarrel && (r.ride.tubeT || 0) > 0.6 && (!photo || photo.ride !== r.ride) && w.x0 !== undefined && w.peelX - w.x0 < (w.cond.bowl || 90) + 25 && OSmod && surferGltf) snapPhoto(r);
+  if (photo && !photo.shown && photo.ride === r.ride && !r.standing) { photo.endT ??= T; if (T - photo.endT > 3.4) { photo.shown = true; photoThumb(); } }
+  if (photo && !photo.shown && photo.ride !== r.ride && r.ride && r.standing) { photo.shown = true; photoThumb(); }   // (straight onto another wave: show it anyway)
+}
+function snapPhoto(r) {
+  const a = freeSnap(); if (!a || (a[0] !== 'RIDE' && a[0] !== 'POP')) return;
+  try {
+    if (!selfOS || selfOS.boardType !== boardType || selfOS.design !== boardDesign) { if (selfOS) selfOS.dispose(); selfOS = new OSmod.OtherSurfer(surferGltf, { board: boardType, stance, shorts: 0xd8452c, design: boardDesign }); }
+    const S = { pos: new THREE.Vector3(a[1], a[2], a[3]), q: new THREE.Quaternion(a[4], a[5], a[6], a[7]), state: 'RIDE', stateT: a[8], v: a[9], lean: a[10], turn: a[11], inBarrel: true, pumping: !!a[13], pumpT: a[14], stalling: a[15], speedK: a[16], paddling: false };
+    scene.add(selfOS.group); for (let i = 0; i < 6; i++) selfOS.update(0.05, S);   // (settled into the pose friends would see)
+    const cv = renderer.domElement, W = cv.width, H = cv.height, d = Math.hypot(S.pos.x - PHOTO.x, S.pos.z - PHOTO.z);
+    photoCam ||= new THREE.PerspectiveCamera(30, 1, 0.5, 3000); photoCam.layers.set(0);
+    const fovH = 2 * Math.atan(7 / d), aspect = W / H; photoCam.aspect = aspect;   // (about 14 m across the frame, wherever you are in The Bowl: tight on the barrel)
+    photoCam.fov = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(fovH / 2) / aspect)); photoCam.updateProjectionMatrix();
+    photoCam.position.set(PHOTO.x, PHOTO.y, PHOTO.z); photoCam.lookAt(S.pos.x + 2.5, S.pos.y + 1.2, S.pos.z); photoCam.updateMatrixWorld();
+    renderer.render(scene, photoCam);
+    const out = document.createElement('canvas'); out.width = 960; out.height = 540; const ox = out.getContext('2d');
+    const sh = Math.min(H, W * 9 / 16), sw = sh * 16 / 9; ox.drawImage(cv, (W - sw) / 2, (H - sh) / 2, sw, sh, 0, 0, 960, 540);   // (straight after drawing it, in the same moment: the picture is still there)
+    scene.remove(selfOS.group);
+    const names = [myName() || 'You']; for (const P of peers.values()) { const b = P.buf.length && P.buf[P.buf.length - 1].a; if (b && (b[0] === 'RIDE' || b[0] === 'POP') && b[19] === r.wave.sid && P.name) names.push(P.name); }
+    photo = { ride: r.ride, cv: out, names, shown: false };
+    audio.burst(0.12, 3200, 0.05, 'highpass'); audio.burst(0.08, 1800, 0.04, 'highpass', 0.09);   // (the shutter: click-clack)
+  } catch (e) { if (selfOS) scene.remove(selfOS.group); }
+}
+function myName() { try { const W = globalThis.Wavedash; return (W && W.getUsername && W.getUsername()) || ''; } catch (e) { return ''; } }
+function photoThumb() {   // a little photo under the buttons, top right: tap it for the postcard
+  const tr = document.getElementById('fsTR'); if (!tr || !photo) return;
+  if (!pcBtn) { pcBtn = document.createElement('div'); pcBtn.id = 'pcBtn'; pcBtn.className = 'ctl'; pcBtn.innerHTML = '<img alt=""><span>YOUR PHOTO</span>'; tr.appendChild(pcBtn);
+    for (const ev of ['pointerup', 'touchend', 'click']) pcBtn.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); const n = performance.now(); if (n - (pcBtn.tapT || 0) < 500) return; pcBtn.tapT = n; postcard(); }, { passive: false }); }
+  pcBtn.querySelector('img').src = photo.cv.toDataURL('image/jpeg', 0.6); pcBtn.hidden = false; pcBtn.classList.remove('new'); void pcBtn.offsetWidth; pcBtn.classList.add('new');
+}
+function postcard() {   // the postcard: the photo in a white border, the place and everyone's names under it
+  if (!photo) return;
+  const c = document.createElement('canvas'), M = 26, PW = 960, PH = 540; c.width = PW + M * 2; c.height = PH + M + 92; const x = c.getContext('2d'), F = getComputedStyle(document.body).getPropertyValue('--disp') || 'sans-serif';
+  x.fillStyle = '#fbf6ec'; x.fillRect(0, 0, c.width, c.height); x.drawImage(photo.cv, M, M, PW, PH);
+  x.fillStyle = '#1d2a33'; x.font = `800 34px ${F}`; x.textBaseline = 'alphabetic'; x.fillText('PARTY POINT', M, PH + M + 48);
+  x.fillStyle = '#7a6a55'; x.font = `700 18px ${F}`; x.fillText('THE BOWL  ·  SUMBASURF', M, PH + M + 74);
+  const when = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  x.textAlign = 'right'; x.fillStyle = '#1d2a33'; x.font = `700 24px ${F}`; let nm = photo.names.join('  ·  '); while (x.measureText(nm).width > PW * 0.55 && nm.length > 8) nm = nm.slice(0, -2); if (nm !== photo.names.join('  ·  ')) nm = nm.trimEnd() + '...';
+  x.fillText(nm, M + PW, PH + M + 48); x.fillStyle = '#7a6a55'; x.font = `700 18px ${F}`; x.fillText(when, M + PW, PH + M + 74);
+  const url = c.toDataURL('image/jpeg', 0.9);
+  if (!pcCard) { pcCard = document.createElement('div'); pcCard.id = 'pcCard'; pcCard.innerHTML = '<div class="pcBox"><img alt="Your postcard from Party Point"><div class="pcRow"><button type="button" class="pcSave">SAVE PHOTO</button><button type="button" class="pcClose">CLOSE</button></div><small>On a phone you can also press and hold the photo to save it</small></div>'; document.body.appendChild(pcCard);
+    const tap = (el, fn) => { for (const ev of ['pointerup', 'click']) el.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); const n = performance.now(); if (n - (el.tapT || 0) < 500) return; el.tapT = n; fn(); }); };
+    tap(pcCard.querySelector('.pcClose'), () => { pcCard.hidden = true; });
+    tap(pcCard.querySelector('.pcSave'), async () => { const u = pcCard.querySelector('img').src, name = 'sumbasurf-party-point.jpg';
+      try { const f = new File([await (await fetch(u)).blob()], name, { type: 'image/jpeg' }); if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'Party Point' }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+      const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); }); }
+  pcCard.querySelector('img').src = url; pcCard.hidden = false;
+}
+function freeScore(v, pb = 1) {
   let el = document.getElementById('fsScore'); if (!el) { el = document.createElement('div'); el.id = 'fsScore'; el.className = 'hud'; el.innerHTML = '<b></b><small></small>'; document.body.appendChild(el); }
   const judge = v < 2 ? 'Poor' : v < 5 ? 'Fair' : v < 6.5 ? 'Good' : v < 8 ? 'Very good' : v < 10 ? 'Excellent' : 'Perfect';   // (the contest judges' own words, as on the score screen)
-  el.querySelector('b').textContent = v.toFixed(1); el.querySelector('small').textContent = judge.toUpperCase();
+  el.querySelector('b').textContent = v.toFixed(1); el.querySelector('small').textContent = judge.toUpperCase() + (pb > 1 ? `  ·  PARTY WAVE x${pb}` : '');
   el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); document.body.classList.add('fsScoring'); clearTimeout(fsScoreT); fsScoreT = setTimeout(() => { el.classList.remove('on'); document.body.classList.remove('fsScoring'); }, 3000);
 }
 function freeJump() {
@@ -698,12 +825,13 @@ function boatBtnTick() {
     boatFar = mk('boatGo', () => boatGo(true), ic('M2 10h12l-2 3H4zM8 10V3l4 5H8'));   // (a little boat with a sail)
     boatBtn = mk('boatBtn', () => boatGo(false), ic('M5 14V3M11 14V3M5 6h6M5 10h6'));   // (a ladder)
     fsDroneB = mk('fsDrone', () => { const n = performance.now(); if (n - (fsDroneB.tapT || 0) < 500) return; fsDroneB.tapT = n; fsDroneSet(!drone.on); }, /* (one tap fires pointerup, touchend and click: it must switch once, not on and straight off again) */ '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7.5" y="8" width="5" height="4" rx="1.2"/><path d="M7.5 8 4.5 5M12.5 8l3-3M7.5 12l-3 3M12.5 12l3 3"/><path d="M2 4.5h5M13 4.5h5M2 15.5h5M13 15.5h5"/></svg>'); tr.insertBefore(fsDroneB, tr.firstChild); }   // (the villa's drone icon; first in the list, so FLY DRONE and LAND stay put while the others come and go)
-  const r = rider, onDeck = !!(strand && strand.deck), lying = isFree() && !!boat && !freeJumping && !onDeck && !!r && r.state === 'LIE';
+  const r = rider, onDeck = !!(strand && (strand.deck || strand.hut)), lying = hasBoat() && !!boat && !freeJumping && !onDeck && !!r && r.state === 'LIE';
+  const farHut = isFree() && !hasBoat() && !freeJumping && !onDeck && !!r && r.state === 'LIE';   // (The Point: back up to the lookout hut from anywhere in the water)
   boatNear = lying && Math.hypot(r.x - BOAT.x - LADDER.x, r.z - BOAT.z - LADDER.z) < 5;
   const far = lying && !boatNear && Math.hypot(r.x - BOAT.x, r.z - BOAT.z) > 15;
   const set = (b, on, t) => { if (b.hidden === on) b.hidden = !on; const sp = b.lastChild; if (on && sp.textContent !== t) sp.textContent = t; };
-  set(boatFar, far, 'GO TO BOAT');
-  const edge = onDeck && !drone.on && !!boatEdge();   // ('Back in the water' is gone, his call 30 Sep 2026: on deck you jump in from any edge you're facing out over)
+  set(boatFar, far || farHut, farHut ? 'LOOKOUT HUT' : 'GO TO BOAT');
+  const edge = onDeck && !drone.on && (strand.hut ? !strand.jump : !!boatEdge());   // ('Back in the water' is gone, his call 30 Sep 2026: on deck you jump in from any edge you're facing out over)
   set(boatBtn, isFree() && !freeJumping && (boatNear || edge), edge ? 'JUMP IN' : 'CLIMB ON');
   set(fsDroneB, isFree() && !freeJumping && onDeck && !strand.jump, drone.on ? 'LAND' : 'FLY DRONE'); fsDroneB.classList.toggle('on', drone.on);
 }
@@ -732,7 +860,14 @@ function boatEdge() {
   return null;
 }
 function boatGo(far) {
-  if (freeJumping || !isFree() || !boat) return; const onDeck = !!(strand && strand.deck);
+  if (freeJumping || !isFree()) return;
+  if (!hasBoat()) {   // The Point: up to the lookout hut (a fade), or off its deck in a cliff jump
+    if (!far) { if (strand && strand.hut && !strand.jump) { const H = hutPos(); strand.jump = { t: 0, x0: strand.x, z0: strand.z, x1: H.x + 18, z1: H.z + 4 }; boatBtn.hidden = true; } return; }
+    if ((strand && (strand.hut || strand.deck)) || !rider || rider.state !== 'LIE') return;
+    freeJumping = true; boatFar.hidden = true; fadeEl.classList.add('on');
+    setTimeout(() => { hutArrive(); setTimeout(() => { fadeEl.classList.remove('on'); freeJumping = false; }, 120); }, 380); return;
+  }
+  if (!boat) return; const onDeck = !!(strand && strand.deck);
   if (far ? onDeck || !rider || rider.state !== 'LIE' : !onDeck && !boatNear) return;
   if (onDeck && !far) { const E = boatEdge(); if (E) { strand.jump = { t: 0, ...E, x0: strand.lx, z0: strand.lz }; boatBtn.hidden = true; } return; }   // (Jump in: played by deckTick, no fade)
   freeJumping = true; boatBtn.hidden = true; boatFar.hidden = true; fadeEl.classList.add('on');
@@ -740,6 +875,32 @@ function boatGo(far) {
     boatDeck(far ? -3 : 4.4);
     setTimeout(() => { fadeEl.classList.remove('on'); freeJumping = false; }, 120);
   }, 380);
+}
+// ---- The Point's lookout hut (his call 1 Oct 2026): you arrive on its deck, up on stilts on the white rock point above
+// the lineup, with the view down the whole wave. Walk about, fly the drone from it, or JUMP IN: a cliff jump into the
+// water below, then a short paddle to the lineup. Friends see you up there (sent as 'HUT', in the world's own numbers)
+let hutAt = null;
+function hutPos() { if (!hutAt) { const g = spotGroup(scene, 'point'), h = g.userData.hut; if (!h) return null; hutAt = { x: h.x, y: h.y, z: h.z + g.position.z }; } return hutAt; }
+function hutArrive() { const H = hutPos(); if (!H) return false; startStrand(H.x, H.z, -0.3); strand.hut = true; strand.lx = 1.4 + Math.random() * 0.8; strand.lz = (Math.random() - 0.5) * 3; strand.pitch = -0.16; strand.arr = T; FREE.deckT = T; return true; }   // (at the front rail, facing the lineup and the wave peeling away)
+function hutTick(dt, W_) {
+  const H = hutPos();
+  if (W_.jump) {   // the cliff jump: off the deck in a long arc, down past the white rock, a big splash, lying on your board
+    const J = W_.jump; J.t += dt; const k = Math.min(1, J.t / 1.6), x = J.x0 + (J.x1 - J.x0) * k, z = J.z0 + (J.z1 - J.z0) * k, top = H.y + 1.65;
+    const y = top + 1.4 * Math.sin(Math.PI * Math.min(1, k * 1.4)) - (top - 0.3) * k * k;
+    camera.position.set(x, y, z); _pe.set(W_.pitch - 0.7 * k, -W_.yaw - Math.PI / 2, 0); camera.quaternion.setFromEuler(_pe);
+    if (k >= 1) { FREE.walkIn = { x: J.x1, z: J.z1, th: Math.atan2(FREE[0].z - 8 - J.z1, FREE[0].x - J.x1) }; endStrand(); spawnRider(); audio.splash(0.9); }
+    return;
+  }
+  const kx = inputLock ? 0 : (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0), kz = inputLock ? 0 : (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
+  let mx = W_.mx || kx, mz = W_.mz || kz; const fx = Math.cos(W_.yaw), fz = Math.sin(W_.yaw), sp = 1.6 * dt;
+  if (drone.on) { fsDroneTick(dt, mx, mz); mx = mz = 0; }
+  W_.lx = Math.max(-2.3, Math.min(2.3, W_.lx + (fx * mz - fz * mx) * sp)); W_.lz = Math.max(-2.3, Math.min(2.3, W_.lz + (fz * mz + fx * mx) * sp));
+  const moving = Math.hypot(mx, mz) > 0.1; W_.bob = (W_.bob || 0) + (moving ? dt * 8 : 0);
+  W_.x = H.x + W_.lx; W_.z = H.z + W_.lz; W_.y = H.y + 1.65 + (moving ? Math.sin(W_.bob) * 0.02 : 0);
+  camera.position.set(W_.x, W_.y, W_.z); _pe.set(W_.pitch, -W_.yaw - Math.PI / 2, 0); camera.quaternion.setFromEuler(_pe);
+  if (drone.on) { camera.position.set(drone.x, drone.y + Math.sin(drone.t * 2.1) * 0.04, drone.z); _pe.set(W_.pitch, -W_.yaw - Math.PI / 2, drone.roll); camera.quaternion.setFromEuler(_pe); }
+  setText(ui.hint, drone.on ? (drone.t < 6 ? (DESK ? 'WASD flies, drag the mouse to turn the camera, Space or E climbs, Q or Shift sinks.' : 'Left thumb flies, right thumb turns the camera. Hold UP or DOWN to climb and sink.') : '')
+    : FREE.deckT !== undefined && T - FREE.deckT < 10 ? 'Watch the waves from up here, then tap JUMP IN' : ''); freeOut();
 }
 function deckTick(dt, W_) {
   if (W_.jump) {   // jumping in (his call 30 Sep 2026): off the edge in a short arc, a splash, and you're lying on your board right there
@@ -768,9 +929,9 @@ function deckTick(dt, W_) {
 // under the shade roof; keeps above the water, the sand and the boat, and stays over the bay
 function fsDroneSet(on) {
   const W_ = strand; if (on === drone.on) return;
-  if (on) { if (!isFree() || !W_ || !W_.deck || W_.jump || !boat || freeJumping) return;
+  if (on) { if (!isFree() || !W_ || !(W_.deck || W_.hut) || W_.jump || (W_.deck && !boat) || freeJumping) return;
     ssEvent('drone');
-    const p = W_.lz > 0.2 ? boatWorld(0, DECK_Y + 1.7, -3.6) : boatWorld(W_.lx, DECK_Y + 1.7, W_.lz);
+    const p = W_.hut ? _bv.set(W_.x + 5.5, W_.y + 0.1, W_.z) : W_.lz > 0.2 ? boatWorld(0, DECK_Y + 1.7, -3.6) : boatWorld(W_.lx, DECK_Y + 1.7, W_.lz);   // (from the hut: off the seaward side, clear of its roof)
     Object.assign(drone, { on: true, x: p.x, y: p.y, z: p.z, vx: 0, vy: 0, vz: 0, up: 0, roll: 0, t: 0, save: [W_.yaw, W_.pitch], g: -20, gT: 0 });
     W_.pitch = -0.15;
   } else { drone.on = false; drone.up = 0; if (drone.save && W_) [W_.yaw, W_.pitch] = drone.save; audio.droneBuzz(0); }
@@ -786,27 +947,27 @@ function fsDroneTick(dt, mx, mz) {
   const ty = lift ? 6 : Math.max(-1, Math.min(1, D.up + kv)) * 6;
   const a = Math.min(1, dt * 2.2); D.vx += (tx - D.vx) * a; D.vz += (tz - D.vz) * a; D.vy += (ty - D.vy) * Math.min(1, dt * 3);
   D.x += D.vx * dt; D.y += D.vy * dt; D.z += D.vz * dt;
-  D.x = Math.max(FSD.x0, Math.min(FSD.x1, D.x)); D.z = Math.max(FSD.z0, Math.min(REEF.zBeach + FSD.zBeach, D.z));   // (the bay: out past both peaks, in over the beach)
+  const F = FSD[FREE.mapId] || FSD.bay; D.x = Math.max(F.x0, Math.min(F.x1, D.x)); D.z = Math.max(F.z0, Math.min(REEF.zBeach + F.zBeach, D.z));   // (the bay: out past both peaks, in over the beach)
   if ((D.gT -= dt) <= 0) { D.gT = 0.1; D.g = groundAt(D.x, D.z); }   // (the sand and rocks under it, now and then: a ray down is too dear every frame)
-  const sea = heightAt(waves, D.x, D.z), onBoat = Math.abs(D.x - BOAT.x) < HALF.x + 0.6 && Math.abs(D.z - BOAT.z) < HALF.z + 0.6;
+  const sea = heightAt(waves, D.x, D.z), onBoat = hasBoat() && Math.abs(D.x - BOAT.x) < HALF.x + 0.6 && Math.abs(D.z - BOAT.z) < HALF.z + 0.6;
   const floor = Math.max(sea + 1.1, D.g + 1.5, onBoat && !lift ? boat.position.y + DECK_Y + 3.4 : -99);
   if (D.y < floor) { D.y += (floor - D.y) * Math.min(1, dt * 5); if (D.vy < 0) D.vy *= 0.5; }
-  D.y = Math.min(D.y, FSD.top);
+  D.y = Math.min(D.y, F.top);
   const side = -D.vx * fz + D.vz * fx; D.roll += (-side * 0.014 - D.roll) * Math.min(1, dt * 3);
   audio.droneBuzz(0.6 + 0.4 * Math.min(1, Math.hypot(D.vx, D.vz) / SP), Math.min(1, Math.hypot(D.vx, D.vy, D.vz) / 12));
-  droneAlt.textContent = `ALT ${Math.max(0, D.y - Math.max(sea, D.g)).toFixed(0)} m    ${Math.hypot(D.x - BOAT.x, D.z - BOAT.z).toFixed(0)} m FROM BOAT`;
+  droneAlt.textContent = hasBoat() ? `ALT ${Math.max(0, D.y - Math.max(sea, D.g)).toFixed(0)} m    ${Math.hypot(D.x - BOAT.x, D.z - BOAT.z).toFixed(0)} m FROM BOAT` : `ALT ${Math.max(0, D.y - Math.max(sea, D.g)).toFixed(0)} m    ${Math.hypot(D.x - W_.x, D.z - W_.z).toFixed(0)} m FROM THE HUT`;
 }
-const FSD = { x0: -200, x1: 220, z0: -110, zBeach: 60, top: 80 };
+const FSD = { bay: { x0: -200, x1: 220, z0: -110, zBeach: 60, top: 80 }, point: { x0: -330, x1: 230, z0: -130, zBeach: 60, top: 80 } };
 // ---- the free-surf beach on foot (his layout): you arrive on the sand, walk into the water and drop onto your board to
 // paddle out; paddle into the shallows and you stand up and walk out again. Same thumbs and keys as the villa (left
 // thumb walks, right thumb looks; WASD or arrows, mouse drag to look)
 let strand = null;
 const _gr = new THREE.Raycaster(), _gDown = new THREE.Vector3(0, -1, 0), _gO = new THREE.Vector3();
 function groundAt(x, z) {   // the beach under a point (sand, rock), by a ray down onto the spot; far below if it's open sea
-  _gO.set(x, 40, z); _gr.set(_gO, _gDown); _gr.far = 80; const h = _gr.intersectObject(spotGroup(scene, 'free'), true)[0];
+  _gO.set(x, 40, z); _gr.set(_gO, _gDown); _gr.far = 80; const h = _gr.intersectObject(spotGroup(scene, freeKey()), true)[0];
   return h ? h.point.y : -20;
 }
-function shoreZ(x) { spotGroup(scene, 'free').updateMatrixWorld(true); for (let z = REEF.zBeach - 60; z < REEF.zBeach + 90; z += 2) if (groundAt(x, z) > 0.35) return z; return REEF.zBeach + 46; }   // (the beach not built yet: where it will be; freshly built it's moved into place first, above: before its first frame it sat 90 m out to sea)   // (where the sand comes out of the water)
+function shoreZ(x) { spotGroup(scene, freeKey()).updateMatrixWorld(true); for (let z = REEF.zBeach - 60; z < REEF.zBeach + 90; z += 2) if (groundAt(x, z) > 0.35) return z; return REEF.zBeach + 46; }   // (the beach not built yet: where it will be; freshly built it's moved into place first, above: before its first frame it sat 90 m out to sea)   // (where the sand comes out of the water)
 function offSand(x, z) { for (let k = 0; k < 60 && groundAt(x, z) > heightAt(waves, x, z) - 0.9; k++) z -= 1; return z; }   // (the nearest spot out from here with water deep enough to lie on your board: the shallows reach well past where the old fixed line put you back)
 function startStrand(x, z, yaw) {
   if (surfer) endWipe(); if (rider) FREE.rider = rider; rider = null; rig.visible = false; endT = -1; ui.msg.style.display = 'none';
@@ -817,6 +978,7 @@ function endStrand() { if (drone.on) fsDroneSet(false); strand = null; walker = 
 function strandTick(dt) {
   updateWaves(dt); railSpray.update(dt); wake.update(dt); track.update(dt);
   const W_ = strand;
+  if (W_.hut) { hutTick(dt, W_); return; }
   if (W_.deck) { deckTick(dt, W_); return; }
   const kx = inputLock ? 0 : (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0), kz = inputLock ? 0 : (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
   if ((W_.gT -= dt) <= 0) { W_.gT = 0.08; W_.g = groundAt(W_.x, W_.z); }
@@ -962,17 +1124,19 @@ function spawnRider() {
   if (isFree()) {   // the free-surf beach (his call 30 Sep 2026, option 2): no teleporting. After a wave you come up where you are and
     // paddle back out yourself (your friends see you do it); the first time, and when you tap Paddle out, you're at a peak's lineup
     const lx = rider.x ?? FREE[0].x, lz = rider.z ?? 0;
-    if (FREE.fresh && !/[?&]fsw=1\b/.test(location.search)) {   // arriving: lying on your board in the shallows at the channel, facing the sea (his call 30 Sep 2026: no walk from the sand; ?fsw=1 = at the outside peak)
+    if (FREE.fresh && hasBoat() && !/[?&]fsw=1\b/.test(location.search)) {   // arriving: lying on your board in the shallows at the channel, facing the sea (his call 30 Sep 2026: no walk from the sand; ?fsw=1 = at the outside peak)
       const zs = shoreZ(6); let z = zs - 4; while (z > zs - 40 && groundAt(6, z) > -1.2) z -= 1; z -= 14;   // (well clear of the sand's edge: right at it, the first bit of whitewater washed you up onto your feet)
       rider.reset(6, z, -Math.PI / 2); FREE.arriveT = T; FREE.fresh = false; FREE.jump = false; ui.msg.style.display = 'none';
       FREE.toDeck = true; return;   // (then straight onto the boat's front deck, his call 30 Sep 2026: everyone arrives there, walks to the edge and jumps in; boatTick does it once the boat exists)
     }
-    if (FREE.climb) { const c = FREE.climb; FREE.climb = null; { const x = Math.max(-185, Math.min(205, c.x)); rider.reset(x, offSand(x, c.z), -Math.PI / 2); } FREE.fresh = false; FREE.jump = false; ui.msg.style.display = 'none'; return; }   // (after a wipeout: back on your board where it floated)
+    if (FREE.fresh && !hasBoat() && !/[?&]fsw=1\b/.test(location.search)) {   // The Point: everyone arrives on the lookout hut's deck (hutArrive, from the tick)
+      rider.reset(FREE[0].x + 4, FREE[0].z - 8.5, -Math.PI / 2); FREE.arriveT = T; FREE.fresh = false; FREE.jump = false; ui.msg.style.display = 'none'; FREE.toHut = true; return; }
+    if (FREE.climb) { const c = FREE.climb; FREE.climb = null; { const L = freeLim(), x = Math.max(L.x0 + 5, Math.min(L.x1 - 5, c.x)); rider.reset(x, offSand(x, c.z), -Math.PI / 2); } FREE.fresh = false; FREE.jump = false; ui.msg.style.display = 'none'; return; }   // (after a wipeout: back on your board where it floated)
     if (FREE.walkIn) { rider.reset(FREE.walkIn.x, FREE.walkIn.z, FREE.walkIn.th); FREE.walkIn = null; FREE.fresh = false; FREE.jump = false; ui.msg.style.display = 'none'; return; }   // (walked into the water: on your board right there)
     if (FREE.fresh || FREE.jump) {
       const near = FREE[0];   // (always the big waves, his call 30 Sep 2026: one place every time, so everyone knows where Go to lineup takes them; it used to pick the nearer peak)
       rider.reset(near.x + 4, near.z - 8.5, -Math.PI / 2);   // (the same spot every time; friends arriving together are kept apart by the no-overlap rule)
-    } else { const x = Math.max(-185, Math.min(205, lx)); rider.reset(x, offSand(x, lz), -Math.PI / 2); }   // (right where the wave left you; back off the sand if it washed you all the way in)
+    } else { const L = freeLim(), x = Math.max(L.x0 + 5, Math.min(L.x1 - 5, lx)); rider.reset(x, offSand(x, lz), -Math.PI / 2); }   // (right where the wave left you; back off the sand if it washed you all the way in)
     const fresh = FREE.fresh; FREE.fresh = false; FREE.jump = false;
     if (!fresh) { ui.msg.style.display = 'none'; return; }   // (a shared beach: nobody's waves are held back for you, only on arrival)
   } else if (isTow() && TOWUP.at) { const a = TOWUP.at; TOWUP.at = null; rider.reset(a.x, a.z, -Math.PI / 2); ui.msg.style.display = 'none'; return; }   // (back on your board where you came up: paddle, or TOW IN again)
@@ -1364,7 +1528,7 @@ async function start(m, quick = false) {
   if (starting) return; starting = true; if (window.__g) window.__g.paused = false;
   hello(m === 'ranch' ? 'Sumba Ranch' : (SPOTS[m] && SPOTS[m].name) || m);
   if (CONDITIONS[m] && CONDITIONS[m].tow && boardType !== 'gun') { towBoardWas = boardType; useBoard('gun', false); }   // (a tow-in wave: the big-wave gun, his call; your own pick comes back on the menu)
-  showOff(true); mode = m; setWeather(m); setSpot(m); audio.start(); audio.quiet(false); audio.musicStart(MUSIC); document.body.classList.toggle('reef', m !== 'ranch');
+  showOff(true); mode = m; setWeather(spotOf(m)); setSpot(m); audio.start(); audio.quiet(false); audio.musicStart(MUSIC); document.body.classList.toggle('reef', m !== 'ranch');
   // fullscreen + landscape lock must be asked for inside the tap, before any waiting (Android); iOS ignores both safely
   if (!DESK) try { document.documentElement.requestFullscreen?.({ navigationUI: 'hide' })?.then(() => screen.orientation?.lock?.('landscape')).catch(() => {}); } catch (e) {}
   ui.load.textContent = surfer ? '' : 'Loading...'; document.getElementById('goSurf').classList.toggle('wait', !surfer);
@@ -2629,7 +2793,8 @@ function updateHUD(dt) {
   tubeShowT = rider.inBarrel ? 0.4 : Math.max(0, tubeShowT - dt);   // (held a moment: a wobble at the tube's edge doesn't flicker the word)
   hudCall(st, dt);
   hudScore(st === 'RIDE' && !isFree() ? rider.liveScore() : -1, dt);   // (not on the free beach, his call 30 Sep 2026: it sat under the list of who's there; the score card after each wave stays)
-  if ((st === 'WIPE' || st === 'OUT') && endT < 0 && isFree()) { endT = 0; const sc = rider.ride.score || 0; if (rider.ride.t > 0 || st === 'WIPE') { visitWave(sc, 'the free beach'); session.waves++; } if (rider.ride.t > 0 && !spec) { freeScore(sc); const bm = [...rider.ride.moves].sort((a, b) => b.pts - a.pts).find((m) => m.name !== 'TURN'); dispatchEvent(new CustomEvent('ss:freeride', { detail: { s: sc, fell: st === 'WIPE', m: bm ? bm.name : '' } })); } }   // (the free beach: how that wave went, shown for a moment, no best kept, no leaderboard; ss:freeride tells your friends, see freeroom.js)
+  if ((st === 'WIPE' || st === 'OUT') && endT < 0 && isFree()) { endT = 0; const sc0 = rider.ride.score || 0, pb = FREE.mapId === 'point' && party.ride === rider.ride && party.max >= 2 ? party.max : 1, sc = pb > 1 ? Math.min(10, Math.round(sc0 * (1 + PARTY_K * (pb - 1)) * 10) / 10) : sc0;   // (Party Point: a wave shared with friends scores more)
+    if (rider.ride.t > 0 || st === 'WIPE') { visitWave(sc, 'the free beach'); session.waves++; } if (rider.ride.t > 0 && !spec) { freeScore(sc, pb); const bm = [...rider.ride.moves].sort((a, b) => b.pts - a.pts).find((m) => m.name !== 'TURN'); dispatchEvent(new CustomEvent('ss:freeride', { detail: { s: sc, fell: st === 'WIPE', m: bm ? bm.name : '' } })); } }   // (the free beach: how that wave went, shown for a moment, no best kept, no leaderboard; ss:freeride tells your friends, see freeroom.js)
   else if ((st === 'WIPE' || st === 'OUT') && endT < 0) {
     endT = 0;
     const r = rider.ride;
@@ -3142,12 +3307,12 @@ function tick(dt) {
   }
   if (rider) {
     if (spec) specApply(dt);   // (watching a friend in a contest: their waves and their surfer, no physics of our own)
-    else { updateWaves(dt); if (!towTick(dt)) rider.update(dt, inp, waves); if (isFree()) boatBump(rider); }   // (towTick: on the jet ski's rope your own physics wait)
+    else { updateWaves(dt); if (!towTick(dt)) rider.update(dt, inp, waves); if (hasBoat()) boatBump(rider); }   // (towTick: on the jet ski's rope your own physics wait)
     updateRanch(dt);
     rider.caughtT = rider.washed ? 6 : Math.max(0, (rider.caughtT || 0) - dt);   // (remember being washed in for a few seconds: that's why you ended up inside)
     // drifting too far inside or out wide on a lie: bring the surfer back to the lineup (the pool's walls hold you in)
     if (!spec && isFree() && rider.state === 'LIE' && rider.z > REEF.zBeach - 70 && groundAt(rider.x, rider.z) > heightAt(waves, rider.x, rider.z) - 0.45) rider.z -= 4 * dt;   // (the edge of the sand: the shallows hold you off it, his call 30 Sep 2026: nothing to do on the beach, so no walking there)
-    if (!spec && isFree() && rider && rider.state === 'LIE' && (rider.x < -190 || rider.x > 210 || rider.z < -90)) { rider.x = Math.max(-190, Math.min(210, rider.x)); rider.z = Math.max(-90, rider.z); FREE.edgeT = 2.5; }   // (the edge of the bay: you just can't paddle further, and the pill up top says to head back; it used to end your go with a score screen, which the free beach no longer has, so it reset you on the spot again and again)   // (the free-surf beach: the whole bay is yours to paddle round)
+    if (!spec && isFree() && rider && rider.state === 'LIE' && (rider.x < freeLim().x0 || rider.x > freeLim().x1 || rider.z < freeLim().z0)) { const L = freeLim(); rider.x = Math.max(L.x0, Math.min(L.x1, rider.x)); rider.z = Math.max(L.z0, rider.z); FREE.edgeT = 2.5; }   // (the edge of the bay: you just can't paddle further, and the pill up top says to head back; it used to end your go with a score screen, which the free beach no longer has, so it reset you on the spot again and again)   // (the free-surf beach: the whole bay is yours to paddle round)
     else if (!spec && !isRanch() && !isFree() && rider.state === 'LIE' && (rider.z > (isTow() ? REEF.zBeach - 80 : 40) || Math.abs(rider.x - 5) > (isTow() ? 700 : 70) || rider.z < (isTow() ? -120 : -60))) { rider.out(rider.z > 40 && rider.caughtT > 0 ? 'Caught inside: the whitewater washed you in' : 'Drifted out of the lineup'); }
     stallFx(dt);
     if (!spec && finishing()) { if (rider.finTh === undefined) rider.finTh = rider.th; const want = -Math.PI / 2, d = Math.atan2(Math.sin(want - rider.th), Math.cos(want - rider.th)), room = 0.7 - Math.abs(Math.atan2(Math.sin(rider.th - rider.finTh), Math.cos(rider.th - rider.finTh)));
@@ -3265,7 +3430,8 @@ renderer.setAnimationLoop(() => {
   // from just behind it you'd see your own back; it isn't drawn in your view until you're back in the lineup
   if (surfer && !W.on) surfer.visible = !(tick.demo && !rider && mode !== 'villa') && !(rider && rider.state === 'OUT' && !camera.layers.isEnabled(1));   // (the menu: just your board, no body)
   ARMTH.value = rider && rider.standing ? 0.02 : 0.12;   // standing, shoulder skin is kept whole (no holes up the arm); sitting or lying your shoulder is right at the lens, so it's cut away   // (outside views, e.g. tests and replays, show the whole body)
-  if (isFree()) boatTick(dt); else if (boat) { boat.visible = false; if (boatBtn) boatBtn.hidden = true; }
+  if (isFree() && FREE.mapId === 'point') pointTick(dt); else { if (ripPts) ripPts.visible = false; if (pcBtn) pcBtn.hidden = true; if (pcCard) pcCard.hidden = true; }
+  if (hasBoat()) boatTick(dt); else { if (boat) boat.visible = false; if (isFree() && FREE.toHut) { FREE.toHut = false; if (!strand) hutArrive(); pwShow('PARTY WAVE TIME', 'Welcome to Party Point'); } }
   if (peers.size) peersTick(dt);   // (friends on the free beach)
   if (camera.layers.isEnabled(1) || (tick.demo && !rider && mode !== 'villa')) renderer.render(scene, camera);   // (the menu has no arms to draw: one pass)
   else {
@@ -3299,7 +3465,7 @@ async function specStart(m) {
   try { await ready; } catch (e) { return; }
   starting = false; chalHide(); if (drone.on) droneSet(false); showOff(true); glareTick(false);
   if (surfer) endWipe(); walker = null; vPick(null); document.body.classList.remove('villa', 'riding', 'ranch-wait'); setHfov(50);
-  mode = m; setWeather(m); setSpot(m); audio.start(); audio.quiet(false); document.body.classList.toggle('reef', m !== 'ranch');
+  mode = m; setWeather(spotOf(m)); setSpot(m); audio.start(); audio.quiet(false); document.body.classList.toggle('reef', m !== 'ranch');
   ui.start.style.display = 'none'; document.body.classList.add('playing', 'watching');
   session = { waves: 0, total: 0, best: 0, scores: [], barrels: 0 };
   for (const w of waves) w.dispose(scene); waves = [];
@@ -3348,4 +3514,4 @@ function specApply(dt) {
   rider.wave = waves.find((v) => v.sid === R.waveId) || null;
   input.paddle = !!b.pad;
 }
-window.__g = { towPoint, towNow: (w) => towNow(w), towStart: () => towStart(), get towDbg() { return { tow, ski, rope, cam: camera }; }, freeStart: (ext) => { FREE.forceX = !!ext; return start('free'); }, freeNet: FREE.net, freeWaveOut, freeWaveApply, freeWaveState, freeWaveSync, freeClearWaves, freeBecomeHost, freeSnap, freePeer, freePeerGone, freeSay, freeShorts, freeFollow, peersTick: (dt) => peersTick(dt), get following() { return FREE.follow || null; }, get followD() { return FREE.followD || 0; }, shortsFor: (id) => shortsFor(id), get peers() { return peers; }, hint: (t) => setText(ui.hint, t), get strand() { return strand; }, groundAt: (x, z) => groundAt(x, z), shoreZ: (x) => shoreZ(x), lockRanch, get ranchDbg() { return { people: !!people, loading: peopleLoading, failed: peopleFailed, crowd: crowd && crowd.length, life: !!life }; }, get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t, d) => useBoard(t, true, d == null ? null : d), useStance: (k) => useStance(k), get board() { return boardType; }, get design() { return boardDesign; }, setDesign: (t, d) => setDesign(t, d), designOf: (t) => designOf(t), get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; for (const z of FREE) z.next = undefined; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };
+window.__g = { pwShow: (a, b, k) => pwShow(a, b, k), snapTest: () => { if (rider) snapPhoto(rider); return !!photo; }, photoShow: () => { if (photo) { photo.shown = true; photoThumb(); } }, ripAt: (x, z) => ripAt(x, z), towPoint, towNow: (w) => towNow(w), towStart: () => towStart(), get towDbg() { return { tow, ski, rope, cam: camera }; }, freeStart: (ext, map) => { FREE.forceX = !!ext; freeMap(map); return start('free'); }, freeNet: FREE.net, freeWaveOut, freeWaveApply, freeWaveState, freeWaveSync, freeClearWaves, freeBecomeHost, freeSnap, freePeer, freePeerGone, freeSay, freeShorts, freeFollow, peersTick: (dt) => peersTick(dt), get following() { return FREE.follow || null; }, get followD() { return FREE.followD || 0; }, shortsFor: (id) => shortsFor(id), get peers() { return peers; }, hint: (t) => setText(ui.hint, t), get strand() { return strand; }, groundAt: (x, z) => groundAt(x, z), shoreZ: (x) => shoreZ(x), lockRanch, get ranchDbg() { return { people: !!people, loading: peopleLoading, failed: peopleFailed, crowd: crowd && crowd.length, life: !!life }; }, get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t, d) => useBoard(t, true, d == null ? null : d), useStance: (k) => useStance(k), get board() { return boardType; }, get design() { return boardDesign; }, setDesign: (t, d) => setDesign(t, d), designOf: (t) => designOf(t), get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; for (const z of FREE) z.next = undefined; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };

@@ -78,6 +78,26 @@
   #fsScore { position: fixed; z-index: 8; left: 50%; top: 24%; transform: translate(-50%, 6px); display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 20px 8px; border-radius: 14px; background: rgba(24,18,13,.55); border: 1px solid rgba(255,201,120,.3); opacity: 0; transition: opacity .35s, transform .35s; pointer-events: none; }
   body.fsScoring #freeGuide { visibility: hidden; }   /* (the arrow steps aside while it shows) */
   #fsScore.on { opacity: 1; transform: translate(-50%, 0); }
+  /* Party Point's big moments (1 Oct 2026): SET! when a set comes, PARTY WAVE x3 when friends share a wave. Big bouncy words, then gone */
+  #pwBan { position: fixed; z-index: 8; left: 50%; top: 15%; transform: translate(-50%, 0) scale(.6); pointer-events: none; opacity: 0; text-align: center; white-space: nowrap;
+    font: 900 46px/1 var(--disp); letter-spacing: .04em; color: #fff3df; text-shadow: 0 3px 0 rgba(0,0,0,.35); padding: 12px 26px 11px; border-radius: 18px; background: rgba(12,16,20,.78); border: 1px solid rgba(255,201,120,.45); color: #fff; }   /* (a dark backing: over a bright sky the words vanished) */
+  #pwBan small { display: block; margin-top: 6px; font: 800 14px/1 var(--disp); letter-spacing: .18em; color: #ffd34d; text-shadow: 0 2px 0 rgba(0,0,0,.35); }
+  #pwBan.set { color: #bff3ff; border-color: rgba(120,210,255,.4); }
+  #pwBan.on { animation: pwPop 3.6s ease-out forwards; }
+  @keyframes pwPop { 0% { opacity: 0; transform: translate(-50%, 8px) scale(.55); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.12); } 20% { transform: translate(-50%, 0) scale(.96); } 28% { transform: translate(-50%, 0) scale(1.02); } 80% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -6px) scale(1); } }
+  @media (max-height: 460px) { #pwBan { font-size: 36px; top: 11%; } }
+  /* the photographer's photo: a little picture under the buttons, then the postcard */
+  #pcBtn { display: flex; align-items: center; gap: 7px; height: 38px; padding: 0 12px 0 4px; border-radius: 19px; background: rgba(10,20,26,.5); border: 1px solid rgba(255,201,120,.55); color: #ffe2b2; font: 700 12px/1 var(--disp); letter-spacing: .06em; cursor: pointer; pointer-events: auto; }
+  #pcBtn[hidden] { display: none; } #pcBtn img { width: 50px; height: 28px; object-fit: cover; border-radius: 3px; border: 2px solid #fbf6ec; }
+  #pcBtn.new { animation: pcIn .5s ease-out; } @keyframes pcIn { 0% { transform: translateX(40px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+  #pcCard { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; background: rgba(6,10,14,.6); padding: 12px; }
+  #pcCard[hidden] { display: none; }
+  #pcCard .pcBox { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: min(760px, 100%); max-height: 100%; }
+  #pcCard img { max-width: 100%; max-height: calc(100dvh - 110px); border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,.45); -webkit-touch-callout: default; user-select: auto; }
+  #pcCard .pcRow { display: flex; gap: 10px; }
+  #pcCard button { padding: 10px 18px 9px; border-radius: 12px; border: 1px solid rgba(255,201,120,.6); background: rgba(24,17,11,.8); color: #ffe2b2; font: 800 14px/1 var(--disp); letter-spacing: .08em; cursor: pointer; }
+  #pcCard .pcSave { background: linear-gradient(180deg, #ffd694, #f2ad52); color: #2a1a0c; border-color: rgba(255,236,200,.7); }
+  #pcCard small { color: rgba(246,236,220,.7); font: 600 12px/1.2 var(--body); }
   #fsScore b { font: 800 44px/1 var(--disp); color: #fff3df; } #fsScore small { font: 800 13px/1 var(--disp); letter-spacing: .16em; color: var(--amber); }
   body:not(.playing) #fsScore { display: none; }
   /* a friend's name over their head on the free beach (see game.js peersTick) */
@@ -914,7 +934,7 @@
         <p class="fsMsg" id="fsMsg"></p>
         <div class="fsActs"><button type="button" class="fsGo" id="fsOpenBtn"><span>Open a beach</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h11M11 5.5 15.5 10 11 14.5"/></svg></button></div></div>
       <div class="fsNew"><button type="button" class="fsBack" id="fsBack">Back</button><h2 class="fsH">Open a beach</h2>
-        <div class="fsOpt"><b>Beach</b><div class="fsSeg" data-k="map"><button type="button" data-v="bay" class="on">The Bay</button><button type="button" class="off" disabled>More soon</button></div></div>
+        <div class="fsOpt"><b>Beach</b><div class="fsSeg" data-k="map"><button type="button" data-v="bay" class="on">The Bay</button><button type="button" data-v="point">Party Point</button></div></div>
         <div class="fsOpt"><b>Who joins</b><div class="fsSeg" data-k="vis"><button type="button" data-v="open" class="on">Open</button><button type="button" data-v="private">Private</button></div></div>
         <div class="fsOpt"><b>Waves</b><div class="fsSeg" data-k="cond"><button type="button" data-v="normal" class="on">Normal</button><button type="button" data-v="extreme" class="x">Extreme</button></div></div>
         <p class="fsNote">Open: anyone can find your beach and jump in. Private: only friends with your code.</p>
@@ -974,13 +994,19 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261001-2227</small>
+    <small id="build">build 261002-0043</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-02-partypoint', wd: true, date: '2 Oct 2026', time: '12:43 am', title: 'New free surf beach: Party Point', items: [
+      'A long left peeling down white cliffs, made for riding together. Open a beach and pick Party Point.',
+      'Ride a wave with friends for a PARTY WAVE bonus on your score.',
+      'Start at the lookout hut: fly the drone or cliff jump in. A rip current carries you back to the lineup.',
+      'Pull into a barrel at The Bowl and the photographer snaps you a postcard to save.',
+    ] },
     { id: '2026-10-01-tgchat', date: '1 Oct 2026', time: '10:27 pm', title: 'Join our Telegram group', items: [
       'Chat with the SumbaSurf team and other players: open About us and tap Chat with the team and community.',
     ] },
@@ -1476,6 +1502,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1133"></script>
+<script type="module" src="js/game.js?v=1155"></script>
 </body>
 </html>

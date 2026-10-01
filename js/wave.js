@@ -52,6 +52,12 @@ export const CONDITIONS = {
   free_out_x: { judge: 1.0, nose: 0.7, H: 10.5, speed: 10.4, peel: 8.4, angle: 55, period: 16, hollow: 1.0, forgive: 0.6, len: 1.4, width: 0.95, fat: 0.8, tube: 0, wobble: 0.45, burst: 1.9, softA: 0.8, assist: false, deep: 0.75, foamK: 0.55, name: 'Hard' },
   free_mid_x: { judge: 0.97, nose: 0.75, H: 8.4, speed: 9.4, peel: 7.2, angle: 54, period: 14, hollow: 1.0, forgive: 0.7, len: 1.2, width: 0.95, fat: 0.8, tube: 0, wobble: 0.34, burst: 1.8, softA: 0.8, assist: false, deep: 0.8, foamK: 0.6, name: 'Hard' },
   free_in_x:  { judge: 1.0, nose: 1.0, H: 4.2, speed: 6.4, peel: 4.2, angle: 60, period: 10, hollow: 0.85, forgive: 0.75, len: 0.8, width: 1.1, fat: 1.1, tube: 0.6, wobble: 0.2, burst: 1.4, softA: 0.5, name: 'Medium' },
+  // The Point (free-surf map 2, his call 1 Oct 2026): ONE long left peeling down white cliffs, a ride of ~340 m (45-50 s)
+  // for the whole crew at once. Peel only a little faster than it rolls in (peel/speed ~1.1: at 1.6 the riders sat in the
+  // tube for 25 s of a 30 s ride, tested 1 Oct 2026); the sand set far back (SPOTS.point dz) gives it room to run; a long crest (len) with room for six; hollow off the take-off (The Bowl: hollow, tube,
+  // an early section), then an open wall to carve and race, and it softens toward the cove (see game.js FREE_POINT)
+  point:   { judge: 0.95, nose: 1.05, H: 6.8, speed: 6.3, peel: 6.8, angle: 52, period: 15, hollow: 0.88, forgive: 0.95, len: 3.2, width: 1.15, fat: 1.15, tube: 1.15, wobble: 0.14, burst: 1.3, softA: 0.35, secGap: 6, bowl: 90, name: 'Medium' },
+  point_x: { judge: 1.0, nose: 0.75, H: 9.6, speed: 7.8, peel: 8.4, angle: 50, period: 16, hollow: 1.0, forgive: 0.65, len: 3.2, width: 0.95, fat: 0.85, tube: 0.4, wobble: 0.38, burst: 1.8, softA: 0.8, assist: false, deep: 0.8, foamK: 0.6, secGap: 5, bowl: 90, name: 'Hard' },
 };
 
 // The Sumba Ranch's machine waves: the pool's own settings (a machine makes the same wave every time), so tuning a reef
@@ -480,6 +486,7 @@ export const WEATHER = {
   villa:   { gold: 1, sun: [-0.35, 0.22, -0.9], zen: 0x3a64a8, hor: 0xf0c9a2, sunCol: 0xffc68a, fog: 0xf0c6a0, deep: 0x0a4a62, turq: 0x15a39a, cloud: 0.18, chop: 0.9, fogFar: 1100, rain: 0, sunVis: 1 },   // golden hour at the villa: the sun going down over the sea
   ranch:   { sun: [0.45, 0.72, -0.5], zen: 0x2a6cb8, hor: 0xcfe2ea, sunCol: 0xfff3dd, fog: 0xd4e5ec, deep: 0x1a8ea0, turq: 0x3fd6c8, cloud: 0.08, chop: 0.3, fogFar: 700, rain: 0, sunVis: 1 },   // dry, clear country sky; calm pool water
   free:    { sun: [-0.55, 0.32, -0.6], zen: 0x2f79c8, hor: 0xcfe5ea, sunCol: 0xfff0cc, fog: 0xd6e8ec, deep: 0x0b6f8e, turq: 0x3ee0cc, cloud: 0.18, chop: 0.6, fogFar: 430, rain: 0, sunVis: 1, light: 0xfff0d8, hemi: 0xeef2ea, wind: 0.4 },   // the free-surf beach: a clear, sunny morning, the sun still low, turquoise water
+  point:   { sun: [-0.45, 0.62, -0.62], zen: 0x2a7fd6, hor: 0xd8eef2, sunCol: 0xfff6dc, fog: 0xdcedf0, deep: 0x0a7a96, turq: 0x48eadb, cloud: 0.1, chop: 0.45, fogFar: 620, rain: 0, sunVis: 1, light: 0xfff6e4, hemi: 0xf2f6f0, wind: 0.3 },   // The Point: high bright midday sun, clear sky, the clearest turquoise; seen a long way down the line (fogFar)
   random:  { sun: [0.3, 0.7, -0.6],  zen: 0x2766ae, hor: 0xabd3e7, sunCol: 0xfff3dc, fog: 0xb9d9e8, deep: 0x09547e, turq: 0x19bdb2, cloud: 0.32, chop: 1.1, fogFar: 310, rain: 0, sunVis: 1 },
 };
 export const ENV = {
