@@ -1,7 +1,7 @@
 // Your villa: a small wooden cliff house out on the rocky point at the far end of the Tanjung Uma reef, looking back up
 // the line at the waves as they come: from down the line you see into the barrels, not the back of the lip. Inside it's all warm timber: plank walls,
 // wide floorboards, a pitched boarded ceiling on dark beams. A living room with glass on the two sea sides opens onto
-// a wraparound balcony; through a doorway, the board room, with your four boards standing in a rack on the wall.
+// a wraparound balcony; through a doorway, the board room, with your five boards standing in a rack on the wall.
 // Built in the coast's own frame (same as coast() in wave.js), so it sits right once the group is moved back by the
 // spot's dz. The waves break at x 0 (coast z about -60) and peel off toward +x, toward the point. A banyan beside the
 // house carries a spiral stair up to a deck in its canopy, the highest seat on the point.
@@ -283,43 +283,44 @@ export function villa(scene) {
   { const sx = fire0.x + Math.cos(5.4) * 2.4, sz = fire0.z + Math.sin(5.4) * 2.4; tall(sx, GY0, sz, -5.4 - Math.PI / 2); block(sx - 0.35, sx + 0.35, sz - 0.35, sz + 0.35); }   // by the fire, facing it
   tall(TX - 2.55, Y + DH, TZ + 1.9, Math.atan2(-1.9, 2.55) + Math.PI / 2);                  // up on the tree deck
 
-  // ---- the board room: whitewashed wall with a teak rack and your four boards, a wax bench, a wetsuit on a hook
+  // ---- the board room: whitewashed wall with a teak rack and your five boards, a wax bench, a wetsuit on a hook
   for (let y = 0.1; y < H; y += 0.22) box(0.04, 0.235, V.z1 - V.z0 - 0.3, (Math.round(y * 4.5) % 2) ? [0.8, 0.64, 0.42] : [0.74, 0.58, 0.37], V.x0 + 0.08, Y + y, zm, 0.05);   // (woven bamboo panelling behind the rack)
   box(0.2, 0.1, 11, PLANK_D, V.x0 + 0.2, Y + 2.2, 37); box(0.05, 0.07, 10.6, [0.16, 0.17, 0.16], V.x0 + 0.32, Y + 2.2, 37);   // (the top rail, padded where the boards rest)
   // the stand: a teak plinth with a felt top, and a padded divider between each board
   const FELT = [0.16, 0.17, 0.16], BRASS = [0.78, 0.6, 0.3];
   box(1.12, 0.3, 10.6, PLANK_D, V.x0 + 0.56, Y + 0.15, 37); box(1.02, 0.03, 10.5, FELT, V.x0 + 0.56, Y + 0.315, 37);
   box(0.05, 0.05, 10.6, POST, V.x0 + 1.1, Y + 0.28, 37); box(0.05, 0.04, 10.6, POST, V.x0 + 1.1, Y + 0.02, 37);   // (dark lips along the front, top and bottom)
-  for (const z of [31.8, 34.4, 37, 39.6, 42.2]) { for (const dx of [0.3, 0.85]) { box(0.07, 0.85, 0.07, PLANK, V.x0 + dx, Y + 0.75, z); box(0.1, 0.34, 0.1, FELT, V.x0 + dx, Y + 1.0, z); cyl(0.05, 0.05, 0.03, BRASS, V.x0 + dx, Y + 1.19, z, 8); }
+  for (const z of [31.8, 33.88, 35.96, 38.04, 40.12, 42.2]) { for (const dx of [0.3, 0.85]) { box(0.07, 0.85, 0.07, PLANK, V.x0 + dx, Y + 0.75, z); box(0.1, 0.34, 0.1, FELT, V.x0 + dx, Y + 1.0, z); cyl(0.05, 0.05, 0.03, BRASS, V.x0 + dx, Y + 1.19, z, 8); }
     box(0.55, 0.05, 0.05, PLANK, V.x0 + 0.575, Y + 1.14, z); }   // (padded uprights in pairs, a slot between each board)   // (a brass peg on each)
   const holder = new THREE.Group(); holder.position.set(V.x0, Y, 37); holder.rotation.y = Math.PI; g.add(holder);   // (mirrored: boards stand against the west wall, decks to the room)
   const rack = [];
-  ['short', 'fish', 'long', 'gun'].forEach((type, i) => {
+  // (five slots since the alaia joined the boards you can ride, 1 Oct 2026: it was missing from the rack)
+  ['short', 'fish', 'long', 'gun', 'alaia'].forEach((type, i) => {
     const b = makeBoard(type); b.rotation.set(-Math.PI / 2 + 0.12, 0, Math.PI / 2);
-    b.position.set(-0.55, b.userData.length / 2 + 0.34, -3.9 + i * 2.6);   // (standing on the stand's felt)
+    b.position.set(-0.55, b.userData.length / 2 + 0.34, -4.16 + i * 2.08);   // (standing on the stand's felt)
     b.userData.type = type; b.traverse((o) => { o.userData.type = type; }); holder.add(b); rack.push(b);
   });
   block(V.x0, V.x0 + 1.15, 31.7, 42.3);
   // a brass name plate on the stand under each board, a carved sign over them, and a spotlight on each from a beam
-  { const cv = document.createElement('canvas'); cv.width = 2048; cv.height = 384; const c = cv.getContext('2d');   // (four plates along the top, 512 x 128 each, the sign under them)
-    const names = [['SHORTBOARD', '6\'2"'], ['FISH', '5\'8"'], ['LONGBOARD', '9\'2"'], ['GUN', '9\'6"']];
+  { const cv = document.createElement('canvas'); cv.width = 2560; cv.height = 384; const c = cv.getContext('2d');   // (five plates along the top, 512 x 128 each, the sign under them)
+    const names = [['SHORTBOARD', '6\'2"'], ['FISH', '5\'8"'], ['LONGBOARD', '9\'2"'], ['GUN', '9\'6"'], ['ALAIA', '7\'2"']];
     names.forEach(([n, l], i) => { const x0 = i * 512; const gr = c.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, '#e2bf78'); gr.addColorStop(0.5, '#c0914a'); gr.addColorStop(1, '#94692c'); c.fillStyle = gr; c.fillRect(x0 + 6, 6, 500, 116);
       c.strokeStyle = '#5e4118'; c.lineWidth = 5; c.strokeRect(x0 + 16, 14, 480, 100); c.fillStyle = '#3a2810'; c.textAlign = 'center';
       c.font = 'bold 50px Georgia, serif'; c.fillText(n, x0 + 256, 64); c.font = '34px Georgia, serif'; c.fillText(l, x0 + 256, 104); });
-    c.fillStyle = '#6b4424'; c.fillRect(0, 128, 2048, 256); c.fillStyle = 'rgba(0,0,0,.18)'; for (let k = 0; k < 40; k++) c.fillRect(0, 128 + k * 6.4, 2048, 1.8);   // (the sign: dark teak, its grain)
-    c.fillStyle = '#f0dcb4'; c.font = 'bold 150px Georgia, serif'; c.textAlign = 'center'; c.fillText('THE  QUIVER', 1024, 310);
+    c.fillStyle = '#6b4424'; c.fillRect(0, 128, 2560, 256); c.fillStyle = 'rgba(0,0,0,.18)'; for (let k = 0; k < 40; k++) c.fillRect(0, 128 + k * 6.4, 2560, 1.8);   // (the sign: dark teak, its grain)
+    c.fillStyle = '#f0dcb4'; c.font = 'bold 150px Georgia, serif'; c.textAlign = 'center'; c.fillText('THE  QUIVER', 1280, 310);
     const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4;
     const pm = new THREE.MeshStandardMaterial({ map: tx, roughness: 0.45, metalness: 0.3 });
     const plate = (u0, u1, v0, v1, w, h, x, y, z, ry) => { const geo = new THREE.PlaneGeometry(w, h), uv = geo.attributes.uv;
       for (let k = 0; k < uv.count; k++) uv.setXY(k, u0 + uv.getX(k) * (u1 - u0), v0 + uv.getY(k) * (v1 - v0));
       const m = new THREE.Mesh(geo, pm); m.position.set(x, y, z); m.rotation.y = ry; m.scale.x = -1; g.add(m); };   // (flipped back: the house is mirrored)
-    names.forEach((_, i) => plate(i / 4, (i + 1) / 4, 2 / 3, 1, 0.62, 0.155, V.x0 + 1.13, Y + 0.15, 40.9 - i * 2.6, Math.PI / 2));
-    box(0.06, 0.5, 3.1, POST, V.x0 + 0.13, Y + 2.72, 37); plate(0, 1, 0, 2 / 3, 2.9, 0.4, V.x0 + 0.165, Y + 2.72, 37, Math.PI / 2); }
+    names.forEach((_, i) => plate(i / 5, (i + 1) / 5, 2 / 3, 1, 0.62, 0.155, V.x0 + 1.13, Y + 0.15, 41.16 - i * 2.08, Math.PI / 2));
+    box(0.06, 0.5, 3.8, POST, V.x0 + 0.13, Y + 2.72, 37); plate(0, 1, 0, 2 / 3, 3.6, 0.4, V.x0 + 0.165, Y + 2.72, 37, Math.PI / 2); }   // (the sign a little longer with the wider canvas, so its letters keep their shape)
   { const glowTex = canvasTex(128, 256, (c, w, h) => { const gr = c.createRadialGradient(w / 2, h * 0.35, 4, w / 2, h * 0.45, h * 0.55); gr.addColorStop(0, 'rgba(255,214,150,1)'); gr.addColorStop(0.45, 'rgba(255,190,120,.35)'); gr.addColorStop(1, 'rgba(255,170,100,0)'); c.fillStyle = gr; c.fillRect(0, 0, w, h); });
     const gm = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
     const lens = new THREE.MeshBasicMaterial({ color: 0xffe2b0, toneMapped: false });
     box(0.1, 0.08, 10.6, POST, V.x0 + 1.6, Y + 3.0, 37);   // (the lighting track, hung off the tie beams)
-    for (let i = 0; i < 4; i++) { const z = 40.9 - i * 2.6;
+    for (let i = 0; i < 5; i++) { const z = 41.16 - i * 2.08;
       const can = cyl(0.07, 0.055, 0.2, [0.12, 0.11, 0.1], V.x0 + 1.55, Y + 2.86, z, 10); can.rotation.z = 0.75;   // (tipped toward the board)
       const ln = new THREE.Mesh(new THREE.CircleGeometry(0.052, 12), lens); ln.position.set(V.x0 + 1.47, Y + 2.79, z); ln.rotation.set(0, -Math.PI / 2, 0); ln.rotateX(-0.82); g.add(ln);
       const gl = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 3.0), gm); gl.position.set(V.x0 + 0.13, Y + 1.55, z); gl.rotation.y = Math.PI / 2; g.add(gl); } }
