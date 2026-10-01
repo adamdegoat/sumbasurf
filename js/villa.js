@@ -651,21 +651,17 @@ export function villa(scene) {
       cyl(0.16, 0.16, 0.02, [0.5, 0.4, 0.2], x, Y + 0.28, z, 10); block(x - 0.2, x + 0.2, z - 0.2, z + 0.2); } }
   // a couple of boards leaning on the house by the balcony doors, ready to go
   lean('fish', V.x1 + 0.12, 42.4, Math.PI / 2, 0.22).position.y += Y - GY0 - 0.2; lean('gun', V.x1 + 0.12, 43.2, Math.PI / 2, 0.18).position.y += Y - GY0 - 0.2; block(V.x1, V.x1 + 0.55, 42.05, 43.55);   // (you walk round them, not through)
-  // where your friends are: Kai on the log by the fire, Wayan at the wax station, Nando on the tree deck rail, Rudi and Putu in the living room
+  // where your friends are: Kai on the log by the fire, Rudi in the living room, Belle in the pool (Wayan, Nando and Putu gone, his call 1 Oct 2026)
   const NANDO = { x: TX + Math.cos(-0.8) * 3.02, z: TZ + Math.sin(-0.8) * 3.02 };
   const logK = { x: fire.x + Math.cos(3.9) * 2.1, z: fire.z + Math.sin(3.9) * 2.1 };
   const wyaw = (dx, dz) => Math.atan2(-dx, dz);   // (a direction in the house's own frame, as a turn in the world: the house is mirrored)
   const friendSpots = [
     { id: 'kai', name: 'Kai', pose: 'guitar', x: OX - logK.x, z: logK.z + OZ, y: GY0, seat: 0.46, yaw: wyaw(fire.x - logK.x, fire.z - logK.z) },
-    { id: 'wayan', name: 'Wayan', pose: 'wax', x: OX - WAX.x, z: WAX.z - 0.6 + OZ, y: GY0, yaw: wyaw(0, 1), board: [OX - WAX.x, WAX.y + 0.03, WAX.z + OZ] },
-    { id: 'nando', name: 'Nando', pose: 'bino', x: OX - NANDO.x, z: NANDO.z + OZ, y: Y + DH, yaw: wyaw(Math.cos(-0.8), Math.sin(-0.8)) },
     { id: 'rudi', name: 'Coach Rudi', pose: 'coach', x: OX + 87.0, z: 37.6 + OZ, y: Y, yaw: wyaw(1, -0.25) },          // (in the living room: at the open doors, watching the waves...)
-    { id: 'putu', name: 'Putu', pose: 'sofa', x: OX + 88.55, z: 41.55 + OZ, y: Y, seat: 0.7, yaw: wyaw(0, -1) },
     { id: 'belle', name: 'Belle', pose: 'pool', x: OX - (PL.x1 - 0.75), z: PL.z0 + 0.5 + OZ, y: Y - 0.98, edgeY: Y + 0.16, yaw: wyaw(0, -1) } ];   // (in the pool: at the south-east corner, on the step, facing out to sea)
   block(PL.x1 - 1.1, PL.x1 - 0.4, PL.z0, PL.z0 + 0.85);   // (Belle)
   box(1.0, 0.2, 0.9, [0.5, 0.76, 0.75], PL.x1 - 0.75, Y - 1.08, PL.z0 + 0.45, 0.06);   // (the tiled step in the corner she stands on)   // (...and on the sofa with a map)
   block(-87.35, -86.65, 37.25, 37.95);   // (Rudi)
-  block(WAX.x - 0.3, WAX.x + 0.3, WAX.z - 1.0, WAX.z - 0.45);   // (Wayan)
   // ---- the fire's sparks, and fireflies over the garden: points of light, coloured as they fade
   const sparkN = 36, sparkP = new Float32Array(sparkN * 3), sparkC = new Float32Array(sparkN * 3), sparkV = new Float32Array(sparkN * 3), sparkL = new Float32Array(sparkN);
   const sparks = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ map: haloTex, size: 0.14, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
@@ -885,7 +881,6 @@ export function villa(scene) {
       return !(inRect(x, z, B.x0 + 0.35, B.x1 - 0.35, B.z0 + 0.35, V.z1) || inRect(x, z, PL.x0 - 0.5, PL.x1 - 0.3, PL.z0 + 0.3, PL.z1 - 0.3) ||   /* (the pool: step off the balcony into it anywhere along its edge) */ inRect(x, z, V.x1 - 0.2, B.x1 - 0.35, V.z1 - 1, LZ - 0.3) || inRect(x, z, G.x0 + 0.3, G.x1 + 0.3, V.z1 + 0.4, G.z1 - 0.3)); }
     if (foot > Y + DH - 0.4) {                                                         // up on the deck
       if (r > RD - 0.35) return true;
-      if (Math.hypot(x - NANDO.x, z - NANDO.z) < 0.45) return true;   // (Nando at the rail)
       if (inRect(x, z, TX + 2.55, TX + 3.25, TZ - 1.2, TZ + 0.6) || inRect(x, z, TX - 1.2, TX + 0.6, TZ - 3.25, TZ - 2.55) || inRect(x, z, TX - 2.85, TX - 2.25, TZ + 1.6, TZ + 2.2)) return true;   // (the benches, the speaker)
       if (r < R1 - 0.05) { const d = wrap(an - AE_); return !(d > -0.7 && d < 0.15); }  // (the stairwell, except where the stair arrives)
       return false; }

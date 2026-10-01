@@ -8,9 +8,9 @@ import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER, DESIGNS, SEASON, bak
 import { SurfAudio } from './audio.js?v=26';
 import { ranch, POOL } from './ranch.js?v=9';
 import { SPOTS, spotGroup, builtSpots } from './spots.js?v=151';
-import { villa, VILLA } from './villa.js?v=189';
+import { villa, VILLA } from './villa.js?v=190';
 import { makeBirds } from './birds.js?v=1';
-import { friends } from './friends.js?v=28';
+import { friends } from './friends.js?v=30';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
 import { crew } from './crew.js?v=64';

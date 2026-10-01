@@ -215,10 +215,19 @@ export function friends(scene, src, spots, people, life = null) {
       else reach(B['thigh_' + sd], B['calf_' + sd], B['foot_' + sd], root.localToWorld(FT.copy(F.feet[sd])), KP.copy(fw).addScaledVector(up, -0.2)); }
   }
   const V = new THREE.Vector3(), W = new THREE.Vector3(), fw = new THREE.Vector3(), rt = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), tgt = new THREE.Vector3(), tgt2 = new THREE.Vector3(), pole = new THREE.Vector3(), SD = new THREE.Vector3(), TA = new THREE.Vector3(), TB = new THREE.Vector3(), HP = new THREE.Vector3();
-  function update(dt, t, beat, you, camera) {
+  const FR = new THREE.Frustum(), PV = new THREE.Matrix4(), BS = new THREE.Sphere(new THREE.Vector3(), 1.4);
+  let frame = 0;
+  function update(dt0, t, beat, you, camera) {
+    frame++; camera.updateMatrixWorld(); FR.setFromProjectionMatrix(PV.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
     for (const F of list) {
-      const { B, S, root } = F; F.cool -= dt;
-      if (F.posed && F.talkT <= 0 && Math.hypot(you.x - F.head.x, you.z - F.head.z) > 26) continue;   // (far off: keep the last pose, skip the work)
+      const { B, S, root } = F; F.cool -= dt0; F.acc = (F.acc || 0) + dt0;
+      // (1 Oct 2026, his call: fewer villa people, and the ones left cheaper. Their bodies skip the GPU's own
+      // off-screen check (frustumCulled is off: their bones move them away from it), so we do it here: out of view,
+      // not talking and not right beside you = not drawn and not posed. Beyond 12 m they pose every other frame.)
+      const away = F.posed ? Math.hypot(you.x - F.head.x, you.z - F.head.z) : 0, seen = !F.posed || FR.intersectsSphere((BS.center.copy(F.head).y -= 0.8, BS));
+      root.visible = seen || F.talkT > 0 || away < 5;
+      if (F.posed && F.talkT <= 0 && (away > 26 || (!root.visible) || (away > 12 && (frame & 1)))) continue;   // (far off or out of sight: keep the last pose, skip the work)
+      const dt = Math.min(F.acc, 0.1); F.acc = 0;   // (capped: after a long while unposed, one big step would end a line the moment it starts)
       F.posed = true;
       if (F.body.userData.rest) for (const [b, p, q, sc] of F.body.userData.rest) { b.position.copy(p); b.quaternion.copy(q); b.scale.copy(sc); }   // (a Rocketbox skeleton: back to its own standing pose; its bind data doesn't survive skeleton.pose())
       else F.skins[0].skeleton.pose();
