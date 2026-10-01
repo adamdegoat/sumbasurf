@@ -1,8 +1,8 @@
 // The drone light show at the villa: a story now, his call 1 Oct 2026 ("one heartwarming, to welcome and thank people
-// for the support"; it replaced the 28 Sep animal show, kept in backup_show_1001_animals.js). Set to 'Wish You Warm Skies',
-// started 63 s in so its big moments land on the song (SONG, SONG_AT): stars wake over the sea, a boat sails in, a surfer
-// catches a wave as the big chorus hits, friends gather, the SumbaSurf wave glows, SUMBASURF in the quiet bridge,
-// THANK YOU on the last chorus, and the letters fall as stars into the sea as the song ends.
+// for the support"; it replaced the 28 Sep animal show, kept in backup_show_1001_animals.js): stars wake over the sea,
+// a boat sails in, a surfer catches a wave, friends gather, the SumbaSurf wave glows, SUMBASURF, THANK YOU, and the
+// letters fall as stars into the sea. It plays over whatever song the radio has on (it used to start its own song;
+// changing the music made it glitch, his call 1 Oct 2026).
 // How it stays smooth, the way real shows are flown: every formation is alive but never jumps; between formations each
 // drone flies a straight, eased line to its new place (5 s, no start or stop jolt), the lights dim a little while they
 // travel, and who goes where is worked out once so that no two paths cross.
@@ -64,7 +64,6 @@ const set = (p, c, u, v, w, r, g, b) => { p[0] = u; p[1] = v; p[2] = w; c[0] = r
 // (the shapes and the flight plan are made a slice at a time in the background once the villa is up, so a phone never
 // stalls: see work(); anything asked for before it's ready is finished on the spot)
 let S_ = {}, SH_DONE = false, READY = false, GEN = null;
-export const SONG = 'music/wish-you-warm-skies.mp3?v=2', SONG_AT = 63;   // (the song, and where in it the show starts: game.js plays it and keeps the show on its beat)
 function* shapeGen() {
   const s = S_;
   // a sailing boat side on, heading right: hull, mast, a mainsail and a jib
@@ -82,10 +81,11 @@ function* shapeGen() {
   s.waveE = shape((x) => { x.beginPath(); x.moveTo(8, 232); x.bezierCurveTo(120, 228, 200, 170, 236, 70); x.bezierCurveTo(250, 34, 300, 22, 336, 46); x.bezierCurveTo(360, 64, 356, 98, 330, 104);
     x.bezierCurveTo(318, 84, 296, 82, 290, 104); x.bezierCurveTo(286, 140, 330, 200, 392, 232); x.closePath(); x.fill(); }, 150, 90, WW);
   yield;
-  s.surfer = shape((x) => { x.lineWidth = 7; x.beginPath(); x.moveTo(196, 140); x.lineTo(206, 112); x.lineTo(218, 140); x.moveTo(206, 112); x.lineTo(204, 88); x.moveTo(182, 92); x.lineTo(226, 84); x.stroke();
+  // (on the face under the curl, where a surfer rides it: they were on its back, his eye 1 Oct 2026)
+  s.surfer = shape((x) => { x.translate(116, 36); x.lineWidth = 7; x.beginPath(); x.moveTo(196, 140); x.lineTo(206, 112); x.lineTo(218, 140); x.moveTo(206, 112); x.lineTo(204, 88); x.moveTo(182, 92); x.lineTo(226, 84); x.stroke();
     x.beginPath(); x.arc(204, 78, 8, 0, TAU); x.fill(); }, 30, 40, WW);
   yield;
-  s.board = shape((x) => { x.beginPath(); x.ellipse(206, 146, 34, 5, -0.38, 0, TAU); x.fill(); }, 22, 8, WW);
+  s.board = shape((x) => { x.beginPath(); x.ellipse(322, 182, 34, 5, 0.55, 0, TAU); x.fill(); }, 22, 8, WW);   // (along the face, nose down the line)
   // three friends standing on the sand, each holding a board upright beside them
   const FW = 132;
   yield;
@@ -137,7 +137,7 @@ const SCENES = [
     const s = shapes(), surge = 1 + 0.03 * Math.sin(t * 0.9);
     if (i < 240) { let [x, y] = s.waveE[i]; const lip = smooth((x - 20) / 30) * smooth((y - 10) / 30);   // (the lip pitches forward and back a little)
       x += lip * 2.2 * Math.sin(t * 1.4); const blue = i < 150 ? [0.35, 0.85, 1] : [0.08, 0.42, 0.9]; set(p, c, x * surge, 44 + y * surge, 0, ...blue); return; }
-    const ride = Math.sin(t * 0.55), sx = -6 * ride, sy = 5 * Math.cos(t * 0.55);   // (the surfer carves down and up the face)
+    const ride = Math.sin(t * 0.55), sx = 4 * ride, sy = -4 * ride;   // (the surfer carves down and back up the face, along it)
     if (i < 310) { const [x, y] = s.surfer[i - 240]; set(p, c, x + sx, 44 + y + sy, -1, 1, 0.82, 0.5); return; }
     if (i < 340) { const [x, y] = s.board[i - 310]; set(p, c, x + sx, 44 + y + sy, -1, 1, 0.55, 0.3); return; }
     if (i < 380) { const j = i - 340, [a, fade] = loop((t * 0.6 + j / 40) % 1); set(p, c, 32 + a * 20 + (R1[i] - 0.5) * 8, 70 + a * 12 - a * a * 18, 0, 0.8 * fade, 0.95 * fade, fade); return; }
@@ -200,7 +200,7 @@ let PLAN = null, PLAN_P = null;   // PLAN[s][d]: drone d's slot in formation s
 // the shapes and the plan come ready-made in show-data.json (made once from this file with _export, 28 Sep 2026), so a
 // phone does no preparing at all and the show looks the same on every device. Change a formation and bump DATA_V: an
 // old file is then ignored and everything is worked out on the phone as before
-const DATA_V = 'story-4';
+const DATA_V = 'story-5';
 export function _export() { plan(); const r = (a) => a.map(([x, y]) => [Math.round(x * 100) / 100, Math.round(y * 100) / 100]); return { v: DATA_V, shapes: Object.fromEntries(Object.entries(S_).map(([k, a]) => [k, r(a)])), text: r(TEXT), plan: PLAN.map((a) => Array.from(a)) }; }
 function load(d) {
   if (!d || d.v !== DATA_V || !Array.isArray(d.plan) || d.plan.length !== SCENES.length || d.plan.some((a) => a.length !== N) || !d.text || d.text.length !== N || READY || GEN) return false;

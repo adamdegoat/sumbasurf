@@ -15,7 +15,7 @@ import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
 import { crew } from './crew.js?v=64';
 import { wildlife } from './wildlife.js?v=68';
-import { droneShow, SONG as SHOW_SONG, SONG_AT as SHOW_AT } from './show.js?v=16';
+import { droneShow } from './show.js?v=17';
 import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=5';
 
 const Q = new URLSearchParams(location.search);
@@ -2925,7 +2925,6 @@ function showStart(skip = 0) {   // (skip: seconds already played, when joining 
   const dz = SPOTS.medium.dz, C = new THREE.Vector3(bx + dx * 130, 0, bz + dz + dzz * 130); C.y = heightAt(waves, C.x, C.z);
   showW.start(C, new THREE.Vector3(-dzz, 0, dx));   // (left to right as you look at it)
   if (skip > 0) showW.seek(skip);   // (catch up with a show already under way)
-  audio.musicPlay(SHOW_SONG, SHOW_AT + Math.max(0, skip));   // (its song, from the point the show is written to: the radio carries on after it)
   showB.classList.add('on'); showB.querySelector('span').textContent = 'END SHOW'; document.body.classList.add('show');
   const tip = document.getElementById('vTip'); tip.textContent = 'Drone show out over the sea. The balcony has the best view.'; tip.style.opacity = 1; clearTimeout(tip.t); tip.t = setTimeout(() => { tip.style.opacity = 0; }, 4000);
 }
@@ -2978,10 +2977,7 @@ function villaTick(dt) {
   updateWaves(dt); crewW.detail = !!(walker && (walker.watch || walker.zoom || drone.on)); crewW.update(dt, waves, T); if (!(showW && showW.on)) wildW.update(dt, waves); birdsW.update(dt);   /* (the whales and eagles wait while the drone show is on: their 'tap ZOOM' notes would pop up with ZOOM hidden) */   // (zoomed in on them: every surfer posed every frame)
   if (!friendsW && surfer && (people || peopleFailed)) friendsW = friends(scene, surfer, villaW.friendSpots.map((f) => ({ ...f, z: f.z + SPOTS.medium.dz, board: f.board && [f.board[0], f.board[1], f.board[2] + SPOTS.medium.dz] })), people, life);   // (your friends: as soon as the body model is in)
   if (friendsW && roomMode) friendsW.group.visible = false; else if (friendsW) friendsW.update(dt, T, beat, { x: walker.x, y: walker.y, z: walker.z + SPOTS.medium.dz }, camera); if (villaW.tick) villaW.tick(dt, beat, walker.x, walker.z, walker.y - 1.65);
-  // (the show and its song start together and then run on their own; the game never moves the music once it plays: nudging it
-  //  to keep time made the song stutter, his report 1 Oct 2026. The only correction: if the song has got well ahead of the
-  //  show, e.g. the show stalled on a slow phone, the show catches up, forward only, never back)
-  if (showW && showW.on && audio.now === SHOW_SONG && audio.mel && !audio.mel.paused && audio.mel.readyState >= 3) { const want = audio.mel.currentTime - SHOW_AT; if (want > showW.state.t + 1.5) showW.seek(want); }
+  // (the show plays over whatever the radio has on; it doesn't touch the music: his call 1 Oct 2026)
   if (showW && dayEnv) { showW.update(dt, renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360)), beat); applyNight(showW.night);
     if (showW.done && showB.classList.contains('on')) showOff();   // (over: the button goes back, the evening comes back)
     if (showW.done && showW.night < 0.005) { applyNight(0); dayEnv = null; } }
