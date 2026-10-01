@@ -4,11 +4,11 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=203';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=194';
-import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER } from './board.js?v=21';
+import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER, DESIGNS, SEASON, bakeDesigns } from './board.js?v=23';
 import { SurfAudio } from './audio.js?v=25';
 import { ranch, POOL } from './ranch.js?v=9';
 import { SPOTS, spotGroup, builtSpots } from './spots.js?v=140';
-import { villa, VILLA } from './villa.js?v=174';
+import { villa, VILLA } from './villa.js?v=178';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
@@ -116,12 +116,21 @@ const BOARD_SVG = {
   long: ['M4 17 C4 11 22 8 60 8 C100 8 116 12 116 17 C116 22 100 26 60 26 C22 26 4 23 4 17Z', '#efe4c8', '#2f5d8a'],
   gun: ['M3 17 C18 12 48 9 70 9 C94 9 110 14 118 17 C110 20 94 25 70 25 C48 25 18 22 3 17Z', '#c8322a', '#f4f1ea'],
   alaia: ['M12 11 L12 23 C40 25 82 25 100 22 C108 20 111 18 111 17 C111 16 108 14 100 12 C82 9 40 9 12 11Z', '#b8804a', '#6b4423'] };
+// (each board's icon in the picker in the colours of the design you gave it, and its name beside the board's when it isn't
+// the classic: you always see what you'll ride, his ask 1 Oct 2026; on small phones the icons alone say it)
+const ICON_DESIGN = { short: [null, ['#16224a', '#6fe6ff'], ['#2a1830', '#f07a1a']], fish: [null, ['#f4f1ea', '#f07a3a'], ['#f07316', '#151217']], long: [null, ['#9e1612', '#e9dcc4'], ['#efe6d2', '#f07316']],
+  gun: [null, ['#f2e21e', '#151515'], ['#3a1550', '#72f072']], alaia: [null, ['#b07e4e', '#1c2858'], ['#3a2a1c', '#f07316']] };
+function pickerDesigns() {
+  for (const b of document.querySelectorAll('#boards [data-board]')) { const t = b.dataset.board, d = designOf(t), c = (ICON_DESIGN[t] || [])[d] || BOARD_SVG[t].slice(1), p = b.querySelector('svg path');
+    if (p) { p.setAttribute('fill', c[0]); p.setAttribute('stroke', c[1]); }
+    let em = b.querySelector('em'); if (d && DESIGNS[t]) { if (!em) { em = document.createElement('em'); b.querySelector('span').after(em); } em.textContent = DESIGNS[t][d]; } else if (em) em.remove(); }
+}
 function boardPicker() {
   const box = document.getElementById('boards'); if (!box || box.childElementCount) return;
   for (const t of ['short', 'fish', 'long', 'gun', 'alaia']) { const [d, fill, rail] = BOARD_SVG[t], b = document.createElement('button'); b.dataset.board = t;
     b.innerHTML = `<svg viewBox="0 0 120 34"><path d="${d}" fill="${fill}" stroke="${rail}" stroke-width="2.5"/><path d="M${t === 'gun' ? 8 : 26} 17 H${t === 'long' ? 112 : 96}" stroke="${rail}" stroke-width="1" opacity=".6"/></svg><span>${BOARD_INFO[t][0]}</span><small>${BOARD_INFO[t][2]}</small>`;
     const pick = (e) => { e.preventDefault(); e.stopPropagation(); useBoard(t); }; b.addEventListener('click', pick); b.addEventListener('touchend', pick, { passive: false }); box.appendChild(b); }
-  for (const b of box.children) b.classList.toggle('on', b.dataset.board === boardType); document.getElementById('boardName').textContent = BOARD_INFO[boardType][0];
+  for (const b of box.children) b.classList.toggle('on', b.dataset.board === boardType); document.getElementById('boardName').textContent = BOARD_INFO[boardType][0]; pickerDesigns();
   try { mmPanel(); } catch (e) {}   // (the BEST tags for the spot already chosen)
 }
 // the stance picker, next to Your villa on the start screen
@@ -142,15 +151,30 @@ function useStance(k) {
 const physStance = () => (MIRROR ? (stance === 'goofy' ? 'regular' : 'goofy') : stance);
 function applyStance() { stanceQ.setFromAxisAngle(WORLD_UP, physStance() === 'regular' ? -Math.PI / 2 : Math.PI / 2); if (rider) rider.backside = physStance() === 'regular'; }   // (on a left, regular is backside; on a right, goofy)
 setTimeout(stancePicker, 0);
-function useBoard(t, keep = true) {   // (keep: false = just for now, the board you picked stays remembered: the monster wave's gun)
+// the paint you picked for each board (his call 1 Oct 2026, looks only: the board's shape and feel come from its type),
+// remembered on this device (and on Wavedash in your account: wdboot KEEP)
+const designOf = (t) => { let d = 0; try { d = +localStorage.getItem('sumbasurf.design.' + t) || 0; } catch (e) {} return d >= 0 && d < (DESIGNS[t] || []).length ? Math.floor(d) : 0; };
+let boardDesign = 0;
+function setDesign(t, d) {
+  if (!DESIGNS[t] || !(d >= 0 && d < DESIGNS[t].length)) return;
+  try { localStorage.setItem('sumbasurf.design.' + t, String(d)); } catch (e) {}
+  if (villaW && villaW.setRackDesign) villaW.setRackDesign(t, d);
+  if (t === boardType) useBoard(t, true);
+  dispatchEvent(new CustomEvent('ss:design'));   // (a contest room passes it on to the others: wavedash contest.js)
+}
+function useBoard(t, keep = true, design = null) {   // (keep: false = just for now, the board you picked stays remembered: the monster wave's gun; design: a friend's paint while watching their contest turn, else yours)
   boardType = t; if (keep) try { localStorage.setItem('sumbasurf.board', t); } catch (e) {}
-  rig.remove(board); board.geometry.dispose(); board = makeBoard(t, true); board.position.z = Math.max(0, (BOARD_LENGTH(t) - 1.88) * 0.33); board.position.y = t === 'alaia' ? 0.034 : 0;   /* (the alaia is 2.8 cm thick, half a shortboard: its deck raised to where theirs is, or lying on it the water washed over it as a pale sheet; the feet follow via deckAt) */ board.scale.x = MIRROR ? -1 : 1; rig.add(board);   // (at a mirrored spot, mirrored back: the logo reads right)
+  boardDesign = design != null && design >= 0 && design < (DESIGNS[t] || []).length ? design : designOf(t);
+  rig.remove(board); board.geometry.dispose(); board = makeBoard(t, true, boardDesign); board.position.z = Math.max(0, (BOARD_LENGTH(t) - 1.88) * 0.33); board.position.y = t === 'alaia' ? 0.034 : 0;   /* (the alaia is 2.8 cm thick, half a shortboard: its deck raised to where theirs is, or lying on it the water washed over it as a pale sheet; the feet follow via deckAt) */ board.scale.x = MIRROR ? -1 : 1; rig.add(board);   // (at a mirrored spot, mirrored back: the logo reads right)
   boardTail = board.position.z - BOARD_LENGTH(t) / 2 + 0.04; setBoard(t);
-  for (const b of document.querySelectorAll('[data-board]')) b.classList.toggle('on', b.dataset.board === t);
-  document.getElementById('boardName').textContent = BOARD_INFO[t][0]; if (document.body.classList.contains('playing') && mode !== 'villa') ui.cond.textContent = modeName(mode) + '  \u00b7  ' + BOARD_INFO[t][0] + '  \u00b7  ' + stanceName();
+  for (const b of document.querySelectorAll('[data-board]')) b.classList.toggle('on', b.dataset.board === t); pickerDesigns();
+  document.getElementById('boardName').textContent = BOARD_INFO[t][0]; if (document.body.classList.contains('playing') && mode !== 'villa') ui.cond.textContent = modeName(mode) + '  \u00b7  ' + BOARD_INFO[t][0] + (boardDesign ? ' ' + DESIGNS[t][boardDesign] : '') + '  \u00b7  ' + stanceName();
 
 }
-try { const t = localStorage.getItem('sumbasurf.board'); if (t && t !== 'short') setTimeout(() => useBoard(t), 0); } catch (e) {}
+try { const t = localStorage.getItem('sumbasurf.board'); setTimeout(() => useBoard(BOARD_INFO[t] ? t : 'short'), 0); } catch (e) {}
+// (every board design drawn ahead in the background, yours first, a few ms at a time and never mid-ride: board.js bakeDesigns)
+globalThis.__bakeBusy = () => !!(rider && rider.standing);
+setTimeout(() => bakeDesigns(Object.keys(DESIGNS).map((t) => [t, designOf(t)])), 4000);   // (always: your board AND its paint, even a shortboard in a new design)
 setTimeout(boardPicker, 0);
 // a jukung (Balinese outrigger fishing boat) anchored in the channel up-reef of the peak, bobbing on the swell, and a
 // few frigate birds wheeling high over the lineup
@@ -525,7 +549,8 @@ function freeSnap() {
   return [rider.state, +p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2), +q.x.toFixed(4), +q.y.toFixed(4), +q.z.toFixed(4), +q.w.toFixed(4), +rider.stateT.toFixed(2), +rider.v.toFixed(2),
     +(rider.lean / RIDE.leanMax).toFixed(3), +(rider.turn || 0).toFixed(3), rider.inBarrel ? 1 : 0, rider.pumping ? 1 : 0, +(rider.pumpT || 0).toFixed(2), +stallV.toFixed(2),
     wv ? +(rider.v / wv.cond.speed).toFixed(2) : 0, boardType, stance, wv && rider.standing ? wv.sid || 0 : 0, rider.state === 'LIE' && !sitting ? 1 : 0,   // (20: lying down paddling, not sitting up)
-    wv && rider.standing ? +(p.x - wv.peelX).toFixed(2) : 0, wv && rider.standing ? +(p.z - wv.zW).toFixed(2) : 0];   // (21, 22: where on the wave they are, so the others can put them on their own copy of it)
+    wv && rider.standing ? +(p.x - wv.peelX).toFixed(2) : 0, wv && rider.standing ? +(p.z - wv.zW).toFixed(2) : 0,   // (21, 22: where on the wave they are, so the others can put them on their own copy of it)
+    boardDesign];   // (23: the paint on their board; an older copy of the game sends none, which reads as the classic)
 }
 const peers = new Map(), _tagV = new THREE.Vector3(), tagsOn = []; let OSmod = null, osLoading = false;
 const _pqa = new THREE.Quaternion(), _pqb = new THREE.Quaternion();
@@ -539,7 +564,7 @@ function freePeer(id, a, name, sent) {   // (sent: the sender's own clock when i
   if (P.buf.length) { const L = P.buf[P.buf.length - 1].a; if (Math.hypot(a[1] - L[1], a[3] - L[3]) > 25) P.buf = []; }   // (Paddle out: they're simply there, not sliding across the bay; his note 30 Sep 2026)
   if (name) P.name = name;
   P.buf.push({ t, a }); if (P.buf.length > 12) P.buf.shift(); P.last = now;
-  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=21').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }
+  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=23').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }
 }
 function freeSay(id, text) { const P = peers.get(id); if (P) P.say = { text: String(text).slice(0, 90), until: performance.now() + 5000 }; }
 // every player's own shorts colour (his call 30 Sep 2026: automatic, different for each), picked from their player id,
@@ -562,8 +587,9 @@ function peersTick(dt) {
     const c = B.a, a = A.a[0] === 'FOOT' || c[0] === 'FOOT' ? c : A.a, f = B.t > A.t ? Math.min(1 + 150 / (B.t - A.t), Math.max(0, (at - A.t) / (B.t - A.t))) : 1;
     if (c[0] === 'FOOT') { if (P.os) P.os.group.visible = false; continue; }   // (on the sand: not drawn yet)
     if (!OSmod || !surferGltf) continue;
-    if (!P.os || (c[0] !== 'DECK' && (P.os.boardType !== c[17] || P.stance !== c[18]))) {   // (on deck no board is sent: keep theirs)
-      if (P.os) scene.remove(P.os.group); P.os = new OSmod.OtherSurfer(surferGltf, { board: c[17], stance: c[18], shorts: shortsFor(id) }); P.stance = c[18]; scene.add(P.os.group); }
+    const dz = c[0] === 'DECK' ? (P.os ? P.os.design : 0) : Math.max(0, Math.min(2, Math.floor(+c[23] || 0)));   // (their board's paint)
+    if (!P.os || (c[0] !== 'DECK' && (P.os.boardType !== c[17] || P.stance !== c[18] || P.os.design !== dz))) {   // (on deck no board is sent: keep theirs)
+      if (P.os) scene.remove(P.os.group); P.os = new OSmod.OtherSurfer(surferGltf, { board: c[17], stance: c[18], shorts: shortsFor(id), design: dz }); P.stance = c[18]; scene.add(P.os.group); }
     P.os.setShorts(shortsFor(id));
     const S = P.S || (P.S = { pos: new THREE.Vector3(), q: new THREE.Quaternion() });
     if (c[0] === 'DECK') {   // on the boat: stood on its deck (their spot on it, on your copy of the boat), facing their way
@@ -1252,21 +1278,28 @@ function cameFrom() {
 function hello(where) {   // (called each time they start somewhere: the first time sets the visit up)
   if (!PING_OK) return;
   if (!visit) {
-    let kind = 'new', who = '';
+    let kind = 'new', who = '', visitN = 0, agoD = -1;
     try { const me = localStorage.getItem('sumbasurf.me'); if (me === '1') { visit = false; return; } if (me === 'claude') who = 'claude';
-      kind = localStorage.getItem('sumbasurf.seen') ? 'back' : 'new'; localStorage.setItem('sumbasurf.seen', new Date().toISOString().slice(0, 10)); } catch (e) {}
+      const seen = localStorage.getItem('sumbasurf.seen'); kind = seen ? 'back' : 'new';
+      // (for the alert, his call 1 Oct 2026: which visit this is and how many days since the last one, from this device's own memory)
+      { const v = localStorage.getItem('sumbasurf.visits'); visitN = v === null ? (seen ? -1 : 1) : +v < 0 ? -1 : +v + 1; localStorage.setItem('sumbasurf.visits', String(visitN)); }   // (counted from a player's first visit only: someone who played before this came in has no true count, -1, never shown)
+      if (seen) agoD = Math.max(0, Math.round((Date.parse(new Date().toISOString().slice(0, 10)) - Date.parse(seen)) / 864e5));
+      localStorage.setItem('sumbasurf.seen', new Date().toISOString().slice(0, 10)); } catch (e) {}
     // (the device, as the game sees it: an iPad's browser says it's a Mac, so the server alone called iPads computers)
     const ua = navigator.userAgent, touch = navigator.maxTouchPoints > 1;
     const dev = /iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && touch) || (/Android/i.test(ua) && !/Mobile/i.test(ua)) ? 'tablet' : /iPhone|Android|Mobile/i.test(ua) ? 'phone' : touch ? 'touchscreen computer' : 'computer';
     visit = { kind, who, dev, src: cameFrom(), ms: 0, since: performance.now(), waves: 0, best: 0, bestAt: '', spots: new Set(), boards: new Set(), sentAt: -1, sentMs: 0, sent: 0 };
     // and a short note the moment they start (his call 30 Sep 2026: to see the traffic as it happens, not only when they leave)
-    const body = JSON.stringify({ kind: 'in', seen: kind, who, dev, src: visit.src, host: ON_WD ? 'wavedash' : 'app', where });
+    // (free surf: their own beach or a friend's, and how many on it)
+    let fs = null; try { if (where === 'Free surf' && FREE.net.role !== 'solo') { const R = globalThis.__free && globalThis.__free.R, W = globalThis.Wavedash; fs = { host: FREE.net.role === 'host', n: R && W && W.getLobbyUsers ? (W.getLobbyUsers(R.id) || []).length : 1 }; } } catch (e) {}
+    const body = JSON.stringify({ kind: 'in', seen: kind, who, dev, src: visit.src, host: ON_WD ? 'wavedash' : 'app', where, visits: visitN, ago: agoD, fs });
     fetch((ON_WD ? 'https://sumbasurf.app' : '') + '/api/ping', { method: 'POST', body, keepalive: true, mode: ON_WD ? 'no-cors' : 'same-origin' }).catch(() => {});
   }
   if (visit) visit.spots.add(where);
 }
 function visitWave(score, where) { if (!visit) return; visit.waves++; visit.boards.add(boardType); if (score > visit.best) { visit.best = score; visit.bestAt = where; } }
 function bye() {
+  return;   // (the session report is off, his call 1 Oct 2026: 'session report no need'; only the arrival alert goes)
   if (!visit || document.visibilityState !== 'hidden' || !visit.since) return;
   visit.ms += performance.now() - visit.since; visit.since = 0;
   if (visit.waves === visit.sentAt && visit.ms - visit.sentMs < 60e3) return;   // (nothing new since the last note: a quick look at another app)
@@ -1297,7 +1330,7 @@ async function start(m, quick = false) {
   FREE.extreme = FREE.forceX !== undefined ? FREE.forceX : /[?&]fx=1\b/.test(location.search); FREE.forceX = undefined;   // (Extreme: the host's choice once rooms exist; ?fx=1 for now)
   for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + (quick ? 5 : 15);   // a calm start: time to look around and find the set (a contest turn: the first wave sooner)
   updateWaves(0); spawnRider(); warmShaders();
-  ui.cond.textContent = modeName(mode) + '  \u00b7  ' + BOARD_INFO[boardType][0] + '  \u00b7  ' + stanceName();   // (the spot, the board you're on, your stance)
+  ui.cond.textContent = modeName(mode) + '  \u00b7  ' + BOARD_INFO[boardType][0] + (boardDesign ? ' ' + DESIGNS[boardType][boardDesign] : '') + '  \u00b7  ' + stanceName();   // (the spot, the board you're on and its design, your stance)
 }
 // build the shader for everything that could show up in a session (the boat, the locals, spray, what's still hidden), now at the tap,
 // not in a stall mid-paddle the first time each thing comes into view
@@ -2710,7 +2743,7 @@ const vStick = document.getElementById('vStick'), vPanel = document.getElementBy
 // tapping Your villa opens at once); if you get there first, right then
 function prepVilla() {
   if (villaW) return;
-  villaW = villa(scene); villaW.group.position.z = SPOTS.medium.dz; crewW = crew(scene); if (audio.now) villaW.setSong(...songOf(audio.now));
+  villaW = villa(scene); villaW.group.position.z = SPOTS.medium.dz; for (const t in DESIGNS) if (designOf(t)) villaW.setRackDesign(t, designOf(t)); crewW = crew(scene);   // (the rack shows each board in the paint you picked) if (audio.now) villaW.setSong(...songOf(audio.now));
     wildW = wildlife(scene, { point: { x: 172, z: 125 } });   // (the balcony, in the waves' frame)
     birdsW = makeBirds(wildW.group, { center: [60, 5], span: [140, 40], splash: (x, z) => wildW.splash(x, z) });   // (seabirds over the break: frigatebirds high, terns diving for fish)
     wildW.notify = (msg) => { const n = document.getElementById('vNote'); n.textContent = msg; n.classList.add('on'); clearTimeout(n.t); n.t = setTimeout(() => n.classList.remove('on'), 9000); };   // (up through the first seconds of the show it announces)
@@ -2782,7 +2815,18 @@ function startVilla() {
   ui.start.style.display = 'none'; document.body.classList.add('playing', 'villa'); ui.cond.textContent = 'Your villa';
   document.getElementById('vTip').textContent = DESK ? 'WASD or the arrow keys walk, drag the mouse to look, click to pick. Boards are in the board room.' : 'Left thumb walks, right thumb looks. Boards are in the board room.';
   document.getElementById('vTip').style.opacity = 1; setTimeout(() => { document.getElementById('vTip').style.opacity = 0; }, 7000);
+  if (!designsSeen()) setTimeout(() => { if (mode === 'villa' && !(window.__g && window.__g.room) && !designsSeen()) document.getElementById('vNew').classList.add('on'); }, 1400);   // (the board designs: a welcome card, once; not over a contest room)
 }
+// the board designs are new (1 Oct 2026): the villa pill says so in the menu and the villa welcomes you with a card, once
+const designsSeen = () => { try { return !!localStorage.getItem('sumbasurf.designsSeen'); } catch (e) { return true; } };
+const designsDone = () => { try { localStorage.setItem('sumbasurf.designsSeen', '1'); } catch (e) {} document.body.classList.remove('newd'); document.getElementById('vNew').classList.remove('on'); };
+if (!designsSeen()) document.body.classList.add('newd');
+{ const go = (e) => { e.preventDefault(); e.stopPropagation(); designsDone(); if (!walker || !villaW) return;
+    // (in front of the rack, looking at all five boards: the spot checked on screen 1 Oct 2026)
+    if (walker.sit) vStand(); walker.x = villaW.rackAt.x - 4.9; walker.z = villaW.rackAt.z; walker.yaw = 0; walker.pitch = -0.02;
+    const tip = document.getElementById('vTip'); tip.textContent = DESK ? 'Click a board to see its designs.' : 'Tap a board to see its designs.'; tip.style.opacity = 1; clearTimeout(tip.t); tip.t = setTimeout(() => { tip.style.opacity = 0; }, 6000); };
+  const later = (e) => { e.preventDefault(); e.stopPropagation(); designsDone(); };
+  for (const [id, f] of [['vNewGo', go], ['vNewLater', later]]) { const el = document.getElementById(id); el.addEventListener('click', f); el.addEventListener('touchstart', f, { passive: false }); } }
 document.getElementById('goVilla').addEventListener('click', startVilla);
 document.getElementById('goVilla').addEventListener('touchend', (e) => { e.preventDefault(); startVilla(); }, { passive: false });
 document.getElementById('vGo').addEventListener('click', (e) => { e.stopPropagation(); toMenu(); });
@@ -2879,13 +2923,20 @@ function showStart(skip = 0) {   // (skip: seconds already played, when joining 
 
 // the board panel: what it is and how it feels, and a button to take it
 function vPick(type) {
-  vPickType = type; vPanel.classList.toggle('on', !!type); if (!type) return;
+  vPickType = type; vPanel.classList.toggle('on', !!type); if (!type) { document.body.classList.remove('vpick', 'vpR'); return; }
+  // (the card goes to the side of the screen away from the board you tapped, so you can see the board and its paint: his
+  // report 1 Oct 2026, up close the card in the middle covered the whole board)
+  { const rb = villaW && villaW.rack.find((b) => b.userData.type === type), right = rb ? rb.getWorldPosition(new THREE.Vector3()).project(camera).x < 0 : false;
+    vPanel.dataset.side = right ? 'R' : 'L'; document.body.classList.add('vpick'); document.body.classList.toggle('vpR', right); }
   const I = BOARD_INFO[type]; document.getElementById('vName').textContent = I[0]; document.getElementById('vDesc').textContent = I[1];
   document.getElementById('vStats').innerHTML = ['Paddling', 'Speed', 'Turning', 'Stability', 'Airs'].map((l, k) => `<div><span>${l}</span><i>${'<b></b>'.repeat(I[3][k])}${'<b class="o"></b>'.repeat(5 - I[3][k])}</i></div>`).join('') + `<div class="best">Best at: ${I[2]}</div>`;
-  const tk = document.getElementById('vTake'), mine = type === boardType; tk.textContent = mine ? 'YOUR BOARD' : 'TAKE THIS BOARD'; tk.classList.toggle('mine', mine);
+  const tk = document.getElementById('vTake'), mine = type === boardType; tk.textContent = mine ? 'You ride this board' : 'Tap a design to ride this board'; tk.classList.toggle('mine', mine);
+  const dz = designOf(type); document.getElementById('vDes').innerHTML = '<i>Design</i>' + (DESIGNS[type] || []).map((n, k) => `<button type="button" data-d="${k}"${k === dz ? ' class="on"' : ''}>${n}${k === SEASON ? '<small>THIS SEASON</small>' : ''}</button>`).join('');
 }
-{ const tk = document.getElementById('vTake'), take = (e) => { e.preventDefault(); e.stopPropagation(); if (vPickType) { useBoard(vPickType); vPick(vPickType); } };
-  tk.addEventListener('click', take); tk.addEventListener('touchstart', take, { passive: false }); }
+{ const des = document.getElementById('vDes'), pick = (e) => { const bt = e.target.closest('button[data-d]'); if (!bt || !vPickType) return; e.preventDefault(); e.stopPropagation(); const t = vPickType, d = +bt.dataset.d; setDesign(t, d); if (t !== boardType) useBoard(t); vPick(t); designsDone();
+    const tip = document.getElementById('vTip'); tip.textContent = `Now riding: ${BOARD_INFO[t][0]}, ${DESIGNS[t][d]}`; tip.style.opacity = 1; clearTimeout(tip.t); tip.t = setTimeout(() => { tip.style.opacity = 0; }, 3500); };   // (what you tap is what you ride, his call 1 Oct 2026)
+  des.addEventListener('click', pick); des.addEventListener('touchstart', pick, { passive: false }); }
+// (TAKE THIS BOARD is gone: tapping a design takes the board, his call 1 Oct 2026; #vTake is a status line now)
 // tap on the screen: is it a board in the rack (close enough to reach)?
 const _vr = new THREE.Raycaster(), _vp = new THREE.Vector2();
 function vTap(cx, cy) {
@@ -3244,4 +3295,4 @@ function specApply(dt) {
   rider.wave = waves.find((v) => v.sid === R.waveId) || null;
   input.paddle = !!b.pad;
 }
-window.__g = { towPoint, towNow: (w) => towNow(w), towStart: () => towStart(), get towDbg() { return { tow, ski, rope, cam: camera }; }, freeStart: (ext) => { FREE.forceX = !!ext; return start('free'); }, freeNet: FREE.net, freeWaveOut, freeWaveApply, freeWaveState, freeWaveSync, freeClearWaves, freeBecomeHost, freeSnap, freePeer, freePeerGone, freeSay, freeShorts, freeFollow, peersTick: (dt) => peersTick(dt), get following() { return FREE.follow || null; }, get followD() { return FREE.followD || 0; }, shortsFor: (id) => shortsFor(id), get peers() { return peers; }, hint: (t) => setText(ui.hint, t), get strand() { return strand; }, groundAt: (x, z) => groundAt(x, z), shoreZ: (x) => shoreZ(x), lockRanch, get ranchDbg() { return { people: !!people, loading: peopleLoading, failed: peopleFailed, crowd: crowd && crowd.length, life: !!life }; }, get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), useStance: (k) => useStance(k), get board() { return boardType; }, get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; for (const z of FREE) z.next = undefined; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };
+window.__g = { towPoint, towNow: (w) => towNow(w), towStart: () => towStart(), get towDbg() { return { tow, ski, rope, cam: camera }; }, freeStart: (ext) => { FREE.forceX = !!ext; return start('free'); }, freeNet: FREE.net, freeWaveOut, freeWaveApply, freeWaveState, freeWaveSync, freeClearWaves, freeBecomeHost, freeSnap, freePeer, freePeerGone, freeSay, freeShorts, freeFollow, peersTick: (dt) => peersTick(dt), get following() { return FREE.follow || null; }, get followD() { return FREE.followD || 0; }, shortsFor: (id) => shortsFor(id), get peers() { return peers; }, hint: (t) => setText(ui.hint, t), get strand() { return strand; }, groundAt: (x, z) => groundAt(x, z), shoreZ: (x) => shoreZ(x), lockRanch, get ranchDbg() { return { people: !!people, loading: peopleLoading, failed: peopleFailed, crowd: crowd && crowd.length, life: !!life }; }, get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t, d) => useBoard(t, true, d == null ? null : d), useStance: (k) => useStance(k), get board() { return boardType; }, get design() { return boardDesign; }, setDesign: (t, d) => setDesign(t, d), designOf: (t) => designOf(t), get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; for (const z of FREE) z.next = undefined; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };

@@ -6,7 +6,7 @@
 // spot's dz. The waves break at x 0 (coast z about -60) and peel off toward +x, toward the point. A banyan beside the
 // house carries a spiral stair up to a deck in its canopy, the highest seat on the point.
 import * as THREE from 'three';
-import { makeBoard } from './board.js?v=21';
+import { makeBoard } from './board.js?v=23';
 import { landMaterial, waterMaterial } from './wave.js?v=203';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -283,6 +283,21 @@ export function villa(scene) {
   { const sx = fire0.x + Math.cos(5.4) * 2.4, sz = fire0.z + Math.sin(5.4) * 2.4; tall(sx, GY0, sz, -5.4 - Math.PI / 2); block(sx - 0.35, sx + 0.35, sz - 0.35, sz + 0.35); }   // by the fire, facing it
   tall(TX - 2.55, Y + DH, TZ + 1.9, Math.atan2(-1.9, 2.55) + Math.PI / 2);                  // up on the tree deck
 
+  // the board room's doorway from the living room, made a proper entrance (his call 1 Oct 2026, it was a bare gap in the
+  // planks): a dark teak frame, a step of threshold, and a carved sign over it, BOARD ROOM, in the same cream letters on
+  // dark teak as THE QUIVER inside, a little longboard carved beside the words
+  { const xo = xL + 0.11;   // (the living room side of the wall)
+    for (const z of [35.33, 37.67]) box(0.26, 2.42, 0.14, POST, xL, Y + 1.21, z);                      // the jambs, proud of the planks on both sides
+    box(0.26, 0.16, 2.62, POST, xL, Y + 2.38, 36.5); box(0.3, 0.05, 2.74, PLANK_D, xL, Y + 2.48, 36.5);   // the head, and a cap over it
+    box(0.28, 0.025, 2.2, PLANK_D, xL, Y + 0.012, 36.5);                                                // the threshold
+    const sg = canvasTex(1024, 256, (c, w, h) => {
+      c.fillStyle = '#3d2614'; c.fillRect(0, 0, w, h); c.fillStyle = 'rgba(0,0,0,.2)'; for (let k = 0; k < 34; k++) c.fillRect(0, k * 7.6 + 3 * Math.sin(k), w, 1.6);   // (dark teak and its grain)
+      c.strokeStyle = '#c99a52'; c.lineWidth = 5; c.strokeRect(14, 14, w - 28, h - 28);                                                                      // (a brass inlay round the edge)
+      c.fillStyle = '#f0dcb4'; c.font = 'bold 98px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('BOARD  ROOM', w / 2 + 52, h / 2 + 6);
+      c.save(); c.translate(84, h / 2); c.rotate(-0.5); c.beginPath(); c.ellipse(0, 0, 16, 62, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#3d2614'; c.fillRect(-1.5, -55, 3, 110); c.restore(); });   // (a little longboard, its stringer)
+    const sm = new THREE.MeshStandardMaterial({ map: sg, roughness: 0.55, metalness: 0.1 });
+    box(0.05, 0.52, 2.0, POST, xo + 0.02, Y + 2.82, 36.5);                                              // the sign's backing board
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.92, 0.46), sm); sign.position.set(xo + 0.05, Y + 2.82, 36.5); sign.rotation.y = Math.PI / 2; sign.scale.x = -1; g.add(sign); }   // (flipped back: the house is mirrored)
   // ---- the board room: whitewashed wall with a teak rack and your five boards, a wax bench, a wetsuit on a hook
   for (let y = 0.1; y < H; y += 0.22) box(0.04, 0.235, V.z1 - V.z0 - 0.3, (Math.round(y * 4.5) % 2) ? [0.8, 0.64, 0.42] : [0.74, 0.58, 0.37], V.x0 + 0.08, Y + y, zm, 0.05);   // (woven bamboo panelling behind the rack)
   box(0.2, 0.1, 11, PLANK_D, V.x0 + 0.2, Y + 2.2, 37); box(0.05, 0.07, 10.6, [0.16, 0.17, 0.16], V.x0 + 0.32, Y + 2.2, 37);   // (the top rail, padded where the boards rest)
@@ -909,5 +924,10 @@ export function villa(scene) {
     root.userData.chime = ch; }
   // dim every evening light (0 = off, 1 = as built): the house goes dark for the drone show
   const setLights = (k) => { for (const L of LIGHTS) { if (L.kind === 'color') L.mat.color.copy(L.base).multiplyScalar(k); else if (L.kind === 'opacity') L.mat.opacity = L.base * k; else L.mat.emissiveIntensity = L.base * k; } };
-  return { setLights, group: root, rack, colliders, walk, floorAt, solid, fix, inPool, tick, seats, sounds, setSong, dog, dogs, cats, friendSpots, spawn: { x: OX + 91, z: 37.5 + OZ, yaw: Math.PI + 0.2 }, rackAt: { x: OX - (V.x0 + 0.6), z: 37 + OZ } };
+  // the board room's rack in the paint you picked for each board (board.js DESIGNS): the board swapped for a new one in
+  // the same place, still answering a tap as that board
+  const setRackDesign = (type, design) => { const i = rack.findIndex((b) => b.userData.type === type); if (i < 0) return; const old = rack[i], b = makeBoard(type, false, design);
+    b.position.copy(old.position); b.rotation.copy(old.rotation); b.userData.type = type; b.userData.design = design; b.traverse((o) => { o.userData.type = type; });
+    old.parent.add(b); old.parent.remove(old); old.traverse((o) => { if (o.isMesh && o.geometry) o.geometry.dispose(); }); rack[i] = b; };
+  return { setLights, setRackDesign, group: root, rack, colliders, walk, floorAt, solid, fix, inPool, tick, seats, sounds, setSong, dog, dogs, cats, friendSpots, spawn: { x: OX + 91, z: 37.5 + OZ, yaw: Math.PI + 0.2 }, rackAt: { x: OX - (V.x0 + 0.6), z: 37 + OZ } };
 }

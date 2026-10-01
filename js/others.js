@@ -13,7 +13,7 @@
 // Every target is eased so a change of pose is a movement, never a snap.
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=21';
+import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=23';
 
 const UP = new THREE.Vector3(0, 1, 0), INTO_WAVE = new THREE.Vector3(0, 0, -1);
 const V = () => new THREE.Vector3(), Q = () => new THREE.Quaternion();
@@ -55,9 +55,9 @@ function reachArm(ua, la, hd, T, pole, w) {
 // shared by every other surfer: one board of each type (geometry, painted materials, the see-through copy) cloned per
 // surfer, and one copy of each body material (drawn plainly in the world, not through your own body's lens)
 const BOARDS = new Map(), MATS = new Map();
-function boardFor(type) {
-  let b = BOARDS.get(type); if (b) return b;
-  b = makeBoard(type); b.position.z = Math.max(0, (BOARD_LENGTH(type) - 1.88) * 0.33);
+function boardFor(type, design = 0) {   // (design: the paint they picked, see board.js DESIGNS)
+  const key = type + ':' + design; let b = BOARDS.get(key); if (b) return b;
+  b = makeBoard(type, false, design); b.position.z = Math.max(0, (BOARD_LENGTH(type) - 1.88) * 0.33);
   // (the water's face curves over a board lying on it: seen from low down the rails hid behind the surface itself; your
   // own board has a see-through copy for that (board.js BOARD_WATER), other boards are drawn a little in front of the water)
   b.traverse((o) => { if (o.isMesh) { const m = o.material = o.material.clone(); m.polygonOffset = true; m.polygonOffsetFactor = -6; m.polygonOffsetUnits = -6; } });
@@ -66,7 +66,7 @@ function boardFor(type) {
   // 'behind' the board and tinted it everywhere)
   const gm = b.material.clone(); gm.transparent = true; gm.opacity = 0.45; gm.color.multiply(new THREE.Color(0x86c3d6)); gm.depthFunc = THREE.GreaterDepth; gm.depthWrite = false; gm.polygonOffsetFactor = -10; gm.polygonOffsetUnits = -10;
   const ghost = new THREE.Mesh(b.geometry, gm); ghost.name = 'ghost'; ghost.renderOrder = 5; b.add(ghost);
-  BOARDS.set(type, b); return b;
+  BOARDS.set(key, b); return b;
 }
 // (drawn after the see-through board copy, so the copy never shows through the surfer lying on it: his catch 30 Sep
 // 2026, a friend paddling looked merged into the board. Solid all the same: full opacity, writes its depth)
@@ -74,12 +74,12 @@ function bodyMat(m) { let c = MATS.get(m.uuid); if (!c) { c = m.clone(); c.side 
 
 export class OtherSurfer {
   // gltf: the loaded surfer.glb (the same body as yours); opts: board type, stance ('goofy' | 'regular')
-  constructor(gltf, { board = 'short', stance = 'goofy', shorts = null } = {}) {
+  constructor(gltf, { board = 'short', stance = 'goofy', shorts = null, design = 0 } = {}) {
     this.group = new THREE.Group();
     this.body = cloneSkinned(gltf.scene);
     this.body.traverse((o) => { o.layers.set(0); if (o.isMesh) { o.frustumCulled = false; o.renderOrder = 10; o.material = bodyMat(o.material);
       if (/shorts/i.test(o.name)) { o.material = o.material.clone(); this.shortsMat = o.material; if (shorts != null) o.material.color.set(shorts); } } });   // (one set of materials for every other surfer, but their own shorts colour)
-    this.shorts = shorts; this.boardType = board; this.board = boardFor(board).clone(true); this.ghost = this.board.getObjectByName('ghost');
+    this.shorts = shorts; this.boardType = board; this.design = design; this.board = boardFor(board, design).clone(true); this.ghost = this.board.getObjectByName('ghost');
     this.group.add(this.board, this.body);
     this.B = {}; this.body.traverse((o) => { if (o.isBone) { this.B[o.name] = o; o.scale.set(1, 1, 1); } });   // (full size: your own body's head is shrunk to nothing so it's never in your eyes, and a copy took that along)
     this.body.traverse((o) => { if (o.isMesh && /hair/i.test(o.name + (o.material && o.material.name))) this.hair = o; });

@@ -1,5 +1,5 @@
-// The owner's player alert on Telegram: a short line when a player starts surfing or walks into the villa (his call
-// 30 Sep 2026, to see the traffic as it happens), and one message when they leave. The game (sumbasurf.app and the Wavedash copy) posts here when its page is hidden after some surfing:
+// The owner's player alert on Telegram: two short lines when a player starts surfing or walks into the villa (his call
+// 30 Sep 2026, to see the traffic as it happens; 1 Oct 2026: that alert only, the session report when they leave is off). The game (sumbasurf.app and the Wavedash copy) posts here when its page is hidden after some surfing:
 //   { kind: new|back, who, dev, src, host, mins, waves, best, bestAt, spots, boards, again }
 // The bot key lives in the Cloudflare project's settings (the TG_TOKEN secret), never in code. Nothing a player sends
 // reaches the chat as their own text: every name comes from a fixed list and every number is clamped.
@@ -62,12 +62,21 @@ export async function onRequestPost({ request, env }) {
       let country = request.cf && request.cf.country || '';
       try { country = new Intl.DisplayNames(['en'], { type: 'region' }).of(country) || country; } catch (e) {}
       const dev = DEV.includes(b.dev) ? b.dev : '', src = SOURCES.includes(b.src) ? b.src : '', wd = b.host === 'wavedash';
-      const where = SPOTS.includes(b.where) ? b.where : '', who = b.seen === 'back' ? 'Returning player' : 'New player';
-      const top = `${b.who === 'claude' ? 'Claude testing: ' : ''}${who} started${where ? ` at ${where}` : ''}`;
-      await tg(env, chat, `${b.seen === 'back' ? 'RETURN' : 'NEW'}\n${top}\n${[country, dev, wd ? 'on Wavedash' : src ? `from ${src}` : ''].filter(Boolean).join(', ')}`);
+      const where = SPOTS.includes(b.where) ? b.where : '', back = b.seen === 'back', test = b.who === 'claude';
+      // two short lines to tell apart at a glance (his call 1 Oct 2026):
+      //   NEW · Singapore · phone                          BACK · 5th visit · last 3 days ago
+      //   from Instagram → Ombak Raksasa                  Malaysia · computer · Wavedash → Free surf, joined 2 friends
+      const ord = (n) => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+      const visits = Math.round(num(b.visits, 0, 99999)), ago = b.ago == null ? -1 : Math.round(num(b.ago, -1, 3650));
+      const when = ago < 0 ? '' : ago === 0 ? 'last earlier today' : ago === 1 ? 'last yesterday' : `last ${ago} days ago`;
+      let fs = ''; if (where === 'Free surf' && b.fs && typeof b.fs === 'object') { const n = Math.round(num(b.fs.n, 1, 6)); fs = b.fs.host ? (n > 1 ? `, own beach with ${plural(n - 1, 'friend')}` : ', own beach') : `, joined ${n > 1 ? plural(n - 1, 'friend') : 'a beach'}`; }
+      const line1 = [back ? 'BACK' : 'NEW', ...(back ? [visits > 1 ? ord(visits) + ' visit' : '', when] : [country, dev])].filter(Boolean).join(' · ');
+      const came = wd ? 'Wavedash' : src ? `from ${src}` : '', line2 = [...(back ? [country, dev] : []), [came, where ? where + fs : ''].filter(Boolean).join(' → ')].filter(Boolean).join(' · ');
+      await tg(env, chat, `${test ? 'Claude testing: ' : ''}${line1}\n${line2}`);
     } catch (e) {}
     return none;
   }
+  return none;   // (the session report when they leave is off, his call 1 Oct 2026: older copies of the game still in phones' caches send it, and it's dropped here)
   if (await seen('ip', ip)) return none;
   try {
     const chat = await chatId(env); if (!chat) return none;
