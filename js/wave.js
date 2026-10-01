@@ -1055,7 +1055,9 @@ function buildCoast(scene, O, mat) {
   // Mount Agung, far inland: a broad volcanic cone
   // (placed inside the 900 m sky dome at the same apparent size it would have 30 km away)
   const agung = new THREE.ConeGeometry(470, 165, 40, 6, true); { const p = agung.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i); const n = Math.sin(p.getX(i) * 0.03) * Math.cos(p.getZ(i) * 0.04) * 10; p.setX(i, p.getX(i) * (1 + n / 470)); p.setY(i, y + (y < 60 ? n * 0.3 : 0)); } agung.computeVertexNormals(); }
-  { const mt = at(new THREE.Mesh(colorize(agung, O.mountain, 0.1), mat), -230, 80 * O.mountainScale, 820); mt.scale.setScalar(O.mountainScale); group.add(mt); }
+  // (a bigger mountain grows taller, not wider: scaled all round, Gunung Laut's 1.6 spread its foot 280 m forward, out past the
+  //  cliffs to the shore, a huge bare grey ramp in front of them; his report 1 Oct 2026)
+  { const mt = at(new THREE.Mesh(colorize(agung, O.mountain, 0.1), mat), -230, 80 * O.mountainScale, 820); mt.scale.set(1, O.mountainScale, 1); group.add(mt); }
   if (O.seascape !== false) seascape(group, O, mat);
   group.position.z = O.dz;   // the whole coast further back: a longer run in to the sand
   scene.add(group);
