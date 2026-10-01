@@ -148,6 +148,10 @@
   #hint span { display: inline-block; padding: 4px 10px 3px; border-radius: 11px; background: rgba(24,18,13,.42); border: 1px solid rgba(255,201,120,.22);
     color: #f6ecdc; font: 600 13px/1.2 var(--disp); letter-spacing: .02em; }   /* (small, his note 30 Sep 2026: bigger tips blocked the wave) */
   #hint b { color: #ffc978; font-weight: 800; letter-spacing: .05em; }
+  #hint.warn span { background: rgba(214,64,44,.92); border-color: #ffb199; color: #fff; font-weight: 800; font-size: 14px; letter-spacing: .03em; box-shadow: 0 3px 12px rgba(0,0,0,.35); }   /* (a danger warning: barrel closing, too straight, nose digging, too slow) */
+  #hint.warn b { color: #fff3b0; }
+  #hint.warn.in span { animation: hintIn .38s cubic-bezier(.2,.8,.25,1) both, hintWarn 1s ease-in-out .4s infinite; } @keyframes hintWarn { 50% { background: rgba(240,92,62,.96); } }
+  @media (prefers-reduced-motion: reduce) { #hint.warn.in span { animation: none; } }
   body.fo #hint { left: 25%; right: 25%; }
   #hint.in span { animation: hintIn .38s cubic-bezier(.2,.8,.25,1) both; }
   #hint.gone span { opacity: 0; transform: translateY(-4px); transition: opacity .25s, transform .25s; }
@@ -966,13 +970,16 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261001-1819</small>
+    <small id="build">build 261001-1824</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-01-warn', date: '1 Oct 2026', time: '6:24 pm', title: 'Clearer warnings', items: [
+      'Danger warnings, like the barrel closing or going too straight on the drop, now show in a bright strip at the top, every time, so you can read them at a glance.',
+    ] },
     { id: '2026-10-01-laut', date: '1 Oct 2026', time: '6:19 pm', title: 'Gunung Laut, heavier', items: [
       'Gunung Laut now rides like a real 15 m wave. The board chatters at speed and fights you, and leaning hard at full speed can catch the rail.',
       'Barrels last a few seconds, then close. In the barrel when it closes and it spits you out, so keep riding. Too deep and it shuts on you. A warning shows just before.',
@@ -1439,6 +1446,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1115"></script>
+<script type="module" src="js/game.js?v=1116"></script>
 </body>
 </html>

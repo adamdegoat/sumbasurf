@@ -2472,8 +2472,11 @@ const setText = (el, t) => { if (el && el._t !== t) { el._t = t; if (el === ui.h
 // and keys in amber, each new tip sliding in, a cleared one fading out
 const HINT_KEY = /\b(Space|Shift|[A-Z]{3,}(?: [A-Z]{2,})*)\b/g, hintEsc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 let hintOutT = 0;
+// the danger warnings (his ask 1 Oct 2026: hard to read over the water): a bright coral strip, so they read at a glance;
+// the ordinary tips stay as they were
+const HINT_WARN = /closing|Too straight|Nose digging|too hard on the nose|Too slow|Caught inside/i;
 function hintSet(t) {
-  const el = ui.hint; clearTimeout(hintOutT); document.body.classList.toggle('hinting', !!t);
+  const el = ui.hint; clearTimeout(hintOutT); document.body.classList.toggle('hinting', !!t); if (t) el.classList.toggle('warn', HINT_WARN.test(t));
   if (!t) { el.classList.remove('in'); el.classList.add('gone'); hintOutT = setTimeout(() => { if (!el._t) { el.innerHTML = ''; el.classList.remove('gone'); } }, 260); return; }
   el.innerHTML = `<span>${hintEsc(t).replace(HINT_KEY, '<b>$1</b>')}</span>`; el.classList.remove('gone', 'in'); void el.offsetWidth; el.classList.add('in');
 }   // (a tip up top: the spot name beside it steps aside, on a small phone the two ran into each other)   // only touch the page when the text changes
@@ -2577,7 +2580,7 @@ function updateHUD(dt) {
   if (st === 'RIDE' && rider.inBarrel && rider.pinchAt > 0 && rider.pinchAt < 1e8 && (rider.ride.tubeT || 0) > rider.pinchAt - 1.2) hint = 'The barrel is closing: race for the opening!';   // (C.tubeMax: see updateWaves)
   if ((isTow() || (rider.wave && rider.wave.cond.chatter)) && st === 'RIDE' && !tow && (rider.dropT || 0) > 0.15) hint = 'Too straight! Turn along the wave or the chop bucks you off';   // (the drop: see surf.js dropT)
   if (isTow() && (st === 'LIE' || tow)) hint = tow ? (tow.on ? 'Hold on: the rope drops by itself, then carve down the line' : '') : rider.washed ? 'Caught inside! Tap TOW IN to get back out' : 'Tap TOW IN: the jet ski takes you onto the next wave';
-  setText(ui.hint, spec ? '' : pearlV > 0.25 ? (rider.noseHard ? 'Turning too hard on the nose: ease off, walk back' : 'Nose digging in: walk back') : shoulderV > 0.4 ? (DESK ? 'Out on the shoulder: walk back, Shift to stall to the curl' : 'Out on the shoulder: walk back, STALL to the curl') : bogV > 0.3 ? (DESK ? 'Too slow: let go of Shift' : 'Too slow: let go of STALL') : session.waves < 5 || st === 'POP' ? (DESK ? deskHint(hint) : hint) : '');   // (the sinking-tail warning shows every time, not only in the first waves)   // (no coaching while you watch someone else)
+  setText(ui.hint, spec ? '' : pearlV > 0.25 ? (rider.noseHard ? 'Turning too hard on the nose: ease off, walk back' : 'Nose digging in: walk back') : shoulderV > 0.4 ? (DESK ? 'Out on the shoulder: walk back, Shift to stall to the curl' : 'Out on the shoulder: walk back, STALL to the curl') : bogV > 0.3 ? (DESK ? 'Too slow: let go of Shift' : 'Too slow: let go of STALL') : session.waves < 5 || st === 'POP' || HINT_WARN.test(hint) ? (DESK ? deskHint(hint) : hint) : '');   // (danger warnings show every time, not only in the first waves)   // (the sinking-tail warning shows every time, not only in the first waves)   // (no coaching while you watch someone else)
   // the callout: BARREL while you're in it, or the move you just landed
   tubeShowT = rider.inBarrel ? 0.4 : Math.max(0, tubeShowT - dt);   // (held a moment: a wobble at the tube's edge doesn't flicker the word)
   hudCall(st, dt);
