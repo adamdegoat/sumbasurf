@@ -811,6 +811,24 @@ export function villa(scene) {
     c.root.position.set(c.x, (c.home === 'balcony' ? Y : GY) + c.y, c.z); c.root.rotation.y = c.hd;
   }
 
+  // the moving things are built from many little pieces (a dog is about 20: body, chest, haunch, skull, ears, eyes, legs
+  // and socks...) and a phone drew each one on its own, about 150 for the animals, the lanterns and the washing line
+  // (heat check 1 Oct 2026). The pieces that always move together (everything in a dog's head, in one leg, a lantern on
+  // its string) are joined here into one per colour material, inside the same moving part, so every sway, trot and
+  // wag is exactly as before
+  { const joinKids = (par) => {
+      const byMat = new Map(); for (const o of par.children) { if (!o.isMesh || o.children.length || o.isSkinnedMesh || o.isInstancedMesh) continue; if (!byMat.has(o.material)) byMat.set(o.material, []); byMat.get(o.material).push(o); }
+      for (const [M, parts] of byMat) { if (parts.length < 2) continue;
+        const want = ['position', 'normal', ...(parts.every((o) => o.geometry.attributes.color) ? ['color'] : []), ...(M.map ? ['uv'] : [])], geos = [];
+        for (const o of parts) { const q = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); if (!q.attributes.normal) q.computeVertexNormals();
+          if (!want.every((k) => q.attributes[k])) return; for (const k of Object.keys(q.attributes)) if (!want.includes(k)) q.deleteAttribute(k);
+          o.updateMatrix(); q.applyMatrix4(o.matrix); geos.push(q); }
+        const merged = mergeGeometries(geos); if (!merged) continue;
+        for (const o of parts) { par.remove(o); o.geometry.dispose(); } par.add(new THREE.Mesh(merged, M)); } };
+    for (const d of [...dogs, ...cats]) for (const p of [d.body, d.head, d.tail, ...d.legs]) joinKids(p);
+    for (const L of lanterns) joinKids(L.hook);
+    for (const L of lineItems) joinKids(L.pv); }
+
   // join everything that doesn't move into one mesh per material (a phone draws each in one go instead of hundreds of
   // little pieces): the timber, the furniture, the speakers' cabinets, lamps, tub... Not the moving parts (speaker cones,
   // the fire, the boards you pick from the rack) and not anything drawn mirrored, which would turn inside out merged
