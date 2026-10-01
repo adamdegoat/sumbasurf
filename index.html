@@ -82,6 +82,9 @@
   #fsTags { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
   .fsTag { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; pointer-events: none; will-change: transform; }
   .fsTag span { padding: 2px 7px 1px; border-radius: 8px; background: rgba(24,18,13,.4); color: #fff3df; font: 700 11px/1.2 var(--disp); letter-spacing: .05em; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+  .fsTag span.pro { color: #ffc23d; background: rgba(40,26,6,.6); box-shadow: inset 0 0 0 1px rgba(255,194,61,.8), 0 0 8px rgba(255,176,32,.35); text-shadow: 0 0 6px rgba(255,176,32,.45); }   /* (a pro: top 10 at any spot, his call 1 Oct 2026) */
+  .fsTag span.gm { color: #6ff0dc; background: rgba(6,34,32,.62); box-shadow: inset 0 0 0 1px rgba(111,240,220,.8), 0 0 8px rgba(80,230,205,.35); text-shadow: 0 0 6px rgba(80,230,205,.45); text-align: center; }
+  .fsTag span.gm::after { content: "GAME MASTER"; display: block; margin-top: 1px; font-size: 8px; letter-spacing: .14em; color: rgba(111,240,220,.85); }   /* (the owner's account: his call 1 Oct 2026) */
   .fsTag b { padding: 1px 6px 0; border-radius: 6px; background: rgba(24,18,13,.35); color: rgba(255,243,223,.85); font: 700 9px/1.2 var(--disp); letter-spacing: .06em; white-space: nowrap; }   /* (how far away they are, when far) */
   .fsTag i { display: none; max-width: 180px; padding: 4px 9px 3px; border-radius: 10px; background: rgba(246,236,220,.92); color: #2b2118; font: 600 12px/1.25 var(--body); font-style: normal; text-align: center; overflow-wrap: anywhere; }   /* (their chat line, a speech bubble over the name) */
   body:not(.playing) .fsTag { display: none !important; }
@@ -935,13 +938,16 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261001-1443</small>
+    <small id="build">build 261001-1510</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-01-pros', wd: true, date: '1 Oct 2026', time: '3:10 pm', title: 'Pro surfers in gold', items: [
+      'In free surf, anyone in the top 10 at any spot now has a gold name, over their head, in the player list and in chat, with their best place under their name in the list.',
+    ] },
     { id: '2026-10-01-raksasa', date: '1 Oct 2026', time: '2:45 pm', title: 'New spot: Ombak Raksasa', items: [
       'A 30 m giant off towering cliffs, in a winter gale. Too big to paddle into: tap TOW IN and a jet ski tows you onto the wave, then the rope drops after a 3, 2, 1.',
       'Gun board only. Turn along the wave on the drop: point straight down at that speed and the chop at the bottom bucks you off.',
@@ -1384,6 +1390,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1097"></script>
+<script type="module" src="js/game.js?v=1099"></script>
 </body>
 </html>

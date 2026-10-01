@@ -586,6 +586,7 @@ function peersTick(dt) {
       P.tag = document.createElement('div'); P.tag.className = 'fsTag'; P.tag.innerHTML = '<i></i><span></span><b></b>'; lay.appendChild(P.tag); }
     const nmEl = P.tag.children[1], dEl = P.tag.children[2], sayEl = P.tag.firstChild, saying = P.say && now < P.say.until ? P.say.text : '';   // (a chat line floats over their head for 5 s)
     if (nmEl.textContent !== (P.name || '')) nmEl.textContent = P.name || '';
+    if (!P.proT || now - P.proT > 3000) { P.proT = now; const gm = !!(globalThis.ssGM && globalThis.ssGM(id)); nmEl.classList.toggle('gm', gm); nmEl.classList.toggle('pro', !gm && !!(globalThis.ssPro && globalThis.ssPro(id))); }   // (a pro, top 10 at any spot: a gold name; the owner: GAME MASTER in sea green; see wavedash wdboot ssPro/ssGM; checked every 3 s)
     if (sayEl.textContent !== saying) { sayEl.textContent = saying; sayEl.style.display = saying ? 'block' : 'none'; }
     _tagV.set(S.pos.x, S.pos.y + (c[0] === 'DECK' ? 2.05 : c[0] === 'RIDE' || c[0] === 'POP' ? 2.3 : c[20] ? 0.75 : 1.4), S.pos.z).project(camera);   // (just over their head: standing, lying paddling, or sitting up)
     // (no distance limit any more, his note 30 Sep 2026: friends were hard to find; far away it also says how far)
