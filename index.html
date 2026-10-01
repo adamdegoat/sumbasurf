@@ -960,8 +960,10 @@
   <div class="pnBox">
     <div class="pnHead"><b>About us</b><button id="abClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <p>SumbaSurf is made by a small team of indie creators who love surfing.</p>
+    <p>Come chat with the SumbaSurf team and other players in our Telegram group.</p>
     <p>For business, partnerships or collaborations, come say hi on Instagram or X.</p>
     <div class="abLinks">
+      <a id="abTg" href="https://t.me/+hV0f7CtON5g3ZmJl" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M21.5 3.5 2.8 10.7c-.9.4-.9 1.2 0 1.5l4.6 1.4 1.8 5.6c.2.7.6.8 1.1.3l2.6-2.4 4.8 3.6c.8.5 1.4.2 1.6-.8l3-14.6c.3-1.2-.4-1.7-1.3-1.3z"/><path d="m7.4 13.6 9.9-6.4-7.6 7.3"/></svg>Chat with the team and community<small>Open</small></a>
       <a id="abIg" href="https://www.instagram.com/sumbasurfgame/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>Instagram @sumbasurfgame<small>Open</small></a>
       <a id="abX" href="https://x.com/SumbaSurf" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.8 3h3.1l-6.8 7.8L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.3-8.3L2 3h6.4l4.4 5.8L17.8 3zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5z"/></svg>X @SumbaSurf<small>Open</small></a>
     </div>
@@ -972,13 +974,16 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261001-2142</small>
+    <small id="build">build 261001-2227</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-01-tgchat', date: '1 Oct 2026', time: '10:27 pm', title: 'Join our Telegram group', items: [
+      'Chat with the SumbaSurf team and other players: open About us and tap Chat with the team and community.',
+    ] },
     { id: '2026-10-01-boatdrone', wd: true, date: '1 Oct 2026', time: '9:20 pm', title: 'Fly a drone from the boat', items: [
       'In free surf, stand on the boat and tap FLY DRONE to fly over the whole bay and watch your friends surf from above. Tap LAND to come back to the deck.',
     ] },
