@@ -432,7 +432,7 @@ export class Rider {
       // nose gets knocked off your line (you have to keep correcting) and, laid hard over on the rail, a bump can catch it
       if (C && C.vSoft && speed > C.vSoft) { const ex = speed - C.vSoft, a = 0.45 * ex * ex; ax -= a * this.vx / speed; az -= a * this.vz / speed; }
       if (C && C.chatter && this.state === 'RIDE') {
-        const rough = C.chatter * smooth(12, 26, speed) * (sl ? 1 : 0.3);
+        const rough = C.chatter * smooth(C.chatV0 || 12, C.chatV1 || 26, speed) * (sl ? 1 : 0.3);   // (C.chatV0/V1: the speeds it builds between; a smaller wave starts rattling sooner)
         this.chatW = ((this.chatW || 0) + (Math.random() * 2 - 1) * rough * 60 * h) * (1 - 8 * h); this.th += this.chatW * h;
         const over = Math.abs(this.lean) / P.leanMax;
         if (rough > 0.5 && over > 0.97 && speed > C.vSoft && this.stateT > 1 && Math.random() < 0.15 * rough * h) return this.wipe('Caught a rail at speed: a bump threw you');
