@@ -15,7 +15,7 @@ import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
 import { crew } from './crew.js?v=64';
 import { wildlife } from './wildlife.js?v=68';
-import { droneShow, SONG as SHOW_SONG, SONG_AT as SHOW_AT } from './show.js?v=14';
+import { droneShow, SONG as SHOW_SONG, SONG_AT as SHOW_AT } from './show.js?v=16';
 import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=5';
 
 const Q = new URLSearchParams(location.search);
@@ -2980,7 +2980,10 @@ function villaTick(dt) {
   if (friendsW && roomMode) friendsW.group.visible = false; else if (friendsW) friendsW.update(dt, T, beat, { x: walker.x, y: walker.y, z: walker.z + SPOTS.medium.dz }, camera); if (villaW.tick) villaW.tick(dt, beat, walker.x, walker.z, walker.y - 1.65);
   // (the show keeps time with its song: if the music is playing it, the show follows the music's clock, so a slow load or a
   //  stall on a phone never puts the heart on the wrong beat)
-  if (showW && showW.on && audio.now === SHOW_SONG && audio.mel && !audio.mel.paused) { const want = audio.mel.currentTime - SHOW_AT; if (want > 0 && Math.abs(showW.state.t - want) > 0.3) showW.seek(want); }
+  //  (only ever forward: if the song is behind the show, e.g. it took a moment to load, the song is moved up to the show, never
+  //  the show back to the song; pulling the show back made parts of it play twice, his report 1 Oct 2026)
+  if (showW && showW.on && audio.now === SHOW_SONG && audio.mel && !audio.mel.paused && audio.mel.readyState >= 2) { const want = audio.mel.currentTime - SHOW_AT, t = showW.state.t;
+    if (want > t + 0.3) showW.seek(want); else if (want < t - 0.3) try { audio.mel.currentTime = SHOW_AT + t; } catch (e) {} }
   if (showW && dayEnv) { showW.update(dt, renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360)), beat); applyNight(showW.night);
     if (showW.done && showB.classList.contains('on')) showOff();   // (over: the button goes back, the evening comes back)
     if (showW.done && showW.night < 0.005) { applyNight(0); dayEnv = null; } }

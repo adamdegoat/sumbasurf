@@ -1,8 +1,8 @@
 // The drone light show at the villa: a story now, his call 1 Oct 2026 ("one heartwarming, to welcome and thank people
 // for the support"; it replaced the 28 Sep animal show, kept in backup_show_1001_animals.js). Set to 'Wish You Warm Skies',
 // started 63 s in so its big moments land on the song (SONG, SONG_AT): stars wake over the sea, a boat sails in, a surfer
-// catches a wave as the big chorus hits, friends gather, a heart beats, WELCOME in the quiet bridge, THANK YOU on the
-// last chorus, and the letters fall as stars into the sea as the song ends.
+// catches a wave as the big chorus hits, friends gather, the SumbaSurf wave glows, SUMBASURF in the quiet bridge,
+// THANK YOU on the last chorus, and the letters fall as stars into the sea as the song ends.
 // How it stays smooth, the way real shows are flown: every formation is alive but never jumps; between formations each
 // drone flies a straight, eased line to its new place (5 s, no start or stop jolt), the lights dim a little while they
 // travel, and who goes where is worked out once so that no two paths cross.
@@ -93,11 +93,13 @@ function* shapeGen() {
     x.beginPath(); x.arc(200, 98, 12, 0, TAU); x.fill(); }, 26, 30, FW, 200, 125);   // (no left arm: it waves, worked out as it moves)
   yield;
   s.fBoard = shape((x) => { x.lineWidth = 4; x.beginPath(); x.ellipse(236, 140, 13, 70, 0, 0, TAU); x.stroke(); }, 34, 0, FW, 200, 125);
-  // a heart
-  const HW = 96;
+  // the SumbaSurf wave (the game's icon, as on the shortboard's deck) and the sand-gold line under it
+  const LW = 96, logo = (x) => { x.translate(200, 128); x.scale(0.56, 0.56); x.translate(-256, -265); x.beginPath(); x.moveTo(70, 390); x.bezierCurveTo(150, 390, 190, 300, 250, 190); x.bezierCurveTo(300, 110, 420, 110, 440, 200);
+    x.bezierCurveTo(450, 250, 420, 300, 370, 300); x.bezierCurveTo(400, 260, 390, 210, 350, 205); x.bezierCurveTo(300, 200, 280, 260, 290, 330); x.bezierCurveTo(296, 370, 330, 390, 380, 390); x.closePath(); x.fill(); };
   yield;
-  s.heart = shape((x) => { x.beginPath(); x.moveTo(200, 222); x.bezierCurveTo(120, 170, 54, 120, 74, 70); x.bezierCurveTo(92, 26, 168, 22, 200, 76); x.bezierCurveTo(232, 22, 308, 26, 326, 70);
-    x.bezierCurveTo(346, 120, 280, 170, 200, 222); x.closePath(); x.fill(); }, 220, 160, HW);
+  s.logo = shape(logo, 200, 130, LW);
+  yield;
+  s.logoBar = shape((x) => { x.translate(200, 128); x.scale(0.56, 0.56); x.translate(-256, -265); x.fillRect(60, 405, 392, 16); }, 50, 20, LW);
   SH_DONE = true;
 }
 function* allGen() { yield* shapeGen(); text(); yield; yield* planGen(); READY = true; }
@@ -106,7 +108,8 @@ function work(ms) { const t0 = performance.now(); while (!READY && performance.n
 function shapes() { while (!SH_DONE) step(); return S_; }
 let TEXT = null;
 function text() {   // (made when a show starts: by then the game's own font is in)
-  if (!TEXT) TEXT = { welcome: shape((x) => { x.font = '800 104px "Barlow Condensed", "Arial Narrow", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('WELCOME', 200, 130); }, 320, 80, 124),
+  if (!TEXT) TEXT = {
+    sumba: shape((x) => { x.font = '800 86px "Barlow Condensed", "Arial Narrow", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('SUMBASURF', 200, 130); }, 370, 30, 150),
     thanks: shape((x) => { x.font = '800 90px "Barlow Condensed", "Arial Narrow", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('THANK YOU', 200, 130); }, 320, 80, 130) };
   return TEXT;
 }
@@ -147,13 +150,13 @@ const SCENES = [
       const a = k === 1 ? 0.45 + 0.45 * (0.5 + 0.5 * Math.sin(t * 5)) : 2.75 + 0.08 * Math.sin(t * 1.5 + k), L = 11 * f;   // (a: angle from straight up)
       set(p, c, XC[k] - Math.sin(a) * L, 42 + 0.33 + Math.cos(a) * L, 0, ...COL[k]); return; }
     const [u, v] = sea(i - 330, 70, t, 0); set(p, c, u, 42 - 28.5 + v * 0.3, 0, 0.75, 0.6, 0.38); } },   // (the sand they stand on)
-  { name: 'heart', hold: 11, f(i, t, p, c) {   // they gather into a heart that beats
-    const s = shapes(), b = Math.sin(t * TAU / 1.1), pulse = 1 + 0.05 * Math.max(0, b) * Math.max(0, b);
-    if (i < 380) { const [x, y] = s.heart[i]; const edge = i < 220; set(p, c, x * pulse, 44 + y * pulse, 0, 1, edge ? 0.35 : 0.5, edge ? 0.45 : 0.6); return; }
-    const j = i - 380, an = j / 20 * TAU + t * 0.4, [a, fade] = loop((t * 0.4 + j / 20) % 1); set(p, c, Math.cos(an) * (40 + a * 14), 44 + Math.sin(an) * (32 + a * 10), 0, fade, 0.8 * fade, 0.85 * fade); } },
-  { name: 'welcome', hold: 14, f(i, t, p, c) {   // WELCOME, in the quiet of the song, a slow warm shimmer through the letters
-    const q = text().welcome[i], sh = 0.5 + 0.5 * Math.sin(q[0] * 0.1 - t * 1.6), wv = Math.sin(q[0] * 0.05 + t * 0.8) * 1.1;
-    set(p, c, q[0], 46 + q[1] + wv, 0, 1, 0.75 + 0.2 * sh, 0.42 + 0.35 * sh); } },
+  { name: 'logo', hold: 11, f(i, t, p, c) {   // the SumbaSurf wave, glowing sea green, a slow light running over it, the sand-gold line under it
+    const s = shapes(), br = 1 + 0.025 * Math.sin(t * 1.4);
+    if (i < 330) { const [x, y] = s.logo[i], sh = 0.5 + 0.5 * Math.sin(x * 0.12 - t * 1.8), edge = i < 200; set(p, c, x * br, 44 + y * br, 0, (edge ? 0.7 : 0.5) + 0.3 * sh, 0.95, edge ? 0.88 : 0.8); return; }
+    const [x, y] = s.logoBar[i - 330]; set(p, c, x * br, 44 + y * br, 0, 1, 0.78, 0.45); } },
+  { name: 'sumba', hold: 14, f(i, t, p, c) {   // SUMBASURF in the quiet of the song (WELCOME taken out, his call 1 Oct 2026: SUMBASURF has its time)
+    const q = text().sumba[i], sh = 0.5 + 0.5 * Math.sin(q[0] * 0.12 - t * 2), wv = Math.sin(q[0] * 0.05 + t * 0.9) * 1.1;
+    set(p, c, q[0], 46 + q[1] + wv, 0, 0.5 + 0.5 * sh, 0.93 + 0.07 * sh, 0.82 + 0.18 * sh); } },   // (sea green, a white light running through)
   { name: 'thanks', hold: 16, f(i, t, p, c) {   // THANK YOU on the last chorus, brighter, the shimmer running faster
     const q = text().thanks[i], sh = 0.5 + 0.5 * Math.sin(q[0] * 0.14 - t * 2.6), wv = Math.sin(q[0] * 0.06 + t * 1.1) * 1.2;
     set(p, c, q[0], 46 + q[1] + wv, 0, 1, 0.85 + 0.15 * sh, 0.6 + 0.4 * sh); } },
@@ -197,7 +200,7 @@ let PLAN = null, PLAN_P = null;   // PLAN[s][d]: drone d's slot in formation s
 // the shapes and the plan come ready-made in show-data.json (made once from this file with _export, 28 Sep 2026), so a
 // phone does no preparing at all and the show looks the same on every device. Change a formation and bump DATA_V: an
 // old file is then ignored and everything is worked out on the phone as before
-const DATA_V = 'story-1';
+const DATA_V = 'story-4';
 export function _export() { plan(); const r = (a) => a.map(([x, y]) => [Math.round(x * 100) / 100, Math.round(y * 100) / 100]); return { v: DATA_V, shapes: Object.fromEntries(Object.entries(S_).map(([k, a]) => [k, r(a)])), text: r(TEXT), plan: PLAN.map((a) => Array.from(a)) }; }
 function load(d) {
   if (!d || d.v !== DATA_V || !Array.isArray(d.plan) || d.plan.length !== SCENES.length || d.plan.some((a) => a.length !== N) || !d.text || d.text.length !== N || READY || GEN) return false;
