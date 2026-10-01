@@ -2978,12 +2978,10 @@ function villaTick(dt) {
   updateWaves(dt); crewW.detail = !!(walker && (walker.watch || walker.zoom || drone.on)); crewW.update(dt, waves, T); if (!(showW && showW.on)) wildW.update(dt, waves); birdsW.update(dt);   /* (the whales and eagles wait while the drone show is on: their 'tap ZOOM' notes would pop up with ZOOM hidden) */   // (zoomed in on them: every surfer posed every frame)
   if (!friendsW && surfer && (people || peopleFailed)) friendsW = friends(scene, surfer, villaW.friendSpots.map((f) => ({ ...f, z: f.z + SPOTS.medium.dz, board: f.board && [f.board[0], f.board[1], f.board[2] + SPOTS.medium.dz] })), people, life);   // (your friends: as soon as the body model is in)
   if (friendsW && roomMode) friendsW.group.visible = false; else if (friendsW) friendsW.update(dt, T, beat, { x: walker.x, y: walker.y, z: walker.z + SPOTS.medium.dz }, camera); if (villaW.tick) villaW.tick(dt, beat, walker.x, walker.z, walker.y - 1.65);
-  // (the show keeps time with its song: if the music is playing it, the show follows the music's clock, so a slow load or a
-  //  stall on a phone never puts the heart on the wrong beat)
-  //  (only ever forward: if the song is behind the show, e.g. it took a moment to load, the song is moved up to the show, never
-  //  the show back to the song; pulling the show back made parts of it play twice, his report 1 Oct 2026)
-  if (showW && showW.on && audio.now === SHOW_SONG && audio.mel && !audio.mel.paused && audio.mel.readyState >= 2) { const want = audio.mel.currentTime - SHOW_AT, t = showW.state.t;
-    if (want > t + 0.3) showW.seek(want); else if (want < t - 0.3) try { audio.mel.currentTime = SHOW_AT + t; } catch (e) {} }
+  // (the show and its song start together and then run on their own; the game never moves the music once it plays: nudging it
+  //  to keep time made the song stutter, his report 1 Oct 2026. The only correction: if the song has got well ahead of the
+  //  show, e.g. the show stalled on a slow phone, the show catches up, forward only, never back)
+  if (showW && showW.on && audio.now === SHOW_SONG && audio.mel && !audio.mel.paused && audio.mel.readyState >= 3) { const want = audio.mel.currentTime - SHOW_AT; if (want > showW.state.t + 1.5) showW.seek(want); }
   if (showW && dayEnv) { showW.update(dt, renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360)), beat); applyNight(showW.night);
     if (showW.done && showB.classList.contains('on')) showOff();   // (over: the button goes back, the evening comes back)
     if (showW.done && showW.night < 0.005) { applyNight(0); dayEnv = null; } }
