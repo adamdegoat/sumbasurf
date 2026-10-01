@@ -8,7 +8,12 @@ export const BOARDS = { short: 'shortboard', fish: 'fish', long: 'longboard', gu
 export const SOURCES = ['Instagram', 'Facebook', 'TikTok', 'Google', 'another search engine', 'YouTube', 'X', 'Reddit', 'Telegram', 'WhatsApp', 'Wavedash', 'home screen app', 'a direct link', 'another website'];
 const DEV = ['phone', 'tablet', 'computer', 'touchscreen computer'];
 const ORIGIN = /^https:\/\/((www\.)?sumbasurf\.app|([a-z0-9-]+\.)?sumbasurf(-app)?\.pages\.dev|[a-z0-9-]+\.builds\.wavedashcdn\.com)$/;
-export const tg = (env, chat, text) => fetch(`https://api.telegram.org/bot${env.TG_TOKEN}/sendMessage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: chat, text }) });
+// (1 Oct 2026, alerts stopped at 9:04 pm: when Telegram refuses a message, its reason goes to Cloudflare's logs, the
+// bot key blanked out of anything written there; nothing else about the player is logged)
+const hide = (env, v) => String(v).split(env.TG_TOKEN || '\u0000').join('<key>');
+export const tg = (env, chat, text) => fetch(`https://api.telegram.org/bot${env.TG_TOKEN}/sendMessage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: chat, text }) })
+  .then(async (r) => { if (!r.ok) { let d = ''; try { d = (await r.clone().json()).description || ''; } catch (e) {} console.log('alert: telegram refused', r.status, hide(env, d)); } return r; },
+    (e) => { console.log('alert: telegram unreachable', hide(env, e && e.message || e)); throw e; });
 // which chat to message: set by hand (TG_CHAT), or found by itself: whoever pressed Start on the bot, remembered in KV
 export async function chatId(env) {
   if (env.TG_CHAT) return env.TG_CHAT;
@@ -37,7 +42,8 @@ export async function onRequestPost({ request, env }) {
   const none = new Response(null, { status: 204, headers: { 'cross-origin-resource-policy': 'cross-origin' } });   // (the Wavedash page only accepts replies marked shareable)
   if (!env.TG_TOKEN) return none;
   // only the game's own pages can send, and each connection at most once a minute (so nobody can flood the chat)
-  if (!ORIGIN.test(request.headers.get('origin') || '')) return none;
+  const og = request.headers.get('origin') || '';
+  if (!ORIGIN.test(og) && og !== 'null') { console.log('alert: skipped, from', og || 'nowhere'); return none; }   // ('null': the Wavedash copy, whose page now hides its address, 1 Oct 2026)
   let b = {}; try { b = JSON.parse(await request.text()) || {}; } catch (e) {}   // (sent as plain text: the Wavedash copy lives on another address, and plain text needs no extra permission round trip)
   if (!b || typeof b !== 'object') b = {};
   const ip = request.headers.get('cf-connecting-ip') || '';
@@ -56,9 +62,9 @@ export async function onRequestPost({ request, env }) {
     return none;
   }
   if (b.kind === 'in') {   // they just started surfing or walked into the villa: one short line (his call 30 Sep 2026), its own once-a-minute limit so the note when they leave still goes
-    if (await seen('in', ip)) return none;
+    if (await seen('in', ip)) { console.log('alert: skipped, once a minute'); return none; }
     try {
-      const chat = await chatId(env); if (!chat) return none;
+      const chat = await chatId(env); if (!chat) { console.log('alert: no chat to send to'); return none; }
       let country = request.cf && request.cf.country || '';
       try { country = new Intl.DisplayNames(['en'], { type: 'region' }).of(country) || country; } catch (e) {}
       const dev = DEV.includes(b.dev) ? b.dev : '', src = SOURCES.includes(b.src) ? b.src : '', wd = b.host === 'wavedash';
@@ -73,7 +79,7 @@ export async function onRequestPost({ request, env }) {
       const line1 = [back ? 'BACK' : 'NEW', ...(back ? [visits > 1 ? ord(visits) + ' visit' : '', when] : [country, dev])].filter(Boolean).join(' · ');
       const came = wd ? 'Wavedash' : src ? `from ${src}` : '', line2 = [...(back ? [country, dev] : []), [came, where ? where + fs : ''].filter(Boolean).join(' → ')].filter(Boolean).join(' · ');
       await tg(env, chat, `${test ? 'Claude testing: ' : ''}${line1}\n${line2}`);
-    } catch (e) {}
+    } catch (e) { console.log('alert: failed', hide(env, e && e.message || e)); }
     return none;
   }
   return none;   // (the session report when they leave is off, his call 1 Oct 2026: older copies of the game still in phones' caches send it, and it's dropped here)
