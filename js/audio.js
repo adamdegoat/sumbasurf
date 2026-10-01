@@ -144,6 +144,16 @@ export class SurfAudio {
   // music: a shuffled playlist of reggae tracks, streamed one at a time through its own level and tone (a lowpass
   // makes it sound like it's coming from the radio in the next room). It keeps going under everything else.
   // your camera drone: four little props humming, the pitch rising as it works harder (made once, then just turned up and down)
+  // the tow ski (1 Oct 2026, the monster wave): a big four-stroke engine burbling at speed, rough and low, the pitch rising with
+  // the throttle (made once, then turned up and down like the drone below)
+  jetski(k, rev = 0.7) {
+    if (!this.ok) return;
+    if (!this.js) { const ctx = this.ctx, g = ctx.createGain(); g.gain.value = 0; const fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = 700; fl.Q.value = 1.2;
+      const os = [62, 64.5, 124].map((f, i) => { const o = ctx.createOscillator(); o.type = i === 2 ? 'square' : 'sawtooth'; o.frequency.value = f; o.connect(fl); o.start(); return o; });
+      const trem = ctx.createGain(); trem.gain.value = 0.75; const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 9; lg.gain.value = 0.25; lfo.connect(lg).connect(trem.gain); lfo.start();   // (the burble: the level wobbles ~9 times a second, between half and full; silent when g is down)
+      fl.connect(trem).connect(g).connect(this.master); this.js = { g, os, fl }; }
+    this.set(this.js.g.gain, k * 0.09, 0.3); const f = 52 + rev * 34; this.js.os.forEach((o, i) => this.set(o.frequency, f * [1, 1.04, 2][i], 0.35)); this.set(this.js.fl.frequency, 450 + rev * 650, 0.35);
+  }
   droneBuzz(k, work = 0) {
     if (!this.ok) return;
     if (!this.dr) { const ctx = this.ctx, g = ctx.createGain(); g.gain.value = 0; const fl = ctx.createBiquadFilter(); fl.type = 'bandpass'; fl.frequency.value = 900; fl.Q.value = 0.8;

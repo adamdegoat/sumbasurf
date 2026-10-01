@@ -2,7 +2,7 @@
 // landmarks of its own. Distances are in the coast's own frame: the beach is ~185-225 m in from the break, and the
 // whole coast is pushed back by dz (a longer run to the sand makes a longer ride).
 import * as THREE from 'three';
-import { coast, landMaterial, ENV } from './wave.js?v=194';
+import { coast, landMaterial, ENV } from './wave.js?v=203';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const SPOTS = {
@@ -25,6 +25,7 @@ export const SPOTS = {
   // surfers fit on a phone): see game.js FREE
   free: { name: 'Free surf', dz: 70, xEnd: 200, reefTint: [1.2, 1.22, 1.08], reefK: 0.5, look: { beachW: 52, beachRise: 2.4, sandWet: [0.5, 0.43, 0.32], sandDry: [0.36, 0.3, 0.21], land: [0.15, 0.28, 0.12], palms: 0.8, cliffH: 0.08, rock: [0.5, 0.46, 0.4], cliffGreen: 1, temple: false, stacks: false, boat: false, mountain: [0.3, 0.38, 0.32], mountainScale: 0.45, jungle: 0.45 } },
   extreme: { name: 'Gunung Laut', dz: 230, xEnd: 430, reefTint: [0.6, 0.65, 0.65], look: { stacks: false, boat: false,  sandWet: [0.18, 0.17, 0.16], sandDry: [0.12, 0.12, 0.11], land: [0.09, 0.14, 0.08], palms: 0.1, cliffH: 2.6, rock: [0.3, 0.3, 0.29], fluted: true, cliffGreen: 0.7, temple: false, mountain: [0.2, 0.23, 0.24], mountainScale: 1.6, jungle: 0.6 } },
+  monster: { name: 'Ombak Raksasa', dz: 430, xEnd: 640, reefTint: [0.35, 0.45, 0.5], reefK: 0.12, look: { stacks: false, boat: false, seascape: false, temple: false, sandWet: [0.14, 0.14, 0.14], sandDry: [0.22, 0.21, 0.2], land: [0.08, 0.11, 0.07], palms: 0.05, windy: true, cliffH: 4.0, rock: [0.21, 0.22, 0.23], cliffGreen: 0.3, mountain: [0.24, 0.27, 0.3], mountainScale: 0.8, jungle: 0.4 } },   // Ombak Raksasa (the giant wave, his name 1 Oct 2026): nature only, his call. Sheer dark cliffs twice Gunung Laut's height behind the peak, wind-bent scrub on top, deep dark water off a deep reef, and a giant rock headland at the end of the reef (raksasaNature)
 };
 
 const built = {};
@@ -55,6 +56,7 @@ export function spotGroup(scene, key) {
   if (key === 'hiu') ownDice(g, (h) => hiuNature(h, g.userData.cliff), 43);
   if (key === 'extreme') ownDice(g, (h) => lautNature(h, g.userData.cliff), 47);
   if (key === 'extreme') ownDice(g, seaMountain);
+  if (key === 'monster') ownDice(g, (h) => raksasaNature(h, g.userData.cliff), 53);
   waterProps(g, key);
   if (key === 'hard') blackRock(g);
   if (key === 'extreme') theMountain(g);
@@ -474,6 +476,32 @@ function kananNature(g, C) {
 // Karang Hiu, made more of itself in nature (29 Sep 2026, his call): a shore of raw reef rock. Jagged grey blocks of
 // old coral lie along the waterline, sharp-edged and pitted, dark where the sea wets them (the wind that bends every
 // palm the same way is in the coast's look: windy)
+// Ombak Raksasa (1 Oct 2026, nature only): a giant headland of dark rock running out to sea past the end of the reef (where
+// you look as you ride), sheer-sided, highest where it meets the cliffs and stepping down to a broken tip, scrub only on its
+// top; and big dark boulders heaped along the foot of the cliffs. Kept beyond the reef's end (x 640) so no wave runs into it
+function raksasaNature(g, C) {
+  if (!C) return;
+  { const geo = new THREE.BoxGeometry(1, 1, 1, 14, 10, 26), pp = geo.attributes.position;
+    for (let i = 0; i < pp.count; i++) { const x = pp.getX(i), y = pp.getY(i) + 0.5, u = pp.getZ(i) + 0.5, t = 1 - u;   // (t: 0 where it meets the land, 1 its seaward tip; z runs the box's own way round, or its faces turn inside out)
+      const hw = 58 * (1 - 0.5 * t) * (1 + 0.16 * Math.sin(t * 41 + 1) + 0.09 * Math.sin(t * 97) + 0.12 * Math.sin(t * 19 + x * 3)), hh = 172 * (1 - 0.55 * Math.pow(t, 1.4)) * (0.8 + 0.12 * Math.abs(Math.sin(t * 13)) + 0.08 * Math.sin(t * 37)) * (1 - 0.22 * Math.pow(Math.abs(2 * x), 6) * y);   // (gullies down its sides, a broken skyline)
+      const n = 1 + 0.09 * Math.sin(y * 9 + t * 23) + 0.06 * Math.sin(x * 13 - y * 7) + 0.05 * Math.sin(y * 31 + t * 71);
+      pp.setXYZ(i, x * 2 * hw * n, y * hh - 6, 20 + u * 185); }
+    const flat = geo.toNonIndexed(), fp = flat.attributes.position, c = new Float32Array(fp.count * 3);
+    for (let i = 0; i < fp.count; i += 3) { const y = (fp.getY(i) + fp.getY(i + 1) + fp.getY(i + 2)) / 3, ny = Math.abs(fp.getY(i + 1) - fp.getY(i)) < 4 && Math.abs(fp.getY(i + 2) - fp.getY(i)) < 4;
+      const top = y > 60 && ny, k = 0.7 + Math.random() * 0.45, band = 0.88 + 0.14 * Math.sin(y * 0.21), wet = y < 8 ? 0.55 : 1, col = top ? [0.11 * k, 0.16 * k, 0.08 * k] : [0.19 * k * wet * band, 0.2 * k * wet * band, 0.21 * k * wet * band];   // (rock in uneven layers, darker and lighter faces)   // (scrub on the flat top, dark rock everywhere else, wet black at the waterline)
+      for (let v = 0; v < 3; v++) { c[(i + v) * 3] = col[0]; c[(i + v) * 3 + 1] = col[1]; c[(i + v) * 3 + 2] = col[2]; } }
+    flat.setAttribute('color', new THREE.BufferAttribute(c, 3)); flat.deleteAttribute('uv'); flat.computeVertexNormals();
+    const m = new THREE.Mesh(flat, landMaterial()); m.position.set(745, 0, 0); m.userData.prop = true; g.add(m); }
+  const geos = [];
+  for (let k = 0; k < 70; k++) { const x = -430 + Math.random() * 360, r = 2 + Math.random() * 5, geo = new THREE.IcosahedronGeometry(1, 0).toNonIndexed(), pp = geo.attributes.position;
+    for (let i = 0; i < pp.count; i++) { const n = 0.8 + 0.4 * Math.abs(Math.sin(pp.getX(i) * 5 + k) * Math.cos(pp.getZ(i) * 4 - k)); pp.setXYZ(i, pp.getX(i) * n * 1.4, pp.getY(i) * n * 0.75, pp.getZ(i) * n); }
+    const c = new Float32Array(pp.count * 3); for (let i = 0; i < pp.count; i++) { const kk = pp.getY(i) < -0.1 ? 0.5 : 0.85 + Math.random() * 0.2; c[i * 3] = 0.2 * kk; c[i * 3 + 1] = 0.21 * kk; c[i * 3 + 2] = 0.22 * kk; }
+    geo.setAttribute('color', new THREE.BufferAttribute(c, 3)); geo.deleteAttribute('uv'); geo.rotateY(Math.random() * 6); geo.scale(r, r, r);
+    geo.translate(x, r * 0.2, C.z(x, 0) - 3 - Math.random() * 10); geo.computeVertexNormals(); geos.push(geo); }
+  const merged = mergeGeometries(geos); merged.computeVertexNormals();
+  const mm = new THREE.Mesh(merged, landMaterial()); mm.userData.prop = true; g.add(mm);
+}
+
 function hiuNature(g, C) {
   if (!C) return;
   const geos = [];

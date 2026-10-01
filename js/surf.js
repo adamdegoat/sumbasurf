@@ -253,6 +253,12 @@ export class Rider {
     this.ride = { t: 0, top: 0, barrel: 0, pocket: 0, turns: 0, cutbacks: 0, snaps: 0, speed: 0, end: 0, score: 0, moves: [], tubeT: 0, leanPk: 0, gPk: 0, tubeDeep: 0, combo: 0, lastMoveT: -9 }; this.turnSign = 0; this.tyMin = this.tyMax = undefined; this.cbArmed = false; this.snapArm = 0; this.snapK = 0; this.snapPk = 0; this.lipPush = 0; this.lipHit = false; this.trick = null;
   }
   set(state) { this.state = state; this.stateT = 0; }
+  // let go of the tow rope (1 Oct 2026, the monster wave): already on your feet on the face at the wave's speed, the jet ski's
+  // job done. s: how far ahead of the curl, zl: where on the face (the wave's own frame), th: heading, v: speed
+  towRelease(w, s, zl, th, v) {
+    this.x = w.peelX + s; this.z = w.zW + w.bend(s) + zl; this.th = th; this.vx = v * Math.cos(th); this.vz = v * Math.sin(th); this.v = v;
+    this.lean = 0; this.turn = 0; this.relS = 1; this.recentPaddle = 0; this.lateK = 0; this.lateDone = true; this.dropT = 0; this.chatW = 0; this.towed = true; this.set('RIDE');
+  }
   get standing() { return this.state === 'POP' || this.state === 'RIDE'; }
   get active() { return this.state !== 'OUT' && this.state !== 'WIPE'; }
 
@@ -421,6 +427,21 @@ export class Rider {
       if (P.slideMove) { if ((this.slide || 0) > 0.93 * P.slipHard) { this.slideOutT = (this.slideOutT || 0) + h; if (this.slideOutT > 0.6) return this.wipe('Slid out: the alaia lost the water'); } else this.slideOutT = Math.max(0, (this.slideOutT || 0) - 2 * h); }
       const dr = P.drag * along + P.drag2 * along * Math.abs(along) + 1.6 * sk * (this.slide || 0) * Math.sign(along);   // (a snap scrubs speed: the tail sliding across the water)
       ax += -dr * dx; az += -dr * dz;
+      // a monster wave (C.vSoft, C.chatter; 1 Oct 2026): past ~86 km/h the water and air drag climb steeply, so you top out near
+      // the 80-100 km/h real big-wave riders reach (it ran to 148); and the bumps on a giant face rattle the board at speed: the
+      // nose gets knocked off your line (you have to keep correcting) and, laid hard over on the rail, a bump can catch it
+      if (C && C.vSoft && speed > C.vSoft) { const ex = speed - C.vSoft, a = 0.45 * ex * ex; ax -= a * this.vx / speed; az -= a * this.vz / speed; }
+      if (C && C.chatter && this.state === 'RIDE') {
+        const rough = C.chatter * smooth(12, 26, speed) * (sl ? 1 : 0.3);
+        this.chatW = ((this.chatW || 0) + (Math.random() * 2 - 1) * rough * 60 * h) * (1 - 8 * h); this.th += this.chatW * h;
+        const over = Math.abs(this.lean) / P.leanMax;
+        if (rough > 0.5 && over > 0.97 && speed > C.vSoft && this.stateT > 1 && Math.random() < 0.15 * rough * h) return this.wipe('Caught a rail at speed: a bump threw you');
+        // the drop (his call 1 Oct 2026): run straight down the face flat out and the bumps at the bottom buck you off; set your rail
+        // and angle across before you get there (pointed within ~20 deg of straight down, in the bottom fifth of the face, fast, for
+        // half a second: a straight run into the flats, not a bottom turn that's still coming round; 0.35 s at 30 deg caught those)
+        if (sl && hRel < 0.2 && Math.sin(this.th) > 0.94 && speed > 0.9 * C.vSoft && this.stateT < 8) { this.dropT = (this.dropT || 0) + h; if (this.dropT > 0.5) return this.wipe('Straight down too fast: the chop at the bottom bucked you off'); }
+        else this.dropT = Math.max(0, (this.dropT || 0) - 2 * h);
+      } else this.chatW = 0;
       // stalling: weight on the tail and the trailing hand dragged in the face, a strong brake (you let the wave catch you)
       // (his call 29 Sep 2026: more like the real thing) it bites hard the moment you sit back, then eases; and hold it
       // once you've slowed right down and the board stops planing: the tail sinks under you (a wobble first, then you fall)
@@ -515,7 +536,8 @@ export class Rider {
       // (tried 27 Sep and taken back out the same day: requiring you to be paddling before the wave lifts you, and a short
       // window after it lifts you, made the game's own "Paddle now!" tip too late; padUp and liftT are still tracked)
       const catchV = Math.min(C.speed * 0.5, 3.2 + 0.1 * C.speed) * P.catchK;   // (a longer, floatier board gets in with less)
-      if (this.onFace && this.recentPaddle > 0 && s < P.catchReach * H && Math.sin(this.th) > 0.2 && this.vz > catchV && slope > 0.4 * P.catchK) { this.catchT += h; if (this.catchT > 0.1) { this.set('POP'); this.catchT = 0; this.lateK = smooth(0.05, 0.35, sl.curl || 0) * smooth(0.3, -0.3, s / H) * smooth(0.2, 0.3, y / H); this.lateDone = false; } }   // (how late you took off: under the peak as it's already pitching, up on the face)
+      // (a tow-in wave, C.tow: far too big and fast to paddle into, like the real thing; only the jet ski gets you on it: towRelease)
+      if (!C.tow && this.onFace && this.recentPaddle > 0 && s < P.catchReach * H && Math.sin(this.th) > 0.2 && this.vz > catchV && slope > 0.4 * P.catchK) { this.catchT += h; if (this.catchT > 0.1) { this.set('POP'); this.catchT = 0; this.lateK = smooth(0.05, 0.35, sl.curl || 0) * smooth(0.3, -0.3, s / H) * smooth(0.2, 0.3, y / H); this.lateDone = false; } }   // (how late you took off: under the peak as it's already pitching, up on the face)
       else this.catchT = 0;
       return;
     }
@@ -622,7 +644,8 @@ export class Rider {
       }
       if (this.trick) { this.trick.t += h; if (this.trick.t > 1.4) this.trick = null; }
       // the end of the wave: it backs off and the barrel breathes out (the spit), shooting whoever's inside out onto the shoulder
-      if (this.spitOut > 0) { this.spitOut -= h; if (this.inBarrel && this.v < 2.1 * C.speed) { const k = 1 + 2.4 * h; this.vx *= k; this.vz *= k; } }   // (29 Sep 2026: a stronger blow, and a stall can't hold you in against it: see the stall above)
+      // (the monster's spit, C.vSoft: no faster than real big-wave speeds; it blew riders out at 140 km/h)
+      if (this.spitOut > 0) { this.spitOut -= h; if (this.inBarrel && this.v < (C.vSoft ? Math.min(2.1 * C.speed, 1.1 * C.vSoft) : 2.1 * C.speed)) { const k = 1 + 2.4 * h; this.vx *= k; this.vz *= k; } }   // (29 Sep 2026: a stronger blow, and a stall can't hold you in against it: see the stall above)
       // the close-out reaches you: the lip comes down on the section you're riding and it all turns to whitewater. The
       // ride's over (you rode it right to the end: full credit)
       if (w.closing && w.closeMask && w.closeMask(s) > 0.5) { this.ride.end = 1; return this.out('Closed out: you rode it right to the end'); }

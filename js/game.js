@@ -2,19 +2,19 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=194';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=190';
+import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=203';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=194';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER } from './board.js?v=21';
-import { SurfAudio } from './audio.js?v=24';
+import { SurfAudio } from './audio.js?v=25';
 import { ranch, POOL } from './ranch.js?v=9';
-import { SPOTS, spotGroup, builtSpots } from './spots.js?v=129';
-import { villa, VILLA } from './villa.js?v=163';
+import { SPOTS, spotGroup, builtSpots } from './spots.js?v=140';
+import { villa, VILLA } from './villa.js?v=172';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=28';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=57';
-import { wildlife } from './wildlife.js?v=61';
+import { crew } from './crew.js?v=61';
+import { wildlife } from './wildlife.js?v=65';
 import { droneShow } from './show.js?v=13';
 import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=5';
 
@@ -107,7 +107,7 @@ const BOARD_INFO = {
   fish: ['Fish', "5'8\" wide twin fin with a swallow tail. Loose and fast: planes easily, paddles well and flies down the line on soft or slow waves with little pumping. Turns are skatey and the tail drifts early; on steep, heavy waves it's twitchy and loses grip.", 'Pantai Kuda, Watu Kanan, Pantai Bintang, the Ranch', [4, 5, 4, 3, 4]],
   long: ['Longboard', "9'2\" single fin. Smooth and relaxed: paddles fast and catches waves early, rock steady, glides forever. Turns are slow, wide arcs, like steering a boat, and it can't do snaps or airs. Clumsy in steep barrels.", 'Pantai Kuda (learning)', [5, 3, 1, 5, 0]],
   alaia: ['Alaia', "7'2\" wooden plank with no fins, the old Hawaiian board. The fastest glide of all and very loose: throw the tail out and slide sideways down the face, then catch it again. Thin, so it paddles slowly, catches waves late and sinks under you if you slow down. Push a slide too far and it slides right out. No airs.", 'Tanjung Uma, Watu Kanan', [1, 5, 4, 1, 0]],
-  gun: ['Gun', "9'6\" big-wave board with a pointed nose and pin tail. Paddles into giant waves early, before they get too steep, and holds its line at high speed with lots of grip. Stiff, long turns; sluggish on small waves.", 'Gunung Laut', [5, 4, 2, 5, 2]],
+  gun: ['Gun', "9'6\" big-wave board with a pointed nose and pin tail. Paddles into giant waves early, before they get too steep, and holds its line at high speed with lots of grip. Stiff, long turns; sluggish on small waves.", 'Gunung Laut, Ombak Raksasa', [5, 4, 2, 5, 2]],
 };
 // the board picker in the menu: each board's outline in its own colours, the one you're riding lit up
 const BOARD_SVG = {
@@ -142,8 +142,8 @@ function useStance(k) {
 const physStance = () => (MIRROR ? (stance === 'goofy' ? 'regular' : 'goofy') : stance);
 function applyStance() { stanceQ.setFromAxisAngle(WORLD_UP, physStance() === 'regular' ? -Math.PI / 2 : Math.PI / 2); if (rider) rider.backside = physStance() === 'regular'; }   // (on a left, regular is backside; on a right, goofy)
 setTimeout(stancePicker, 0);
-function useBoard(t) {
-  boardType = t; try { localStorage.setItem('sumbasurf.board', t); } catch (e) {}
+function useBoard(t, keep = true) {   // (keep: false = just for now, the board you picked stays remembered: the monster wave's gun)
+  boardType = t; if (keep) try { localStorage.setItem('sumbasurf.board', t); } catch (e) {}
   rig.remove(board); board.geometry.dispose(); board = makeBoard(t, true); board.position.z = Math.max(0, (BOARD_LENGTH(t) - 1.88) * 0.33); board.position.y = t === 'alaia' ? 0.034 : 0;   /* (the alaia is 2.8 cm thick, half a shortboard: its deck raised to where theirs is, or lying on it the water washed over it as a pale sheet; the feet follow via deckAt) */ board.scale.x = MIRROR ? -1 : 1; rig.add(board);   // (at a mirrored spot, mirrored back: the logo reads right)
   boardTail = board.position.z - BOARD_LENGTH(t) / 2 + 0.04; setBoard(t);
   for (const b of document.querySelectorAll('[data-board]')) b.classList.toggle('on', b.dataset.board === t);
@@ -191,7 +191,7 @@ function updateLocals(dt) {
   audio.fallsLevel(rider && mode === 'kanan' ? 1 : 0);   // (Watu Kanan: the waterfall's rush, faint under the surf)
   if (rider && mode === 'hard') { boomT -= dt; if (boomT <= 0) { breezeN++; boomT = 8 + 9 * Math.abs(Math.sin(breezeN * 1.3)); audio.boom(0.6 + 0.4 * Math.abs(Math.sin(breezeN * 2.9))); } }   // (Batu Hitam: waves booming into the cliffs down the coast)
   for (const L of locals) {
-    L.grp.visible = !!rider && !isRanch() && !isFree(); if (!L.grp.visible) continue;   // (the free beach: only real players, his call 30 Sep 2026)
+    L.grp.visible = !!rider && !isRanch() && !isFree() && !isTow(); if (!L.grp.visible) continue;   // (the free beach: only real players, his call 30 Sep 2026; nobody sits in the lineup at a 30 m tow-in wave)
     const y = heightAt(waves, L.x, L.z);
     L.grp.position.set(L.x + Math.sin(T * 0.2 + L.ph) * 0.6, y + 0.05, L.z);
     L.grp.quaternion.setFromEuler(_le.set(-0.25 + Math.sin(T * 1.3 + L.ph) * 0.05, Math.PI + Math.sin(T * 0.15 + L.ph) * 0.3, Math.sin(T * 1.1 + L.ph) * 0.04));   // facing the sets, nose up (sitting on the tail)
@@ -201,7 +201,7 @@ function updateLocals(dt) {
 }
 
 function updateScenery(dt) {
-  if (jukung.visible = !!rider && !isRanch() && mode !== 'extreme') { const y = heightAt(waves, jukung.position.x, jukung.position.z); jukung.position.y += (y - 0.05 - jukung.position.y) * Math.min(1, dt * 3); jukung.rotation.x = Math.sin(T * 0.9) * 0.04; jukung.rotation.z = Math.sin(T * 0.7 + 1) * 0.03; }   // (no fishing boat out in The Mountain's storm)
+  if (jukung.visible = !!rider && !isRanch() && mode !== 'extreme' && !isTow()) { const y = heightAt(waves, jukung.position.x, jukung.position.z); jukung.position.y += (y - 0.05 - jukung.position.y) * Math.min(1, dt * 3); jukung.rotation.x = Math.sin(T * 0.9) * 0.04; jukung.rotation.z = Math.sin(T * 0.7 + 1) * 0.03; }   // (no fishing boat out in The Mountain's storm)
   for (const sg of builtSpots()) if (sg.visible && sg.userData.floaters) for (const f of sg.userData.floaters) {   // each spot's boats and buoys riding the swells
     const y = heightAt(waves, f.x, f.z + sg.position.z); f.m.position.y += (y + f.dy + Math.sin(T * 1.2 + f.ph) * 0.12 - f.m.position.y) * Math.min(1, dt * 6);   // (and a gentle bob on the small sea even where no swell is passing)
     f.m.rotation.x = Math.sin(T * 0.9 + f.ph) * f.rock; f.m.rotation.z = Math.sin(T * 1.1 + f.ph * 1.7) * f.rock; }
@@ -332,6 +332,8 @@ const FREE = [
   // (no small inside waves: his call 30 Sep 2026, they ran through the peaks' waves rolling in and weren't worth it)
 ];
 const isFree = () => mode === 'free';
+const isTow = () => !!(CONDITIONS[mode] && CONDITIONS[mode].tow);
+const TOWUP = { at: null };   // (where you came up after a monster wipeout)   // (the monster wave: towed in by the jet ski, see towPoint)
 FREE.net = { role: 'solo', onWave: null };   // surfing the free beach together (see wavedash/src/freeroom.js): 'solo', 'host' (makes the waves) or 'client'
 // a wave's own dice (free beach): the same numbers in the same order on every player's copy of that wave
 function wr(w) { if (w.rs === undefined) return Math.random(); w.rs = (w.rs + 0x6D2B79F5) | 0; let t = Math.imul(w.rs ^ (w.rs >>> 15), 1 | w.rs); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
@@ -766,6 +768,115 @@ function incoming() {
   }
   return { w: best, t: tBest };
 }
+// the tow-in (1 Oct 2026, the monster wave): where the jet ski lets you go. Like real tow surfers: high on the steep face just
+// below the wall, a little ahead of the curl (0.55 wave heights down the line), already at the wave's speed, angled down the
+// line: the ride starts with the drop (his call 1 Oct 2026: later and higher than the first try, 0.6 up)
+function towPoint(w) {
+  const C = w.cond, H = C.H, s = 0.55 * H, sl = w.prof.slice(s), F = sl.F;
+  // as high as you can go without being on the wall: a steep face stands near vertical in its top third, and letting go up there
+  // throws you straight over (seen 1 Oct 2026). From 0.68 of the way up, step down until you're clear of the crest (1 m out in
+  // front of it), at the exact height (the profile's points are far apart near the top)
+  let zl = F[0][0];
+  for (let f = 0.68; f >= 0.4; f -= 0.02) { const want = f * sl.top; let z = F[F.length - 1][0];
+    for (let i = 1; i < F.length; i++) if (F[i][1] >= want) { const t = (want - F[i - 1][1]) / Math.max(1e-6, F[i][1] - F[i - 1][1]); z = F[i - 1][0] + (F[i][0] - F[i - 1][0]) * t; break; }
+    zl = z; if (z > sl.topZ + 1) break; }
+  const vx = (w.peelRate || C.peel) * 1.05, vz = C.speed;
+  return { s, zl, th: Math.atan2(vz, vx), v: Math.hypot(vx, vz) };
+}
+function towNow(w) { const p = towPoint(w); rider.towRelease(w, p.s, p.zl, p.th, p.v); }
+// TOW IN (his design 1 Oct 2026): tap it, a quick fade, and you're up on your feet behind the jet ski on the face of the next
+// set wave, the rope in your hands; a 3, 2, 1 and the rope drops by itself at the spot real tow surfers let go (towPoint), so
+// every ride starts right; then it's you and the wave, and the ski peels off over the shoulder. Paddling stays for moving
+// about; it can't catch these waves (surf.js C.tow)
+const TOW_COUNT = 3, ROPE = 9;   // (seconds of countdown before the let-go; the rope's length, m)
+const towBtn = document.getElementById('towBtn'), towCount = document.getElementById('towCount');
+towBtn.addEventListener('click', towStart); towBtn.addEventListener('touchend', (e) => { e.preventDefault(); towStart(); }, { passive: false });
+let tow = null, skiAway = null, towBoardWas = null;
+const ski = (() => {
+  const g = new THREE.Group(), m = (geo, c) => new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: c })), red = 0xc8281e, white = 0xeeeeea, dark = 0x1b1d20;
+  const add = (o, x, y, z) => { o.position.set(x, y, z); g.add(o); return o; };
+  // the hull (built along +x, nose forward): a long low body, a pointed bow, the dark rubbing strip round it
+  add(m(new THREE.BoxGeometry(2.4, 0.5, 1.15), red), -0.2, 0.1, 0);
+  add(m(new THREE.ConeGeometry(0.62, 1.2, 4).rotateY(Math.PI / 4).scale(1, 1, 0.92).rotateZ(-Math.PI / 2), red), 1.6, 0.1, 0);
+  add(m(new THREE.BoxGeometry(3.3, 0.1, 1.2), dark), 0, -0.12, 0);
+  add(m(new THREE.BoxGeometry(1.0, 0.32, 0.95), white), 0.75, 0.42, 0);                       // the nose cowl
+  add(m(new THREE.BoxGeometry(1.25, 0.2, 0.5), dark), -0.35, 0.44, 0);                       // the seat
+  add(m(new THREE.CylinderGeometry(0.035, 0.035, 0.8, 6).rotateX(Math.PI / 2), dark), 0.45, 0.75, 0);   // the handlebar
+  add(m(new THREE.BoxGeometry(0.08, 0.3, 0.08), dark), 0.45, 0.6, 0);
+  // the rescue sled on the back (where the rope is tied, and where a rider gets picked up)
+  add(m(new THREE.BoxGeometry(1.9, 0.12, 1.3), 0xf2c21a), -2.25, -0.02, 0);
+  add(m(new THREE.BoxGeometry(1.9, 0.06, 0.06), dark), -2.25, 0.07, 0.6); add(m(new THREE.BoxGeometry(1.9, 0.06, 0.06), dark), -2.25, 0.07, -0.6);
+  // the driver: black wetsuit and vest, a white helmet, sitting up, hands on the bars
+  const suit = 0x16181a;
+  add(m(new THREE.CapsuleGeometry(0.2, 0.42, 4, 8), suit), -0.42, 0.98, 0).rotation.z = -0.25;
+  add(m(new THREE.BoxGeometry(0.34, 0.36, 0.44), 0xe04a1a), -0.38, 1.02, 0).rotation.z = -0.25;   // (the orange vest)
+  add(m(new THREE.SphereGeometry(0.15, 10, 8), white), -0.26, 1.42, 0);
+  for (const sd of [-1, 1]) { const a = add(m(new THREE.CylinderGeometry(0.05, 0.045, 0.62, 6), suit), 0.06, 1.0, sd * 0.24); a.rotation.z = -1.2; a.rotation.x = sd * 0.25;
+    const l = add(m(new THREE.CylinderGeometry(0.07, 0.06, 0.62, 6), suit), -0.25, 0.6, sd * 0.26); l.rotation.z = -1.0; }
+  g.visible = false; g.userData.tie = new THREE.Vector3(-3.15, 0.1, 0); return g;
+})();
+const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 1, 5).translate(0, 0.5, 0), new THREE.MeshLambertMaterial({ color: 0xf2d24a }));
+rope.visible = false;
+const _kA = new THREE.Vector3(), _kB = new THREE.Vector3(), _kM = new THREE.Matrix4(), _kF = new THREE.Vector3(), _kU = new THREE.Vector3(), _kR = new THREE.Vector3();
+function skiPlace(x, z, th) {   // (the ski on the water at x, z heading th: riding the slope, bow up the way it's going)
+  const e = 1.2, y = heightAt(waves, x, z), dy = heightAt(waves, x + Math.cos(th) * e, z + Math.sin(th) * e) - heightAt(waves, x - Math.cos(th) * e, z - Math.sin(th) * e);
+  _kF.set(Math.cos(th), Math.max(-0.6, Math.min(0.6, dy / (2 * e))), Math.sin(th)).normalize(); _kR.crossVectors(_kF, _kU.set(0, 1, 0)).normalize(); _kU.crossVectors(_kR, _kF);
+  ski.quaternion.setFromRotationMatrix(_kM.makeBasis(_kF, _kU, _kR)); ski.position.set(x, y + 0.08, z);
+}
+function towStart() {
+  if (!isTow() || tow || !rider || rider.state !== 'LIE' || spec || ui.start.style.display !== 'none') return;
+  const next = () => { let w = null; for (const v of waves) if (v.tBreak - T > 1.5 && (!w || v.tBreak < w.tBreak)) w = v; return w; };   // (the next wave that hasn't started to break yet)
+  let w = next();
+  if (!w) { nextBreak = Math.min(nextBreak, T + 3); updateWaves(0); w = next(); }   // (none out there yet, in a lull: the ski goes and finds the next one)
+  if (!w) return;
+  if (!ski.parent) { scene.add(ski); scene.add(rope); }
+  tow = { w, t: 0, on: false, n: -1 }; skiAway = null;
+  fadeEl.classList.add('on'); towBtn.hidden = true; document.body.classList.remove('fo'); hudCallOff(true); chalHide();   // (the score levels box out of the countdown's way)
+}
+function towCancel() { document.body.classList.remove('fo'); tow = null; skiAway = null; ski.visible = false; rope.visible = false; towCount.classList.remove('on'); towCount.textContent = ''; fadeEl.classList.remove('on'); audio.jetski(0); }
+// each frame (after the waves move): true while the ski holds you (the game then skips your own physics)
+function towTick(dt) {
+  if (!tow) {   // the ski peeling off after the let-go: out over the shoulder, then gone
+    if (skiAway) { const A = skiAway; A.t += dt; A.th += (-Math.PI / 2 - A.th) * Math.min(1, dt * 0.9); A.v = Math.min(26, A.v + dt * 2);
+      A.x += Math.cos(A.th) * A.v * dt; A.z += Math.sin(A.th) * A.v * dt; skiPlace(A.x, A.z, A.th); audio.jetski(Math.max(0, 1 - A.t / 3), 1);
+      if (A.t > 3.5) { skiAway = null; ski.visible = false; audio.jetski(0); } }
+    return false;
+  }
+  tow.t += dt; const w = tow.w;
+  if (!waves.includes(w)) { towCancel(); return false; }
+  if (!tow.on) {
+    if (rider.state !== 'LIE') { towCancel(); return false; }
+    if (tow.t < 0.38) return true;   // (still fading out: held where you are, so a wave landing on you in that moment can't take you; found 1 Oct 2026)
+    // the fade is down: bring this wave (and the set behind it) round so the rope drops 3 s from now, 0.2 s after it starts to break
+    const sh = T + TOW_COUNT - 0.2 - w.tBreak;
+    // and clear the waves in front of it while the screen is dark: pulled round, this one would land a few seconds behind the
+    // wave before it (the one you just rode, or one breaking as you tapped), and two 30 m waves that close run into each
+    // other and look broken (his report 1 Oct 2026: "the wave looks broken after playing 1 or 2 times")
+    for (let i = waves.length - 1; i >= 0; i--) { const v = waves[i]; if (v !== w && v.tBreak < w.tBreak) { v.dispose(scene); waves.splice(i, 1); } }
+    for (const v of waves) if (v.tBreak >= w.tBreak) { v.tBreak += sh; if (v.px !== undefined) v.px -= v.cond.peel * sh; }
+    nextBreak += sh; tow.rel = T + TOW_COUNT; tow.on = true; ski.visible = true; rope.visible = true;
+    setTimeout(() => fadeEl.classList.remove('on'), 120);
+  }
+  // you, standing on the face at the let-go spot as the wave builds (moving with it), the ski out ahead on the rope
+  const p = towPoint(w), r = rider;
+  r.x = w.peelX + p.s; r.z = w.zW + w.bend(p.s) + p.zl; r.th = p.th; r.vx = p.v * Math.cos(p.th); r.vz = p.v * Math.sin(p.th); r.v = p.v;
+  const e = 0.15; r.y = heightAt(waves, r.x, r.z); r.hx = (heightAt(waves, r.x + e, r.z) - heightAt(waves, r.x - e, r.z)) / (2 * e); r.hz = (heightAt(waves, r.x, r.z + e) - heightAt(waves, r.x, r.z - e)) / (2 * e);
+  r.gAlong = r.hx * Math.cos(r.th) + r.hz * Math.sin(r.th); r.lean = 0; r.turn = 0; r.wave = w; r.s = p.s; r.zl = p.zl; r.onFace = true; r.inBarrel = false;
+  if (r.state !== 'RIDE') r.set('RIDE'); r.stateT = Math.max(r.stateT, 1) + dt;
+  const sx = r.x + Math.cos(p.th) * ROPE, sz = r.z + Math.sin(p.th) * ROPE; skiPlace(sx, sz, p.th); ski.updateMatrixWorld(true);
+  _kA.copy(ski.userData.tie).applyMatrix4(ski.matrixWorld);   // (the rope from the sled to your hands, at waist height just ahead of you)
+  _kB.set(r.x + Math.cos(p.th) * 0.55, r.y + 0.95, r.z + Math.sin(p.th) * 0.55);
+  _kF.subVectors(_kA, _kB); rope.position.copy(_kB); rope.scale.set(1, _kF.length(), 1); rope.quaternion.setFromUnitVectors(_kU.set(0, 1, 0), _kF.normalize());
+  audio.jetski(1, 0.8);
+  const left = tow.rel - T, n = Math.ceil(left);
+  if (n !== tow.n && n >= 1 && n <= TOW_COUNT) { tow.n = n; towCount.innerHTML = `${n}<small>LET GO IN</small>`; towCount.classList.remove('on'); void towCount.offsetWidth; towCount.classList.add('on'); }
+  if (left <= 0) {   // the rope drops: you're on your own
+    towNow(w); rope.visible = false; skiAway = { t: 0, x: sx, z: sz, th: p.th, v: p.v };
+    towCount.innerHTML = 'GO<small>CARVE DOWN THE LINE</small>'; towCount.classList.remove('on'); void towCount.offsetWidth; towCount.classList.add('on');
+    tow = null; return false;
+  }
+  return true;
+}
 function spawnRider() {
   if (surfer) endWipe(); rig.visible = true; board.visible = true; for (const b of birds) b.visible = !isRanch();
   pumpC = 0; pumpA = 0; stanceW = 0; lastState = ''; endT = -1; snapCam = true;
@@ -789,7 +900,9 @@ function spawnRider() {
     } else { const x = Math.max(-185, Math.min(205, lx)); rider.reset(x, offSand(x, lz), -Math.PI / 2); }   // (right where the wave left you; back off the sand if it washed you all the way in)
     const fresh = FREE.fresh; FREE.fresh = false; FREE.jump = false;
     if (!fresh) { ui.msg.style.display = 'none'; return; }   // (a shared beach: nobody's waves are held back for you, only on arrival)
-  } else rider.reset(2 + Math.random() * 4, -7 - Math.random() * 3, -Math.PI / 2);
+  } else if (isTow() && TOWUP.at) { const a = TOWUP.at; TOWUP.at = null; rider.reset(a.x, a.z, -Math.PI / 2); ui.msg.style.display = 'none'; return; }   // (back on your board where you came up: paddle, or TOW IN again)
+  else if (isTow()) rider.reset(2 + Math.random() * 4, -58 - Math.random() * 3, -Math.PI / 2);   // (the monster: out the back where the tow teams wait, well clear of where a 30 m wave lands)
+  else rider.reset(2 + Math.random() * 4, -7 - Math.random() * 3, -Math.PI / 2);
   // don't drop a wave on your head as you arrive
   // don't drop a wave on your head as you arrive: hold back every wave that hasn't reached you yet
   { const inc = incoming(); if (inc.t < 7) { const shift = 7 - inc.t;
@@ -902,7 +1015,7 @@ function ranchPeople(dt) {
 // ---------- controls: PADDLE/PUMP (hold, left) and a thumb pad (right half). Keyboard for testing.
 const input = { paddle: false, steer: 0 };
 const keys = new Set();
-addEventListener('keydown', (e) => { keys.add(e.code); if (/^(Space|Arrow)/.test(e.code) && ui.start.style.display === 'none') { e.preventDefault(); if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); } });   // (in play, Space and the arrows are the controls: never 'press' a button left focused, never scroll)
+addEventListener('keydown', (e) => { keys.add(e.code); if (e.code === 'KeyT' && !e.repeat && !inputLock) towStart(); if (/^(Space|Arrow)/.test(e.code) && ui.start.style.display === 'none') { e.preventDefault(); if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); } });   // (in play, Space and the arrows are the controls: never 'press' a button left focused, never scroll)
 addEventListener('keyup', (e) => keys.delete(e.code)); addEventListener('blur', () => keys.clear());   // (switching apps mid-press)
 const ui = {
   paddle: document.getElementById('paddle'), stall: document.getElementById('stall'), pad: document.getElementById('pad'), touch: document.getElementById('touch'), knob: document.querySelector('#touch b'),
@@ -911,7 +1024,7 @@ const ui = {
   tube: document.getElementById('tube'), hint: document.getElementById('hint'), load: document.getElementById('load'), start: document.getElementById('start'), sess: document.getElementById('sess'),
 };
 // the same tips in keyboard words, on a computer
-const DESK_WORDS = [['Slide your thumb left and right to carve, like a steering wheel', 'Carve with the left and right arrows: tap for a small turn, hold for a hard one'], ['Let go and the board just glides straight', 'Let go of the keys and the board just glides straight'],
+const DESK_WORDS = [['Tap TOW IN', 'Press T (TOW IN)'], ['Slide your thumb left and right to carve, like a steering wheel', 'Carve with the left and right arrows: tap for a small turn, hold for a hard one'], ['Let go and the board just glides straight', 'Let go of the keys and the board just glides straight'],
   ['PUMP and steer', 'Hold Space and steer'], ['hold PUMP', 'hold Space'], ['Hold PUMP', 'Hold Space'], ['tap PUMP', 'tap Space'], ['Tap PUMP', 'Tap Space'], ['STALL', 'Shift'], ['Paddle now!', 'Paddle now! (Space)'], ['Paddle hard!', 'Paddle hard! (hold Space)'], ['Keep paddling!', 'Keep paddling! (Space)'],
   ['Wave coming: turn to face', 'Wave coming: use the arrow keys to face']];
 const deskHint = (h) => { for (const [a, b] of DESK_WORDS) if (h.includes(a)) h = h.replace(a, b); return h; };
@@ -1065,7 +1178,8 @@ function mmPanel() {
   const hm = desc.match(/([\d.]+) m\b/), h = hm ? +hm[1] : 0;
   if (m === 'ranch' || !h) { $('mmScale').innerHTML = '<svg viewBox="0 0 200 240" aria-hidden="true"><text x="100" y="128" text-anchor="middle" fill="rgba(246,236,220,.55)" font-family="Barlow Condensed" font-weight="700" font-size="20" letter-spacing="2">YOU PICK THE WAVE</text></svg>'; return; }
   // one wave shape, the 15 m one, shrunk evenly for smaller spots: the size you see is the real size next to you
-  const base = 222, k = Math.min(1, h / 15), H = 200, top = base - H, man = 200 * (1.8 / 15), topK = base - H * k, Y = (f) => (top + f * H).toFixed(1), sx = 14 + 44 * k, sy = base - 3;
+  // (ref: the drawing's full height, 30 m, the same for every spot so the sizes compare: Ombak Raksasa fills it, Gunung Laut is half; his call 1 Oct 2026)
+  const ref = 30, base = 222, k = h / ref, H = 200, top = base - H, man = 200 * (1.8 / ref), topK = base - H * k, Y = (f) => (top + f * H).toFixed(1), sx = 14 + 44 * k, sy = base - 3;
   const face = `M14 ${base} C58 ${base} 74 ${Y(0.7)} 80 ${Y(0.4)} C70 ${Y(0.3)} 56 ${Y(0.3)} 47 ${Y(0.43)} C49 ${Y(0.13)} 72 ${top} 97 ${top} C127 ${top} 150 ${Y(0.45)} 196 ${base} Z`;
   $('mmScale').innerHTML = `<svg viewBox="0 0 200 240" aria-label="${h} metre wave next to a 1.8 metre surfer"><line x1="10" y1="${base}" x2="190" y2="${base}" stroke="rgba(246,236,220,.3)"/>
     <path d="${face}" transform="translate(14 ${base}) scale(${k.toFixed(3)}) translate(-14 -${base})" fill="rgba(159,227,214,.85)"/>
@@ -1094,7 +1208,7 @@ function toMenu() {
   spec = null; contestHold = false; document.body.classList.remove('watching');
   starting = false; chalHide(); if (drone.on) droneSet(false); showOff(true); glareTick(false); audio.quiet(true);
   // clear the session: the menu gets its slow drifting wave behind it again (and nothing of the old ride keeps running)
-  if (surfer) endWipe(); rider = null; rig.visible = false; endT = -1;
+  if (surfer) endWipe(); rider = null; rig.visible = false; endT = -1; towCancel(); if (towBtn) towBtn.hidden = true; if (towBoardWas) { useBoard(towBoardWas, false); towBoardWas = null; }
   for (const w of waves) w.dispose(scene); waves = [];
   setWeather(menuSpot()); setSpot(menuSpot()); ui.cond.textContent = '';
   if (tick.demo) { tick.demo.dispose(scene); tick.demo = null; }   // (the menu's wave made afresh in the light it's shown in: a night wave's glow never carried into the day)
@@ -1167,6 +1281,7 @@ addEventListener('pagehide', bye);
 async function start(m, quick = false) {
   if (starting) return; starting = true; if (window.__g) window.__g.paused = false;
   hello(m === 'ranch' ? 'Sumba Ranch' : (SPOTS[m] && SPOTS[m].name) || m);
+  if (CONDITIONS[m] && CONDITIONS[m].tow && boardType !== 'gun') { towBoardWas = boardType; useBoard('gun', false); }   // (a tow-in wave: the big-wave gun, his call; your own pick comes back on the menu)
   showOff(true); mode = m; setWeather(m); setSpot(m); audio.start(); audio.quiet(false); audio.musicStart(MUSIC); document.body.classList.toggle('reef', m !== 'ranch');
   // fullscreen + landscape lock must be asked for inside the tap, before any waiting (Android); iOS ignores both safely
   if (!DESK) try { document.documentElement.requestFullscreen?.({ navigationUI: 'hide' })?.then(() => screen.orientation?.lock?.('landscape')).catch(() => {}); } catch (e) {}
@@ -1433,20 +1548,32 @@ function lensTick(dt) {
 // wiping out, in first person: thrown, rolled under the whitewater (the view tumbles, but damped so it doesn't make
 // you sick), then you surface, the view levels out and you look for your board
 const _wiq = new THREE.Quaternion(), _wm = new THREE.Matrix4();
+// held down at the monster wave: the next waves roll over you (a white churn at about a third and two thirds of the way), and a
+// HELD DOWN label with your breath running out, so it reads as a hold-down, not a frozen screen
+const surgeK = (t, hold) => { let k = 0; for (const f of [0.32, 0.68]) { const a = hold * f; if (t > a && t < a + 1) k = Math.max(k, 0.7 * Math.sin(Math.PI * (t - a))); } return k; };
+const holdEl = document.createElement('div');
+holdEl.style.cssText = 'position:fixed;left:0;right:0;top:58%;z-index:7;display:none;text-align:center;pointer-events:none;font:800 clamp(16px,5vh,24px)/1 "Barlow Condensed",sans-serif;letter-spacing:.16em;color:#fff;text-shadow:2px 2px 0 #15110c';
+holdEl.innerHTML = 'HELD DOWN<div style="width:150px;height:8px;margin:9px auto 0;border-radius:4px;background:rgba(21,17,12,.6);box-shadow:0 0 0 1.5px rgba(246,236,220,.6);overflow:hidden"><i style="display:block;height:100%;width:100%;background:#9fe3d6;transform-origin:left center"></i></div>';
+document.body.appendChild(holdEl);
+const holdBar = holdEl.querySelector('i');
+function holdTick(k) { if (k < 0) { if (holdEl.style.display !== 'none') holdEl.style.display = 'none'; return; } if (holdEl.style.display === 'none') holdEl.style.display = ''; holdBar.style.transform = `scaleX(${k.toFixed(3)})`; holdBar.style.background = k < 0.3 ? '#ff8e6e' : '#9fe3d6'; }
 function povWipe(dt) {
   if (bones.head) bones.head.getWorldPosition(_eye); else surfer.getWorldPosition(_eye);
   if (!W.cam) { W.cam = camera.position.clone(); W.q = camera.quaternion.clone(); W.up = false; }
   surfer.visible = false;   // you ARE the camera: your own body tumbling past the lens only looks broken
-  if (W.t < 1.4) W.cam.lerp(_eye, Math.min(1, dt * 30)); else { W.cam.x += (_eye.x - W.cam.x) * Math.min(1, dt * 4); W.cam.z += (_eye.z - W.cam.z) * Math.min(1, dt * 4); W.cam.y += (Math.min(_eye.y, heightAt(waves, W.cam.x, W.cam.z) + 0.3) - W.cam.y) * Math.min(1, dt * 3); }
+  if (W.t < W.hold) W.cam.lerp(_eye, Math.min(1, dt * 30)); else { W.cam.x += (_eye.x - W.cam.x) * Math.min(1, dt * 4); W.cam.z += (_eye.z - W.cam.z) * Math.min(1, dt * 4); W.cam.y += (Math.min(_eye.y, heightAt(waves, W.cam.x, W.cam.z) + 0.3) - W.cam.y) * Math.min(1, dt * 3); }
   const water = heightAt(waves, W.cam.x, W.cam.z);
-  if (W.t < 1.4) {
+  if (W.t < W.hold) {
     // roll with your body, at 40% of its spin
     _dq.setFromEuler(_e.set(W.rw.z * 0.35 * dt, W.rw.y * 0.3 * dt, W.rw.x * 0.4 * dt)); W.q.multiply(_dq);   // head over heels: the body's forward roll pitches the view
+    // a long hold-down (the monster): the water keeps throwing you about the whole time, a slow, uneven sway and roll, so it
+    // never looks like the game stopped (his note 1 Oct 2026: after the first tumble the view went still)
+    if (W.hold > 4) { const t = W.t, k = Math.min(1, t / 1.2); _dq.setFromEuler(_e.set((0.55 * Math.sin(t * 1.9) + 0.2 * Math.sin(t * 4.7)) * k * dt, 0.6 * Math.sin(t * 1.3 + 1) * k * dt, (0.45 * Math.sin(t * 2.6 + 2) + 0.15 * Math.sin(t * 6.1)) * k * dt)); W.q.multiply(_dq); }
   } else {
     // surfaced: head up, looking for your board
     // (looking level toward it: your eyes are at the water line, the horizon stays put)
     _wm.lookAt(W.cam, _cv.set(rig.position.x, W.cam.y - 0.15, rig.position.z), WORLD_UP); _wiq.setFromRotationMatrix(_wm);
-    W.q.slerp(_wiq, Math.min(1, dt * 2.5));
+    W.q.slerp(_wiq, Math.min(1, dt * 2.5 * (W.hold > 4 ? Math.min(1, (W.t - W.hold) / 0.8) : 1)));   // (after a long, rolling hold-down the head comes up over most of a second, not in one snap)
     W.cam.y += Math.max(0, water + 0.25 - W.cam.y) * Math.min(1, dt * 5);   // float up to the surface, don't pop
   }
   camera.position.copy(W.cam); camera.quaternion.copy(W.q);
@@ -1454,10 +1581,12 @@ function povWipe(dt) {
   // what it looks like to get pounded: white water fills everything as you go over, then you're held down in the murk
   // until you come up (the murk stays fully on while you tumble: at half strength, or flicking on and off as your eye
   // crossed the water line, you saw the wave's shape from underneath and behind, which looked like the game breaking)
-  setFoam(W.t < 0.08 ? W.t / 0.08 * 0.95 : W.t < 0.5 ? 0.95 : Math.max(0, 0.95 * (1 - (W.t - 0.5) / 0.35)));
-  const held = W.t > 0.25 && !W.up && (W.t < 1.35 || depth > 0.02);
+  setFoam(W.t < 0.08 ? W.t / 0.08 * 0.95 : W.t < 0.5 ? 0.95 : Math.max(0, 0.95 * (1 - (W.t - 0.5) / 0.35), W.hold > 4 ? surgeK(W.t, W.hold) : 0));   // (held down at the monster: the next wave rolls over you about 3.6 s in, the white churn again)
+  if (W.hold > 4 && W.surge < 2 && W.t > W.hold * (W.surge ? 0.68 : 0.32)) { W.surge++; audio.burst(0.5, 120, 1.6, 'lowpass'); audio.burst(0.25, 500, 1.2); }   // (two more waves roll over you while you're down, each a white churn and a rumble)
+  holdTick(W.hold > 4 && !W.up ? Math.max(0, 1 - W.t / W.hold) : -1);
+  const held = W.t > 0.25 && !W.up && (W.t < W.hold - 0.05 || depth > 0.02);
   setUnder(held ? 0.97 : depth > 0.02 ? Math.min(1, 0.55 + depth * 0.6) : 0, dt);
-  if (depth <= 0.02 && W.t > 1.35 && !W.up) { W.up = true; audio.burst(0.22, 700, 0.35); audio.splash(0.4); }   // the gasp as you break the surface
+  if (depth <= 0.02 && W.t > W.hold - 0.05 && !W.up) { W.up = true; audio.burst(0.22, 700, 0.35); audio.splash(0.4); }   // the gasp as you break the surface
 }
 
 function updateCamera(dt) {
@@ -1944,7 +2073,7 @@ const track = (() => {
 const W = { on: false, bv: new THREE.Vector3(), bw: new THREE.Vector3(), rv: new THREE.Vector3(), rw: new THREE.Vector3(), under: 0 };
 const _e = new THREE.Euler(), _dq = new THREE.Quaternion();
 function startWipe() {
-  W.on = true; W.t = 0; W.under = 0; W.cam = null;
+  W.on = true; W.t = 0; W.under = 0; W.cam = null; W.hold = isTow() ? 6 : 1.4; W.surge = 0;   // (hold: seconds held under before you come up; the monster wave holds you 6 s, his call 1 Oct 2026 (8 s felt like the game had hung): real hold-downs there run 10-20 s)
   const v = rider.v, lip = /lip|falls|closed|whitewater|broke/i.test(rider.why);
   // body: carried by its own speed, pitched forward; the lip throws you down toward the flats
   surfer.getWorldPosition(W.bp = new THREE.Vector3()); surfer.getWorldQuaternion(W.bq = new THREE.Quaternion());
@@ -1967,23 +2096,23 @@ function wipeout(dt) {
       // in the water: heavy drag, the broken wave drags you shoreward, buoyancy brings you back up
       vel.multiplyScalar(Math.exp(-dt * (isBody ? 3.5 : 2.5)));
       vel.z += (isBody ? 2.5 : 3.5) * dt; vel.x += 1.2 * dt;
-      vel.y += (isBody ? (W.t < 1.4 ? -2 : 6) : 14) * Math.min(1, depth + 0.3) * dt;
+      vel.y += (isBody ? (W.t < W.hold ? -2 : 6) : 14) * Math.min(1, depth + 0.3) * dt;
       spin.multiplyScalar(Math.exp(-dt * (isBody ? 2 : 3)));
       if (isBody) { W.under += dt; if (!W.hit) { W.hit = true; audio.splash(1.2); railSpray.burst(p, 160, 3.5); } }
     } else vel.y -= 9.8 * dt;
     p.addScaledVector(vel, dt);
     _dq.setFromEuler(_e.set(spin.x * dt, spin.y * dt, spin.z * dt)); obj.quaternion.premultiply(_dq);
-    if (isBody && W.t > 1.4) {
+    if (isBody && W.t > W.hold) {
       // back at the surface: head up, treading water
       p.y += (water - 1.35 - p.y) * Math.min(1, dt * 3);
       _dq.setFromEuler(_e.set(0, Math.atan2(camera.position.x - p.x, camera.position.z - p.z), 0)); obj.quaternion.slerp(_dq, Math.min(1, dt * 3));
       vel.multiplyScalar(Math.exp(-6.3 * dt)); spin.set(0, 0, 0);
     }
-    if (!isBody && depth > -0.05 && W.t > 1.2) { p.y += (water + 0.03 - p.y) * Math.min(1, dt * 4); _dq.setFromEuler(_e.set(0, obj.rotation.y, 0)); obj.quaternion.slerp(_dq, dt * 2); }
+    if (!isBody && depth > -0.05 && W.t > Math.min(1.2, W.hold)) { p.y += (water + 0.03 - p.y) * Math.min(1, dt * 4); _dq.setFromEuler(_e.set(0, obj.rotation.y, 0)); obj.quaternion.slerp(_dq, dt * 2); }
   }
-  if (W.t > 1.4) play('tread', { fade: 0.4 });
+  if (W.t > W.hold) play('tread', { fade: 0.4 });
 }
-function endWipe() { if (surfer) surfer.visible = true; if (!W.on) return; W.on = false; rig.add(surfer); surfer.position.set(0, 0, 0); surfer.quaternion.identity(); }
+function endWipe() { holdTick(-1); if (surfer) surfer.visible = true; if (!W.on) return; W.on = false; rig.add(surfer); surfer.position.set(0, 0, 0); surfer.quaternion.identity(); }
 
 // ---------- surf stance on top of the clips: feet wide along the board, arms out for balance
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _d = new THREE.Vector3(), _t = new THREE.Vector3(), _q = new THREE.Quaternion(), _pq = new THREE.Quaternion(), _wq = new THREE.Quaternion();
@@ -2406,6 +2535,9 @@ function updateHUD(dt) {
   // the curl is right behind you: tell the player how to get covered (a barrel comes to whoever sets up for it)
   if (st === 'RIDE' && !hint && !rider.inBarrel && rider.wave && rider.s > 0 && rider.s < 2.2 * rider.wave.cond.H && rider.wave.cond.hollow > 0.5 && session.barrels < 2) hint = rider.y < 0.6 * rider.wave.cond.H ? 'Barrel coming! Stay low and hold STALL' : 'The lip is pitching behind you: drop low to get barreled';
   freeOut();
+  { const on = isTow() && !spec && !tow && rider.state === 'LIE'; if (towBtn.hidden === on) { towBtn.hidden = !on; document.body.classList.toggle('fo', on); } }   // (fo: the tip up top narrows to clear it, as for GO TO LINEUP)   // (TOW IN: lying on your board at the monster wave)
+  if (isTow() && st === 'RIDE' && !tow && (rider.dropT || 0) > 0.15) hint = 'Too straight! Turn along the wave or the chop bucks you off';   // (the drop: see surf.js dropT)
+  if (isTow() && (st === 'LIE' || tow)) hint = tow ? (tow.on ? 'Hold on: the rope drops by itself, then carve down the line' : '') : rider.washed ? 'Caught inside! Tap TOW IN to get back out' : 'Tap TOW IN: the jet ski takes you onto the next wave';
   setText(ui.hint, spec ? '' : pearlV > 0.25 ? (rider.noseHard ? 'Turning too hard on the nose: ease off, walk back' : 'Nose digging in: walk back') : shoulderV > 0.4 ? (DESK ? 'Out on the shoulder: walk back, Shift to stall to the curl' : 'Out on the shoulder: walk back, STALL to the curl') : bogV > 0.3 ? (DESK ? 'Too slow: let go of Shift' : 'Too slow: let go of STALL') : session.waves < 5 || st === 'POP' ? (DESK ? deskHint(hint) : hint) : '');   // (the sinking-tail warning shows every time, not only in the first waves)   // (no coaching while you watch someone else)
   // the callout: BARREL while you're in it, or the move you just landed
   tubeShowT = rider.inBarrel ? 0.4 : Math.max(0, tubeShowT - dt);   // (held a moment: a wobble at the tube's edge doesn't flicker the word)
@@ -2449,10 +2581,10 @@ function updateHUD(dt) {
   // a wipeout plays out first (you see yourself go over), then the summary fades in
   else if (endT >= 0) {
     endT += dt;
-    const showAt = st === 'WIPE' ? 1.4 : rider.ride && rider.ride.t > 0 ? FIN_HOLD + 0.35 : 0.2;   // (after a ride, once you've kicked out and are settling onto the board)
+    const showAt = st === 'WIPE' ? (isTow() ? (W.hold || 6) + 0.3 : 1.4) : rider.ride && rider.ride.t > 0 ? FIN_HOLD + 0.35 : 0.2;   // (the monster: the score comes up once you've surfaced, his call 1 Oct 2026)   // (after a ride, once you've kicked out and are settling onto the board)
     if (endT >= showAt && ui.msg.style.display !== 'flex') { if (chalBan) { chalBan.classList.remove('on'); clearTimeout(chalBanT); }   // (the new-level banner steps aside as the score comes up: it sat on top of the score, and the score screen shows the level anyway)
       ui.msg.style.opacity = 0; ui.msg.style.display = 'flex'; requestAnimationFrame(() => (ui.msg.style.opacity = 1)); }
-    if (endT > showAt + (st === 'WIPE' ? 4.6 : 4.0) && !spec && !contestHold) spawnRider();   // (in a contest, contest.js says what comes next)   // (long enough to read the judges' sheet)
+    if (endT > (st === 'WIPE' && isTow() ? showAt + 3.2 : showAt + (st === 'WIPE' ? 4.6 : 4.0)) && !spec && !contestHold) { if (st === 'WIPE' && isTow()) TOWUP.at = { x: rig.position.x, z: rig.position.z }; spawnRider(); }   // (the monster: you come up after the hold-down and get back on your board where it floated, his design)   // (in a contest, contest.js says what comes next)   // (long enough to read the judges' sheet)
   }
 }
 
@@ -2905,13 +3037,13 @@ function tick(dt) {
   }
   if (rider) {
     if (spec) specApply(dt);   // (watching a friend in a contest: their waves and their surfer, no physics of our own)
-    else { updateWaves(dt); rider.update(dt, inp, waves); if (isFree()) boatBump(rider); }
+    else { updateWaves(dt); if (!towTick(dt)) rider.update(dt, inp, waves); if (isFree()) boatBump(rider); }   // (towTick: on the jet ski's rope your own physics wait)
     updateRanch(dt);
     rider.caughtT = rider.washed ? 6 : Math.max(0, (rider.caughtT || 0) - dt);   // (remember being washed in for a few seconds: that's why you ended up inside)
     // drifting too far inside or out wide on a lie: bring the surfer back to the lineup (the pool's walls hold you in)
     if (!spec && isFree() && rider.state === 'LIE' && rider.z > REEF.zBeach - 70 && groundAt(rider.x, rider.z) > heightAt(waves, rider.x, rider.z) - 0.45) rider.z -= 4 * dt;   // (the edge of the sand: the shallows hold you off it, his call 30 Sep 2026: nothing to do on the beach, so no walking there)
     if (!spec && isFree() && rider && rider.state === 'LIE' && (rider.x < -190 || rider.x > 210 || rider.z < -90)) { rider.x = Math.max(-190, Math.min(210, rider.x)); rider.z = Math.max(-90, rider.z); FREE.edgeT = 2.5; }   // (the edge of the bay: you just can't paddle further, and the pill up top says to head back; it used to end your go with a score screen, which the free beach no longer has, so it reset you on the spot again and again)   // (the free-surf beach: the whole bay is yours to paddle round)
-    else if (!spec && !isRanch() && !isFree() && rider.state === 'LIE' && (rider.z > 40 || Math.abs(rider.x - 5) > 70 || rider.z < -60)) { rider.out(rider.z > 40 && rider.caughtT > 0 ? 'Caught inside: the whitewater washed you in' : 'Drifted out of the lineup'); }
+    else if (!spec && !isRanch() && !isFree() && rider.state === 'LIE' && (rider.z > (isTow() ? REEF.zBeach - 80 : 40) || Math.abs(rider.x - 5) > (isTow() ? 700 : 70) || rider.z < (isTow() ? -120 : -60))) { rider.out(rider.z > 40 && rider.caughtT > 0 ? 'Caught inside: the whitewater washed you in' : 'Drifted out of the lineup'); }
     stallFx(dt);
     if (!spec && finishing()) { if (rider.finTh === undefined) rider.finTh = rider.th; const want = -Math.PI / 2, d = Math.atan2(Math.sin(want - rider.th), Math.cos(want - rider.th)), room = 0.7 - Math.abs(Math.atan2(Math.sin(rider.th - rider.finTh), Math.cos(rider.th - rider.finTh)));
       if (room > 0) rider.th += Math.sign(d) * Math.min(Math.abs(d), room, dt * 1.9); } else if (rider.state !== 'OUT') rider.finTh = undefined;   // (the kick-out: up to ~40 deg round toward the open sea, up the face and over the back as the wave rolls on under you)
@@ -2927,7 +3059,7 @@ function tick(dt) {
     let near = 0;
     for (const v of waves) { const s = rider.x - v.peelX, zl = rider.z - v.zW; if (zl > -20 && zl < 25) near = Math.max(near, Math.max(0, 1 - Math.hypot(s < 0 ? s * 0.4 : s, zl) / (7 * v.cond.H))); }
     let underwater = false;
-    if (st === 'WIPE' && W.on && surfer) { const b = surfer.position; underwater = W.t < 1.4 && b.y < heightAt(waves, b.x, b.z) - 0.2; }
+    if (st === 'WIPE' && W.on && surfer) { const b = surfer.position; underwater = W.t < (W.hold || 1.4) && b.y < heightAt(waves, b.x, b.z) - 0.2; }
     audio.update({ H: w ? w.cond.H : 1.5, near, barrel: rider.inBarrel && st === 'RIDE', riding: rider.standing, v: rider.v, turn: rider.turn, lean: rider.lean, slide: Math.max(rider.skid, (rider.slide || 0) * 2.5), stall: !!(inp.stall), dt, chop: ENV.weather ? ENV.weather.chop : 1, storm: ENV.weather ? ENV.weather.chop / 2.4 : 0, rain: ENV.weather ? ENV.weather.rain : 0, underwater });
     // the nearest breaking wave thumps each time a new stretch of lip lands (every second or two, faster in big surf)
     crashT -= dt;
@@ -3111,4 +3243,4 @@ function specApply(dt) {
   rider.wave = waves.find((v) => v.sid === R.waveId) || null;
   input.paddle = !!b.pad;
 }
-window.__g = { freeStart: (ext) => { FREE.forceX = !!ext; return start('free'); }, freeNet: FREE.net, freeWaveOut, freeWaveApply, freeWaveState, freeWaveSync, freeClearWaves, freeBecomeHost, freeSnap, freePeer, freePeerGone, freeSay, freeShorts, freeFollow, peersTick: (dt) => peersTick(dt), get following() { return FREE.follow || null; }, get followD() { return FREE.followD || 0; }, shortsFor: (id) => shortsFor(id), get peers() { return peers; }, hint: (t) => setText(ui.hint, t), get strand() { return strand; }, groundAt: (x, z) => groundAt(x, z), shoreZ: (x) => shoreZ(x), lockRanch, get ranchDbg() { return { people: !!people, loading: peopleLoading, failed: peopleFailed, crowd: crowd && crowd.length, life: !!life }; }, get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), useStance: (k) => useStance(k), get board() { return boardType; }, get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; for (const z of FREE) z.next = undefined; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };
+window.__g = { towPoint, towNow: (w) => towNow(w), towStart: () => towStart(), get towDbg() { return { tow, ski, rope, cam: camera }; }, freeStart: (ext) => { FREE.forceX = !!ext; return start('free'); }, freeNet: FREE.net, freeWaveOut, freeWaveApply, freeWaveState, freeWaveSync, freeClearWaves, freeBecomeHost, freeSnap, freePeer, freePeerGone, freeSay, freeShorts, freeFollow, peersTick: (dt) => peersTick(dt), get following() { return FREE.follow || null; }, get followD() { return FREE.followD || 0; }, shortsFor: (id) => shortsFor(id), get peers() { return peers; }, hint: (t) => setText(ui.hint, t), get strand() { return strand; }, groundAt: (x, z) => groundAt(x, z), shoreZ: (x) => shoreZ(x), lockRanch, get ranchDbg() { return { people: !!people, loading: peopleLoading, failed: peopleFailed, crowd: crowd && crowd.length, life: !!life }; }, get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t) => useBoard(t), useStance: (k) => useStance(k), get board() { return boardType; }, get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; for (const z of FREE) z.next = undefined; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };
