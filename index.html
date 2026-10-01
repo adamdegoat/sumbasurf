@@ -553,12 +553,12 @@
 
   /* ---- the menu, list + panel (his call 28 Sep 2026): every spot one line on the left (room for ten, the last three
      'Coming soon'), the chosen spot big on the right with its wave drawn to scale, Start and the board/stance picks */
-  #start .mm { display: grid; grid-template-columns: minmax(250px, 34%) 1fr; gap: clamp(12px, 2vw, 28px); height: clamp(300px, calc(100vh - 190px), 680px); height: clamp(300px, calc(100dvh - 190px), 680px); margin-top: clamp(8px, 1.8vh, 18px); }
+  #start .mm { display: grid; grid-template-columns: minmax(300px, 38%) 1fr; gap: clamp(12px, 2vw, 28px); height: clamp(300px, calc(100vh - 190px), 680px); height: clamp(300px, calc(100dvh - 190px), 680px); margin-top: clamp(8px, 1.8vh, 18px); }
   #start .spotList { display: flex; flex-direction: column; gap: clamp(4px, .7vh, 7px); min-height: 0; overflow-y: auto; padding-right: 3px; touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }   /* (a finger scrolls it: see game.js touchmove) */
-  #start .spotList > button { position: relative; display: grid; grid-template-columns: clamp(28px, 3vw, 40px) 1fr auto; grid-template-rows: auto auto; column-gap: 12px; align-items: center; flex: 1 1 0; min-height: clamp(34px, 5.4vh, 54px); max-height: 60px;
+  #start :is(.spotList, .spotGrid) > button { position: relative; display: grid; grid-template-columns: clamp(28px, 3vw, 40px) 1fr auto; grid-template-rows: auto auto; column-gap: 12px; align-items: center; flex: 1 1 0; min-height: clamp(34px, 5.4vh, 54px); max-height: 60px;
     padding: 0 12px 0 8px; border-radius: 12px; border: 1px solid var(--line); background: linear-gradient(180deg, rgba(40,28,18,.62), rgba(24,17,11,.72)); box-shadow: inset 0 1px 0 rgba(255,236,200,.1);
     color: var(--sand); text-align: left; cursor: pointer; transition: border-color .15s, background .15s; transform: none !important; }
-  #start .spotList > button:hover { border-color: rgba(255,201,120,.75); }
+  #start :is(.spotList, .spotGrid) > button:hover { border-color: rgba(255,201,120,.75); }
   #start .spotList .wg { grid-row: 1 / span 2; width: 100%; height: 22px; margin: 0; color: var(--sea); } #start .spotList .rt .wg { transform: scaleX(-1); }
   #start .spotList .nm { grid-column: 2; align-self: end; font: 700 clamp(16px, 2.4vh, 21px)/1 var(--disp); }
   #start .spotList small { grid-column: 2; align-self: start; display: block; margin-top: 2px; font-size: 0 !important; line-height: 1; }
@@ -567,7 +567,7 @@
   #start .spotList .best b { margin: 0; font: 700 clamp(15px, 2.1vh, 19px)/1 var(--disp); color: var(--amber); }
   #start .spotList .chd { position: static; grid-column: 3; grid-row: 2; align-self: start; justify-self: end; margin-top: 4px; display: flex; gap: 3px; }
   #start .spotList .chd b { width: 6px; height: 6px; border-radius: 50%; border: 1.2px solid rgba(255,201,120,.55); } #start .spotList .chd b.on { background: var(--amber); border-color: var(--amber); }
-  #start .spotList > button.sel { border-color: var(--amber); border-width: 1px; background: linear-gradient(180deg, rgba(90,58,26,.75), rgba(44,29,14,.82)); box-shadow: inset 3px 0 0 var(--amber); }
+  #start :is(.spotList, .spotGrid) > button.sel { border-color: var(--amber); border-width: 1px; background: linear-gradient(180deg, rgba(90,58,26,.75), rgba(44,29,14,.82)); box-shadow: inset 3px 0 0 var(--amber); }
   #start [data-mode="bintang"] .nm::after, #start .mmKick.nite::after { content: "NIGHT"; display: inline-block; margin-left: .45em; padding: .28em .55em .2em; border-radius: 999px; background: #16244a; box-shadow: inset 0 0 0 1px rgba(120,200,255,.45); color: #9fdcff; font: 700 11px/1 var(--disp); letter-spacing: .16em; vertical-align: .2em; }   /* (the night spot says so in the list and on its panel: his call 28 Sep 2026) */
   #start .mmKick.nite::after { font-size: .8em; vertical-align: .05em; }
   #start [data-mode="bintang"] .nm { white-space: nowrap; }
@@ -734,7 +734,7 @@
   #start .mmPicks .stl { margin-left: 0 !important; }
   @media (max-height: 460px) {
     #start .mm { height: calc(100vh - 58px); height: calc(100dvh - 58px); margin-top: 6px; gap: 12px; }   /* (dvh: the height you can see; on a phone 100vh counts the space under Safari's bar too) */ #start h1 { font-size: 22px !important; } #start .intro { display: none; }
-    #start .spotList { gap: 3px; } #start .spotList > button { min-height: 26px; max-height: 30px; padding: 0 10px 0 6px; column-gap: 8px; border-radius: 9px; grid-template-columns: 26px 1fr auto; }
+    #start .spotList { gap: 3px; } #start :is(.spotList, .spotGrid) > button { min-height: 26px; max-height: 30px; padding: 0 10px 0 6px; column-gap: 8px; border-radius: 9px; grid-template-columns: 26px 1fr auto; }
     #start .spotList small, #start .spotList .chd, #start .spotList #goVilla small { display: none !important; } #start .spotList .nm, #start .spotList #goVilla span { grid-row: 1 / span 2; align-self: center; font-size: 15px; }
     #start .spotList .best { grid-row: 1 / span 2; align-self: center; } #start .spotList .best b { font-size: 14px; } #start .spotList .wg { height: 13px; } #start .spotList #goVilla svg { width: 22px; height: 22px; padding: 4px; }
     #start .mmPanel { padding: 10px 16px; margin-bottom: 28px; }   /* (only the right panel stops short: Patch notes sits below it; the spot list keeps its full height) */ #start .mmBig { font-size: 38px; } #start .mmBB { display: none; } #start .mmActs #goSurf { min-height: 46px; } #start .mmActs #goSurf span { font-size: 22px; }
@@ -762,6 +762,32 @@
     #start .mmPicks .boardrow, #start .mmPicks .stancerow { display: block; } #start .mmPicks .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
     #start .mmPicks .boards button { padding: 2px 8px 2px 6px !important; font-size: 13px; gap: 5px; } #start .mmPicks .boards svg { width: 24px; }
   }
+  /* two columns of five spots (his call 1 Oct 2026): Free surf, Surf contest, Sumba Ranch and Your villa stay full width;
+     the spots fill the first column top to bottom, then the second, and the empty places say Coming soon (room for new
+     spots). A half pill shows the wave icon, the name and your best; the spot's line of text is in the panel already */
+  #start .spotGrid { flex: 5 1 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: repeat(5, minmax(clamp(34px, 5.4vh, 54px), 1fr)); grid-auto-flow: column; gap: inherit; max-height: calc(5 * 60px + 4 * clamp(4px, .7vh, 7px)); }
+  #start .spotGrid > button { max-height: none; min-width: 0; grid-template-columns: clamp(22px, 2.4vw, 32px) minmax(0, 1fr) auto; column-gap: 8px; padding: 0 10px 0 7px; }
+  #start .spotGrid small { display: none; }
+  #start .spotGrid .nm { grid-row: 1 / span 2; align-self: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #start .spotGrid .soon { display: flex; align-items: center; justify-content: center; padding: 0 6px; pointer-events: none; }
+  #start .spotGrid .soon .nm { font-weight: 600; letter-spacing: .03em; }
+  #start .spotGrid [data-mode="bintang"] .nm::after { content: none; }   /* (no room for NIGHT in a half pill: the moon on its wave icon says it) */
+  #start .spotList .spotGrid .chd[data-rec]::before { content: none; }   /* (Wavedash's 'Record 9.5': no room in a half pill; the panel shows it, see wdboot .wdRec) */
+  #start .spotGrid .nm { font-size: clamp(15px, 2.2vh, 19px); }
+  @media (max-width: 1100px) { #start .spotGrid > button { grid-template-columns: 20px minmax(0, 1fr) auto; column-gap: 6px; padding: 0 8px 0 6px; } }
+  @media (max-width: 1100px) and (min-height: 461px) { #start .mmTop { grid-template-columns: 1fr minmax(120px, 28%); } }   /* (small laptops and tablets: "Pantai Bintang" fits whole, and the spot text keeps its width so the wave drawing stays clear of START SURFING) */
+  @media (max-height: 460px) {
+    #start .spotGrid { max-height: calc(5 * 30px + 4 * 3px); grid-template-rows: repeat(5, minmax(26px, 1fr)); }
+    #start .spotGrid > button { grid-template-columns: 16px minmax(0, 1fr) auto; column-gap: 6px; padding: 0 8px 0 5px; }
+    #start .spotGrid .nm { font-size: 14.5px; }
+    #start .mm { grid-template-columns: 330px 1fr; }
+  }
+  @media (max-height: 460px) and (max-width: 760px) { #start .mm { grid-template-columns: 270px 1fr; } #start .spotGrid > button { column-gap: 4px; padding: 0 6px 0 4px; } }   /* (so "Pantai Bintang" fits whole at 667 wide) */
+  @media (max-height: 460px) and (max-width: 620px) { #start .mm { grid-template-columns: 216px 1fr; } #start .spotGrid > button { grid-template-columns: minmax(0, 1fr) auto; column-gap: 3px; padding: 0 5px 0 6px; } #start .spotGrid .wg { display: none; } #start .spotGrid .nm { grid-column: 1; font-size: 13px; } #start .spotGrid .best { grid-column: 2; } }   /* (the oldest small iPhones, 568 wide: no wave icon, so the panel still fits beside) */
+  @media (max-height: 460px) and (max-width: 620px) { body.wdme #start .spotList > button#mpFree { margin-right: 22px; } }   /* (Wavedash there: Free surf stops short of its Full screen button) */
+  @media (max-height: 340px) { body.wdme #start .mmPanel:not(.fsPanel) .mmPicks { flex-wrap: wrap !important; row-gap: 7px !important; } body.wdme #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards { flex-wrap: nowrap !important; } }
+  @media (max-height: 300px) { #start .mmPanel:not(.fsPanel) .mmPicks { flex-wrap: wrap !important; row-gap: 7px !important; } #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards { flex-wrap: nowrap !important; } }   /* (the one-line picker: with the wider spot list it no longer fits one line, so the boards keep their line and Goofy/Regular go under) */
+  @media (max-height: 340px) { #start .spotList > button#mpCont { margin-bottom: 1px; } }   /* (the shortest phones: 2 px short for all five rows otherwise) */
 </style>
 </head>
 <body>
@@ -807,6 +833,8 @@
     <nav class="spotList" aria-label="Surf spots">
     <button class="mp" id="mpFree" type="button"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M2 28 C6 28 7 24 9 21 C11 20.5 13 22 12.8 24 C11.6 23 10.5 24.5 11 28 Z" fill="currentColor"/><path d="M14 28 C18 28 19 24 21 21 C23 20.5 25 22 24.8 24 C23.6 23 22.5 24.5 23 28 Z" fill="currentColor"/></svg><span class="nm">Free surf</span><small><i>Surf with friends, no score</i></small><span class="tag">MULTIPLAYER</span></button>
     <button class="mp" id="mpCont" type="button"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M6 8h14v5a7 7 0 0 1-14 0z M9 21h8 M13 20v-2 M6 10H3a3 3 0 0 0 3 5 M20 10h3a3 3 0 0 1-3 5 M8 27h10" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="nm">Surf contest</span><small><i>Heats against your friends</i></small><span class="tag">MULTIPLAYER</span></button>
+    <button data-mode="ranch"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h60M0 18v10M60 18v10" stroke="currentColor" stroke-width="1" opacity=".45"/><path d="M4.0 28 C8.2 28 9.4 23.7 11.5 20.2 C13.7 19.6 16.1 21.4 15.8 23.7 C14.4 22.4 12.9 24.1 13.7 28.0 Z" fill="currentColor"/></svg><span class="nm">Sumba Ranch</span><small><i>Wave pool, breaks left</i>Order the wave you want</small></button>
+    <div class="spotGrid">
     <button data-mode="easy"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C8.2 28 9.4 24.7 11.4 21.9 C13.6 21.4 16.0 22.8 15.8 24.7 C14.3 23.6 12.9 25.0 13.6 28.0 Z" fill="currentColor"/></svg><span class="nm">Pantai Kuda</span><small><i>Beginners, breaks left</i>5 m, slow, friendly barrels</small></button>
 <button data-mode="medium"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C8.2 28 9.4 23.7 11.5 20.2 C13.7 19.6 16.1 21.4 15.8 23.7 C14.4 22.4 12.9 24.1 13.7 28.0 Z" fill="currentColor"/></svg><span class="nm">Tanjung Uma</span><small><i>Intermediate, breaks left</i>7.5 m clean barrels under the cliffs</small></button>
 <button data-mode="hard"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C9.6 28 11.3 22.3 14.0 17.6 C16.9 16.8 20.1 19.2 19.8 22.3 C17.9 20.5 15.9 22.8 16.9 28.0 Z" fill="currentColor"/></svg><span class="nm">Batu Hitam</span><small><i>Advanced, breaks left</i>10 m, fast and heavy</small></button>
@@ -814,7 +842,10 @@
 <button data-mode="kanan" class="rt"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C8.2 28 9.4 23.7 11.5 20.2 C13.7 19.6 16.1 21.4 15.8 23.7 C14.4 22.4 12.9 24.1 13.7 28.0 Z" fill="currentColor"/></svg><span class="nm">Watu Kanan</span><small><i>Intermediate, breaks right</i>7 m hollow right off red cliffs</small></button>
 <button data-mode="hiu" class="rt"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C9.6 28 11.3 22.3 14.0 17.6 C16.9 16.8 20.1 19.2 19.8 22.3 C17.9 20.5 15.9 22.8 16.9 28.0 Z" fill="currentColor"/></svg><span class="nm">Karang Hiu</span><small><i>Advanced, breaks right</i>9.3 m fast right over shallow coral</small></button>
 <button data-mode="bintang"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h100" stroke="currentColor" stroke-width="1" opacity=".3"/><path d="M4.0 28 C8.2 28 9.3 24.1 11.4 20.9 C13.6 20.4 16.0 22.0 15.8 24.1 C14.3 22.9 12.9 24.5 13.6 28.0 Z" fill="currentColor"/><path d="M16.2 9.4a3.6 3.6 0 1 0 3.6 5.6a2.9 2.9 0 1 1 -3.6 -5.6z" fill="#9fdcff"/></svg><span class="nm">Pantai Bintang</span><small><i>Intermediate, breaks left</i>6.4 m glowing waves under the stars</small></button>
-<button data-mode="ranch"><svg class="wg" viewBox="0 0 100 30" preserveAspectRatio="xMinYMax meet" aria-hidden="true"><path d="M0 28h60M0 18v10M60 18v10" stroke="currentColor" stroke-width="1" opacity=".45"/><path d="M4.0 28 C8.2 28 9.4 23.7 11.5 20.2 C13.7 19.6 16.1 21.4 15.8 23.7 C14.4 22.4 12.9 24.1 13.7 28.0 Z" fill="currentColor"/></svg><span class="nm">Sumba Ranch</span><small><i>Wave pool, breaks left</i>Order the wave you want</small></button>
+<button class="soon" type="button" tabindex="-1" aria-hidden="true"><span class="nm">Coming soon</span></button>
+<button class="soon" type="button" tabindex="-1" aria-hidden="true"><span class="nm">Coming soon</span></button>
+<button class="soon" type="button" tabindex="-1" aria-hidden="true"><span class="nm">Coming soon</span></button>
+    </div>
     <button id="goVilla"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M2 9.5 10 3l8 6.5"/><path d="M4.5 8v9h11V8"/><path d="M8.5 17v-4.5h3V17"/></svg><span>Your villa<small>Walk around, chill, watch the surf from the cliff</small></span></button>
     </nav>
     <section class="mmPanel fsPanel" id="fsPanel" aria-live="polite">
@@ -882,13 +913,18 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261001-0833</small>
+    <small id="build">build 261001-1030</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-01-menu55', wd: true, date: '1 Oct 2026', time: '10:30 am', title: 'A new spot list, and more spots coming soon', items: [
+      'The spots now sit in two columns, so every spot fits on your screen, even on small phones.',
+      'Sumba Ranch has its own place at the top, under Free surf and Surf contest.',
+      'See the Coming soon places? New spots are on the way.',
+    ] },
     { id: '2026-10-01-friends', look: true, wd: true, date: '1 Oct 2026', time: '8:33 am', title: 'Friends look more natural', items: [
       'On the boat your friends stand relaxed and swing their arms as they walk, instead of standing stiff.',
       'Friends waiting for a wave sit on their boards like real surfers, the tail sunk and the nose up.',
