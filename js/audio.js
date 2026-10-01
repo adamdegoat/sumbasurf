@@ -178,6 +178,12 @@ export class SurfAudio {
     if (this.now && !bad) (this.hist ||= []).push(this.now); if (this.hist && this.hist.length > 20) this.hist.shift();
     this.now = this.order.shift(); this.mel.src = this.now; if (this.mWant > 0) this.mel.play().catch(() => {}); if (this.onTrack) this.onTrack(this.now);
   }
+  // one song, from a point in it (the drone show: game.js); the radio carries on after it as usual
+  musicPlay(src, at = 0) {
+    if (!this.mel) return; if (this.now && this.now !== src) (this.hist ||= []).push(this.now);
+    this.now = src; this.mel.src = src; const go = () => { try { this.mel.currentTime = at; } catch (e) {} if (this.mWant > 0) this.mel.play().catch(() => {}); };
+    if (this.mel.readyState >= 1) go(); else this.mel.addEventListener('loadedmetadata', go, { once: true }); if (this.onTrack) this.onTrack(this.now);
+  }
   // back: a few seconds into a song it starts it again; right at the start it goes to the one before (like any player)
   musicPrev() {
     if (!this.mel) return;

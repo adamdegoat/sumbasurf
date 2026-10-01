@@ -5,7 +5,7 @@ import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=212';
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=197';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER, DESIGNS, SEASON, bakeDesigns } from './board.js?v=23';
-import { SurfAudio } from './audio.js?v=25';
+import { SurfAudio } from './audio.js?v=26';
 import { ranch, POOL } from './ranch.js?v=9';
 import { SPOTS, spotGroup, builtSpots } from './spots.js?v=149';
 import { villa, VILLA } from './villa.js?v=187';
@@ -15,7 +15,7 @@ import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
 import { crew } from './crew.js?v=64';
 import { wildlife } from './wildlife.js?v=68';
-import { droneShow } from './show.js?v=13';
+import { droneShow, SONG as SHOW_SONG, SONG_AT as SHOW_AT } from './show.js?v=14';
 import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=5';
 
 const Q = new URLSearchParams(location.search);
@@ -295,8 +295,9 @@ const ready = new Promise((res, rej) => new GLTFLoader().load('surfer.glb?v=3', 
   mixer = new THREE.AnimationMixer(surfer);
   for (const c of g.animations) { c.tracks = c.tracks.filter((t) => !t.name.endsWith('.scale')); clips[c.name] = mixer.clipAction(c); }
   // two locals sitting in the lineup either side of you, waiting for a set like you (same body, their own board)
+  // (taken out, his call 1 Oct 2026: two full animated bodies, ~18% of what a surf spot draws; the list stays empty)
   const sit = g.animations.find((c) => c.name === 'sit');
-  for (const [x, z, ph] of [[-13, -15, 0], [17, -7, 2.1]]) {
+  for (const [x, z, ph] of []) {
     const body = cloneSkinned(g.scene), grp = new THREE.Group(), brd = makeBoard();
     // (drawn in the world like anything else, not through your body's own lens on top of everything; own plain materials, no cutaway)
     body.traverse((o) => { o.layers.set(0); if (o.isMesh) { o.frustumCulled = false; o.material = o.material.clone(); o.material.side = THREE.FrontSide; } });
@@ -2779,7 +2780,7 @@ function loadLocals() {
   }).catch(() => {});
 }
 { const idle = (f) => (window.requestIdleCallback ? requestIdleCallback(f, { timeout: 2500 }) : setTimeout(f, 60));
-  ready.then(() => setTimeout(() => idle(loadLocals), 900)).catch(() => {});
+  // (the lineup locals are gone, his call 1 Oct 2026: their two people are no longer fetched: loadLocals)
   ready.then(() => setTimeout(() => idle(() => { if (mode === 'villa' || starting) return; prepVilla(); if (villaW) { villaW.group.visible = false; crewW.group.visible = false; wildW.group.visible = false; } idle(() => { if (!starting) warmAll(); }); }), 1800)).catch(() => {}); }
 // your villa friends' own bodies (Rocketbox people, MIT licence: see people/): fetched only when you first go to the
 // villa, so a surf session never downloads or carries them. Until they're in, nobody is shown (if they can't load,
@@ -2924,6 +2925,7 @@ function showStart(skip = 0) {   // (skip: seconds already played, when joining 
   const dz = SPOTS.medium.dz, C = new THREE.Vector3(bx + dx * 130, 0, bz + dz + dzz * 130); C.y = heightAt(waves, C.x, C.z);
   showW.start(C, new THREE.Vector3(-dzz, 0, dx));   // (left to right as you look at it)
   if (skip > 0) showW.seek(skip);   // (catch up with a show already under way)
+  audio.musicPlay(SHOW_SONG, SHOW_AT + Math.max(0, skip));   // (its song, from the point the show is written to: the radio carries on after it)
   showB.classList.add('on'); showB.querySelector('span').textContent = 'END SHOW'; document.body.classList.add('show');
   const tip = document.getElementById('vTip'); tip.textContent = 'Drone show out over the sea. The balcony has the best view.'; tip.style.opacity = 1; clearTimeout(tip.t); tip.t = setTimeout(() => { tip.style.opacity = 0; }, 4000);
 }
@@ -2976,6 +2978,9 @@ function villaTick(dt) {
   updateWaves(dt); crewW.detail = !!(walker && (walker.watch || walker.zoom || drone.on)); crewW.update(dt, waves, T); if (!(showW && showW.on)) wildW.update(dt, waves); birdsW.update(dt);   /* (the whales and eagles wait while the drone show is on: their 'tap ZOOM' notes would pop up with ZOOM hidden) */   // (zoomed in on them: every surfer posed every frame)
   if (!friendsW && surfer && (people || peopleFailed)) friendsW = friends(scene, surfer, villaW.friendSpots.map((f) => ({ ...f, z: f.z + SPOTS.medium.dz, board: f.board && [f.board[0], f.board[1], f.board[2] + SPOTS.medium.dz] })), people, life);   // (your friends: as soon as the body model is in)
   if (friendsW && roomMode) friendsW.group.visible = false; else if (friendsW) friendsW.update(dt, T, beat, { x: walker.x, y: walker.y, z: walker.z + SPOTS.medium.dz }, camera); if (villaW.tick) villaW.tick(dt, beat, walker.x, walker.z, walker.y - 1.65);
+  // (the show keeps time with its song: if the music is playing it, the show follows the music's clock, so a slow load or a
+  //  stall on a phone never puts the heart on the wrong beat)
+  if (showW && showW.on && audio.now === SHOW_SONG && audio.mel && !audio.mel.paused) { const want = audio.mel.currentTime - SHOW_AT; if (want > 0 && Math.abs(showW.state.t - want) > 0.3) showW.seek(want); }
   if (showW && dayEnv) { showW.update(dt, renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360)), beat); applyNight(showW.night);
     if (showW.done && showB.classList.contains('on')) showOff();   // (over: the button goes back, the evening comes back)
     if (showW.done && showW.night < 0.005) { applyNight(0); dayEnv = null; } }

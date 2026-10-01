@@ -1,11 +1,11 @@
-// The drone light show at the villa (his brief 28 Sep 2026: animals of the sea and of Sumba, smooth and professional).
-// About a minute and three quarters over the open sea: night falls, 400 drones lift off the water as a line, then a sea
-// turtle, a manta ray, a pod of dolphins, a humpback whale, a galloping Sumba horse and a sea eagle, SUMBA in lights,
-// and back down to the sea.
-// How it stays smooth, the way real shows are flown: every formation is alive (flippers stroke, wings flap, legs
-// gallop) but never jumps; between formations each drone flies a straight, eased line to its new place (5 s, no start
-// or stop jolt), the lights dim a little while they travel, and who goes where is worked out once at the start so that
-// no two paths cross (a swap that shortens the total is always made, and crossing paths can always be shortened).
+// The drone light show at the villa: a story now, his call 1 Oct 2026 ("one heartwarming, to welcome and thank people
+// for the support"; it replaced the 28 Sep animal show, kept in backup_show_1001_animals.js). Set to 'Wish You Warm Skies',
+// started 63 s in so its big moments land on the song (SONG, SONG_AT): stars wake over the sea, a boat sails in, a surfer
+// catches a wave as the big chorus hits, friends gather, a heart beats, WELCOME in the quiet bridge, THANK YOU on the
+// last chorus, and the letters fall as stars into the sea as the song ends.
+// How it stays smooth, the way real shows are flown: every formation is alive but never jumps; between formations each
+// drone flies a straight, eased line to its new place (5 s, no start or stop jolt), the lights dim a little while they
+// travel, and who goes where is worked out once so that no two paths cross.
 // Still one set of 400 glowing points: nothing for a phone to draw.
 import * as THREE from 'three';
 
@@ -64,71 +64,40 @@ const set = (p, c, u, v, w, r, g, b) => { p[0] = u; p[1] = v; p[2] = w; c[0] = r
 // (the shapes and the flight plan are made a slice at a time in the background once the villa is up, so a phone never
 // stalls: see work(); anything asked for before it's ready is finished on the spot)
 let S_ = {}, SH_DONE = false, READY = false, GEN = null;
+export const SONG = 'music/wish-you-warm-skies.mp3?v=2', SONG_AT = 63;   // (the song, and where in it the show starts: game.js plays it and keeps the show on its beat)
 function* shapeGen() {
   const s = S_;
-  // sea turtle, from above, head to the right: shell outline and plates, head, two big front flippers and two small back ones
-  const TW = 110;
-  s.shellEdge = shape((x) => { x.lineWidth = 5; x.beginPath(); x.ellipse(190, 125, 80, 58, 0, 0, TAU); x.stroke(); }, 84, 0, TW);
+  // a sailing boat side on, heading right: hull, mast, a mainsail and a jib
+  const BW = 104;
+  s.hullE = shape((x) => { x.beginPath(); x.moveTo(84, 158); x.lineTo(318, 158); x.quadraticCurveTo(300, 196, 250, 200); x.lineTo(130, 200); x.quadraticCurveTo(96, 190, 84, 158); x.closePath(); x.fill(); }, 70, 40, BW);
   yield;
-  s.scutes = shape((x) => { x.lineWidth = 4; x.beginPath(); x.ellipse(192, 125, 46, 30, 0, 0, TAU); x.stroke();
-    for (const a of [0.55, 1.35, 1.8, 2.6, 3.7, 4.5, 4.95, 5.75]) { x.beginPath(); x.moveTo(192 + 46 * Math.cos(a), 125 + 30 * Math.sin(a)); x.lineTo(190 + 76 * Math.cos(a), 125 + 55 * Math.sin(a)); x.stroke(); }
-    x.beginPath(); x.moveTo(170, 97); x.lineTo(170, 153); x.moveTo(214, 97); x.lineTo(214, 153); x.stroke(); }, 72, 0, TW);
+  s.main = shape((x) => { x.beginPath(); x.moveTo(206, 34); x.lineTo(206, 150); x.lineTo(292, 150); x.quadraticCurveTo(258, 96, 206, 34); x.fill(); }, 70, 56, BW);
   yield;
-  s.head = shape((x) => { x.beginPath(); x.ellipse(292, 125, 25, 17, 0, 0, TAU); x.fill(); x.fillRect(262, 116, 20, 18); }, 26, 12, TW);
+  s.jib = shape((x) => { x.beginPath(); x.moveTo(198, 52); x.lineTo(198, 150); x.lineTo(118, 150); x.quadraticCurveTo(150, 104, 198, 52); x.fill(); }, 50, 30, BW);
   yield;
-  s.fFlip = shape((x) => { x.beginPath(); x.moveTo(200, 125); x.quadraticCurveTo(236, 80, 214, 28); x.quadraticCurveTo(206, 20, 198, 30); x.quadraticCurveTo(186, 80, 182, 125); x.closePath(); x.fill(); }, 40, 16, TW, 200, 125);   // (root at 0,0, pointing up)
+  s.mast = along([[202, 30], [202, 158]], 16, BW);
+  // a big wave from the side, curling to the right, and a surfer on its face, crouched, arms out
+  const WW = 120;
   yield;
-  s.rFlip = shape((x) => { x.beginPath(); x.moveTo(200, 125); x.quadraticCurveTo(206, 96, 186, 86); x.quadraticCurveTo(172, 84, 172, 100); x.quadraticCurveTo(178, 118, 194, 128); x.closePath(); x.fill(); }, 18, 6, TW, 200, 125);
+  s.waveE = shape((x) => { x.beginPath(); x.moveTo(8, 232); x.bezierCurveTo(120, 228, 200, 170, 236, 70); x.bezierCurveTo(250, 34, 300, 22, 336, 46); x.bezierCurveTo(360, 64, 356, 98, 330, 104);
+    x.bezierCurveTo(318, 84, 296, 82, 290, 104); x.bezierCurveTo(286, 140, 330, 200, 392, 232); x.closePath(); x.fill(); }, 150, 90, WW);
   yield;
-  s.tail = along([[112, 125], [96, 125]], 6, TW);
-  // manta ray, from above, head up
-  const MW = 120;
-  const manta = (x) => { x.beginPath(); x.moveTo(200, 62); x.bezierCurveTo(262, 50, 340, 76, 390, 118); x.bezierCurveTo(330, 138, 258, 150, 214, 182); x.lineTo(200, 190); x.lineTo(186, 182);
-    x.bezierCurveTo(142, 150, 70, 138, 10, 118); x.bezierCurveTo(60, 76, 138, 50, 200, 62); x.closePath(); x.fill(); };
+  s.surfer = shape((x) => { x.lineWidth = 7; x.beginPath(); x.moveTo(196, 140); x.lineTo(206, 112); x.lineTo(218, 140); x.moveTo(206, 112); x.lineTo(204, 88); x.moveTo(182, 92); x.lineTo(226, 84); x.stroke();
+    x.beginPath(); x.arc(204, 78, 8, 0, TAU); x.fill(); }, 30, 40, WW);
   yield;
-  s.manta = shape(manta, 176, 150, MW);
+  s.board = shape((x) => { x.beginPath(); x.ellipse(206, 146, 34, 5, -0.38, 0, TAU); x.fill(); }, 22, 8, WW);
+  // three friends standing on the sand, each holding a board upright beside them
+  const FW = 132;
   yield;
-  s.horns = shape((x) => { x.lineWidth = 7; x.beginPath(); x.moveTo(188, 64); x.quadraticCurveTo(176, 50, 182, 36); x.moveTo(212, 64); x.quadraticCurveTo(224, 50, 218, 36); x.stroke(); }, 24, 0, MW);
+  s.friend = shape((x) => { x.lineWidth = 8; x.beginPath(); x.moveTo(186, 210); x.lineTo(200, 160); x.lineTo(214, 210); x.moveTo(200, 160); x.lineTo(200, 112); x.moveTo(200, 124); x.lineTo(222, 150); x.stroke();
+    x.beginPath(); x.arc(200, 98, 12, 0, TAU); x.fill(); }, 26, 30, FW, 200, 125);   // (no left arm: it waves, worked out as it moves)
   yield;
-  s.mantaTail = along([[200, 190], [200, 248]], 30, MW);   // (swayed as it's drawn)
-  // dolphin, side on, head to the right
-  const DW = 36;
-  yield;
-  s.dolphin = shape((x) => { x.beginPath(); x.moveTo(44, 128); x.bezierCurveTo(120, 76, 270, 72, 352, 112); x.lineTo(392, 122); x.lineTo(354, 130); x.bezierCurveTo(280, 168, 130, 164, 44, 136); x.closePath(); x.fill();
-    x.beginPath(); x.moveTo(190, 84); x.quadraticCurveTo(170, 58, 162, 36); x.quadraticCurveTo(206, 54, 232, 82); x.fill();
-    x.beginPath(); x.moveTo(270, 142); x.quadraticCurveTo(250, 170, 236, 184); x.quadraticCurveTo(272, 170, 296, 144); x.fill();
-    x.beginPath(); x.moveTo(52, 132); x.lineTo(8, 100); x.quadraticCurveTo(22, 132, 8, 164); x.closePath(); x.fill(); }, 64, 36, DW);
-  // humpback whale, side on, head to the right, with its long pectoral fin
+  s.fBoard = shape((x) => { x.lineWidth = 4; x.beginPath(); x.ellipse(236, 140, 13, 70, 0, 0, TAU); x.stroke(); }, 34, 0, FW, 200, 125);
+  // a heart
   const HW = 96;
   yield;
-  s.whale = shape((x) => { x.beginPath(); x.moveTo(36, 112); x.bezierCurveTo(90, 96, 190, 64, 300, 72); x.bezierCurveTo(350, 76, 388, 96, 394, 118); x.bezierCurveTo(390, 136, 360, 150, 300, 154);
-    x.bezierCurveTo(200, 160, 110, 138, 36, 122); x.closePath(); x.fill();
-    x.beginPath(); x.moveTo(40, 116); x.bezierCurveTo(24, 96, 10, 84, 2, 80); x.bezierCurveTo(14, 104, 14, 128, 2, 150); x.bezierCurveTo(12, 146, 26, 136, 40, 118); x.fill(); }, 130, 104, HW);
-  yield;
-  s.fin = shape((x) => { x.beginPath(); x.moveTo(200, 125); x.bezierCurveTo(184, 140, 162, 160, 142, 172); x.bezierCurveTo(168, 176, 196, 158, 222, 134); x.closePath(); x.fill(); }, 30, 12, HW, 200, 125);
-  yield;
-  s.grooves = shape((x) => { x.lineWidth = 3; for (let k = 0; k < 4; k++) { x.beginPath(); x.moveTo(372 - k * 6, 132 + k * 5); x.quadraticCurveTo(320, 146 + k * 4, 250, 146 + k * 3); x.stroke(); } }, 34, 0, HW);
-  // Sumba horse, side on, head to the right: the body drawn, legs, mane and tail worked out as it gallops
-  const QW = 92;
-  yield;
-  s.horse = shape((x) => { x.beginPath(); x.moveTo(95, 110); x.bezierCurveTo(95, 80, 140, 75, 190, 85); x.bezierCurveTo(230, 90, 255, 80, 270, 60); x.bezierCurveTo(285, 40, 300, 20, 325, 18);
-    x.bezierCurveTo(345, 18, 375, 40, 388, 58); x.bezierCurveTo(392, 66, 385, 74, 372, 72); x.bezierCurveTo(350, 66, 335, 62, 322, 66); x.bezierCurveTo(305, 72, 300, 95, 296, 115);
-    x.bezierCurveTo(292, 140, 262, 150, 232, 148); x.bezierCurveTo(190, 150, 150, 150, 125, 145); x.bezierCurveTo(105, 140, 92, 128, 95, 110); x.closePath(); x.fill();
-    x.beginPath(); x.moveTo(318, 20); x.lineTo(314, 2); x.lineTo(330, 17); x.fill(); }, 136, 90, QW);
-  // sea eagle, facing you, wings out: body, head, tail fan (the wings are worked out as they flap)
-  const EW = 100;
-  const wing = (x) => {   // (the right wing: broad from the shoulder, and five long primaries fanned out at the tip)
-    x.beginPath(); x.moveTo(212, 100); x.bezierCurveTo(238, 86, 268, 72, 300, 70); x.bezierCurveTo(314, 70, 324, 74, 330, 80); x.lineTo(332, 118);
-    x.quadraticCurveTo(318, 114, 310, 126); x.quadraticCurveTo(298, 118, 288, 130); x.quadraticCurveTo(276, 122, 264, 134); x.quadraticCurveTo(250, 126, 238, 138); x.lineTo(212, 142); x.closePath(); x.fill();
-    x.lineWidth = 8; for (let f = 0; f < 5; f++) { const a = -0.38 + f * 0.24, bx = 326, by = 82 + f * 8.5, L = 58 - f * 6; x.beginPath(); x.moveTo(bx - 6, by); x.lineTo(bx + Math.cos(a) * L, by + Math.sin(a) * L); x.stroke(); } };
-  yield;
-  s.eWing = shape((x) => wing(x), 86, 60, EW);   // (the right wing; the left is its mirror)
-  yield;
-  s.eBody = shape((x) => { x.beginPath(); x.ellipse(200, 122, 18, 42, 0, 0, TAU); x.fill(); }, 26, 18, EW);   // (44)
-  yield;
-  s.eHead = shape((x) => { x.beginPath(); x.arc(200, 76, 14, 0, TAU); x.fill(); }, 18, 8, EW);
-  yield;
-  s.eTail = shape((x) => { x.beginPath(); x.moveTo(188, 158); x.lineTo(168, 210); x.quadraticCurveTo(200, 220, 232, 210); x.lineTo(212, 158); x.closePath(); x.fill(); }, 24, 10, EW);
+  s.heart = shape((x) => { x.beginPath(); x.moveTo(200, 222); x.bezierCurveTo(120, 170, 54, 120, 74, 70); x.bezierCurveTo(92, 26, 168, 22, 200, 76); x.bezierCurveTo(232, 22, 308, 26, 326, 70);
+    x.bezierCurveTo(346, 120, 280, 170, 200, 222); x.closePath(); x.fill(); }, 220, 160, HW);
   SH_DONE = true;
 }
 function* allGen() { yield* shapeGen(); text(); yield; yield* planGen(); READY = true; }
@@ -137,99 +106,60 @@ function work(ms) { const t0 = performance.now(); while (!READY && performance.n
 function shapes() { while (!SH_DONE) step(); return S_; }
 let TEXT = null;
 function text() {   // (made when a show starts: by then the game's own font is in)
-  if (!TEXT) TEXT = shape((x) => { x.font = '800 150px "Barlow Condensed", "Arial Narrow", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('SUMBA', 200, 132); }, 330, 70, 118);
+  if (!TEXT) TEXT = { welcome: shape((x) => { x.font = '800 104px "Barlow Condensed", "Arial Narrow", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('WELCOME', 200, 130); }, 320, 80, 124),
+    thanks: shape((x) => { x.font = '800 90px "Barlow Condensed", "Arial Narrow", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('THANK YOU', 200, 130); }, 320, 80, 130) };
   return TEXT;
 }
 
-// ---------- the formations. f(i, t, p, c): where drone slot i is at t seconds into the formation (metres: p[0] left to
-// right, p[1] up from the water, p[2] away from you) and its colour. Every one keeps moving and never jumps.
+// ---------- the scenes. f(i, t, p, c): where drone slot i is at t seconds into the scene (metres: p[0] left to right,
+// p[1] up from the water, p[2] away from you) and its colour. Every one keeps moving and never jumps.
 const line = (i) => (i / (N - 1) - 0.5) * 150;
+const sea = (i, n, t, y = 6) => { const u = (i / (n - 1) - 0.5) * 150; return [u, y + 0.9 * Math.sin(u * 0.12 - t * 1.2)]; };   // (a line of sea under a scene)
+const scat = (i) => [(R1[i] - 0.5) * 180, 0.5, (R2[i] - 0.5) * 40];   // (waiting on the water before they lift: scattered, not a line)
 const SCENES = [
-  { name: 'rise', hold: 9, f(i, t, p, c) {   // off the water as one long line, lifting into a slow swell
-    const u = line(i), k = ease(t / 7), v = 0.5 + k * (36 + 5 * Math.sin(u * 0.05 + t * 0.7)), g = 0.5 + 0.5 * Math.sin(u * 0.04 - t * 0.8);
-    set(p, c, u, v, Math.sin(u * 0.03 + t * 0.4) * 4 * k, 1, 0.82 + 0.15 * g, 0.62 + 0.38 * g); } },
-  { name: 'turtle', hold: 13, f(i, t, p, c) {   // a sea turtle swimming, its big front flippers sweeping together, bubbles behind
-    const s = shapes(), cu = -10 + 1.6 * t, cv = 45 + 2 * Math.sin(t * 0.8), tilt = 0.05 * Math.sin(t * 0.8), st = Math.sin(t * TAU / 3.4);
-    let x, y, r, g, b;
-    if (i < 84) { [x, y] = s.shellEdge[i]; [r, g, b] = [0.3, 1, 0.62]; }
-    else if (i < 156) { [x, y] = s.scutes[i - 84]; [r, g, b] = [1, 0.8, 0.35]; }
-    else if (i < 194) { [x, y] = s.head[i - 156]; [r, g, b] = [0.6, 1, 0.7]; }
-    else if (i < 306) { const j = i - 194, top = j < 56, q = s.fFlip[j % 56], a = 0.25 + 0.55 * st;   // (the stroke: reaching forward, then swept right back)
-      const [qx, qy] = rot(q[0], q[1], top ? a : -a); x = 11 + qx; y = top ? 10 + qy : -10 - qy; [r, g, b] = [0.5, 1, 0.66]; }
-    else if (i < 354) { const j = i - 306, top = j < 24, q = s.rFlip[j % 24], a = 0.25 * Math.sin(t * TAU / 3.4 + 1.6);
-      const [qx, qy] = rot(q[0], q[1], top ? a : -a); x = -22 + qx; y = top ? 12 + qy : -12 - qy; [r, g, b] = [0.5, 1, 0.66]; }
-    else if (i < 360) { [x, y] = s.tail[i - 354]; [r, g, b] = [0.5, 1, 0.66]; }
-    else { const j = i - 360, [a, fade] = loop((t * 0.45 + j / 40) % 1);   // (bubbles: rising and drifting back, fading in and out)
-      x = -34 - a * 26 + Math.sin(a * 6 + j) * 2.5; y = (R1[i] - 0.5) * 14 + a * 18; [r, g, b] = [0.55 * fade, 0.85 * fade, fade]; }
-    const [px, py] = rot(x, y, tilt); set(p, c, cu + px, cv + py, 0, r, g, b); } },
-  { name: 'manta', hold: 13, f(i, t, p, c) {   // a manta ray gliding up, its wings rippling from the body out to the tips
-    const s = shapes(), cu = 2 * Math.sin(t * 0.35), cv = 38 + 0.9 * t, bank = 0.06 * Math.sin(t * 0.5), span = 58;
-    let x, y, r = 0.3, g = 0.5, b = 1;
-    if (i < 326) { [x, y] = s.manta[i]; if (i < 176) { r = 0.55; g = 0.85; b = 1; } if (Math.abs(x) > 8 && Math.abs(x) < 20 && y > -4 && y < 10) { r = g = b = 0.95; } }
-    else if (i < 350) { [x, y] = s.horns[i - 326]; r = 0.55; g = 0.85; b = 1; }
-    else { const j = i - 350; [x, y] = s.mantaTail[j % 30]; x += Math.sin(t * 1.3 - j * 0.25) * j * 0.08; r = 0.4; g = 0.6; b = 1; }
-    const d = Math.abs(x) / span; y += Math.sin(t * TAU / 4 - d * 2.6) * 11 * Math.pow(d, 1.6); x *= 1 - 0.05 * (1 - Math.cos(t * TAU / 4 - d * 2.6)) * d;   // (the ripple)
-    const [px, py] = rot(x, y, bank); set(p, c, cu + px, cv + py, 0, r, g, b); } },
-  { name: 'dolphins', hold: 13, f(i, t, p, c) {   // a pod of three dolphins leaping, each round and round its own wheel: over the top in the air, back under the sea in the dark
-    const s = shapes(), W = TAU / 4.4, XC = [-46, 0, 46], OFF = [0.6, 2.7, 4.8], R = 19, RZ = 25, SEA = 24;
-    if (i < 300) {
-      const k = Math.floor(i / 100), q = s.dolphin[i % 100], th = OFF[k] - W * t, X = XC[k] + R * Math.cos(th), Y = SEA + RZ * Math.sin(th);
-      const ang = Math.atan2(-RZ * Math.cos(th), R * Math.sin(th)), [qx, qy] = rot(q[0], q[1], ang), vis = 0.08 + 0.92 * smooth((Y + qy - SEA + 3) / 6);
-      set(p, c, X + qx, Y + qy, k * 3 - 3, 0.6 * vis, 0.88 * vis, vis); return;
-    }
-    if (i < 370) { const u = line((i - 300) * N / 70); set(p, c, u, SEA + 0.9 * Math.sin(u * 0.12 - t * 1.4), 0, 0.12, 0.35, 0.9); return; }   // (the sea they leap from)
-    const j = i - 370, k = j % 3, th = OFF[k] - W * t, age = (((-th) % TAU) + TAU) % TAU / TAU, [sA, fade] = loop(age);   // (a splash where each one goes back in)
-    const e = sA * 0.32 * TAU / W, a = (R1[i] - 0.5) * 2.4, v0 = 7 + R2[i] * 7, EX = XC[k] + R, f2 = fade * (1 - sA * 0.6);
-    set(p, c, EX + Math.sin(a) * v0 * e * 0.6, SEA + Math.max(0, Math.cos(a) * v0 * e - 4.9 * e * e), 0, 0.8 * f2, 0.95 * f2, f2); } },
-  { name: 'whale', hold: 13, f(i, t, p, c) {   // a humpback swimming by, its tail beating slowly, blowing a spout now and then
-    const s = shapes(), cu = -6 + 1.1 * t, cv = 40 + 1.5 * Math.sin(t * 0.5), pitch = 0.04 * Math.sin(t * 0.5);
-    let x, y, r = 0.3, g = 0.52, b = 1;
-    if (i < 234) { [x, y] = s.whale[i]; if (i < 130) { r = 0.62; g = 0.86; b = 1; } }
-    else if (i < 276) { const q = s.fin[i - 234], [fx, fy] = rot(q[0], q[1], 0.12 * Math.sin(t * 1.1)); x = 24 + fx; y = -6 + fy; r = 0.55; g = 0.8; b = 1; }
-    else if (i < 310) { [x, y] = s.grooves[i - 276]; r = 0.85; g = 0.95; b = 1; }
-    else if (i < 360) { const j = i - 310, [sA, lit] = loop((t / 5.5 + 0.1) % 1), lift = smooth(sA / 0.35), fall = smooth((sA - 0.4) / 0.6), fan = (j / 49 - 0.5) * 0.9;   // (the blow: up in a V, then drifting down and out)
-      const h = 18 * lift * (0.55 + 0.45 * R1[i]), fade = lit * (1 - 0.8 * fall); x = 30 + Math.sin(fan) * h * 0.7 + fall * 6; y = 17 + Math.cos(fan) * h - fall * 6; r = g = b = 0.95 * fade; }
-    else { const u = line((i - 360) * N / 40); x = u - cu; y = -cv + 12 + 0.8 * Math.sin(u * 0.1 - t); r = 0.12; g = 0.35; b = 0.9; }
-    if (i < 310) { const tl = clamp((-x - 12) / 34, 0, 1); y += Math.sin(t * TAU / 3.2 + x * 0.05) * 7 * tl * tl; }   // (the tail's slow up and down stroke, from the middle back)
-    const [px, py] = i >= 360 ? [x, y] : rot(x, y, pitch); set(p, c, cu + px, cv + py, 0, r, g, b); } },
-  { name: 'horse', hold: 13, f(i, t, p, c) {   // a Sumba horse at the gallop, mane and tail flying, the beach running by beneath
-    const s = shapes(), W = 92, k = W / 400, cyc = t / 2, bob = 1.4 * Math.sin(cyc * TAU * 2), cu = -4, cv = 44 + bob, pitch = 0.03 * Math.sin(cyc * TAU);
-    let x, y, z = 0, r = 1, g = 0.84, b = 0.56;
-    if (i < 226) { [x, y] = s.horse[i]; }
-    else if (i < 306) {   // four legs, thigh and cannon, in the gallop's order (hind left, hind right, fore left, fore right)
-      const j = i - 226, L = j / 20 | 0, q = j % 20, fore = L >= 2, near = L % 2 === 0, ph = TAU * (cyc + [0, 0.12, 0.42, 0.54][L]);
-      const hip = fore ? [270, 125] : [128, 122], up = 46, lo = 48, a1 = (fore ? 0.55 : 0.5) * Math.sin(ph), kn = Math.max(0, Math.sin(ph + (fore ? 1.2 : -0.6))), a2 = a1 + (fore ? -1.35 : 1.2) * kn * kn;   // (the knee folds on the swing forward: squared, so it eases in and out rather than snapping)
-      const kx = hip[0] + Math.sin(a1) * up, ky = hip[1] + Math.cos(a1) * up, fx = kx + Math.sin(a2) * lo, fy = ky + Math.cos(a2) * lo;
-      const f = (q >> 1) / 9, lower = f > 0.5, ax = lower ? kx : hip[0], ay = lower ? ky : hip[1], bx = lower ? fx : kx, by = lower ? fy : ky, ff = lower ? (f - 0.5) * 2 : f * 2;
-      const ll = Math.hypot(bx - ax, by - ay) || 1, off = (q & 1 ? 1 : -1) * (lower ? 2.2 : 3.6) * (1 - 0.3 * ff);   // (two rows of lights: a leg with some thickness, thinner to the hoof)
-      const cx = ax + (bx - ax) * ff + (by - ay) / ll * off, cy = ay + (by - ay) * ff - (bx - ax) / ll * off;
-      x = (cx - 200) * k; y = (125 - cy) * k; z = near ? -2 : 2; const dim = near ? 1 : 0.62; r *= dim; g *= dim; b *= dim; }
-    else if (i < 330) { const j = i - 306, f = j / 23, bx = 262 + 58 * f, by = 64 - 48 * f, fl = Math.sin(cyc * TAU * 2 - f * 3) * 4 * (0.4 + f);   // (the mane along the neck, streaming back)
-      x = (bx - 200 - 10 - fl * 0.6) * k; y = (125 - by + 8 + fl) * k; r = 1; g = 0.66; b = 0.3; }
-    else if (i < 360) { const j = i - 330, f = j / 29, sw = Math.sin(cyc * TAU - f * 2.4) * 10 * f;   // (the tail flying out behind)
-      x = (96 - 200 - f * 70) * k; y = (125 - 108 - f * 26 + sw + f * f * 20) * k; r = 1; g = 0.66; b = 0.3; }
-    else { const u = -75 + (i - 360) * 150 / 39, e = smooth((75 - Math.abs(u)) / 20) * (0.25 + 0.75 * Math.pow(0.5 + 0.5 * Math.sin(u * 0.35 + t * 7), 3));   // (the beach running by beneath: the lights run, the drones stay)
-      set(p, c, u, 44 - (222 - 125) * k, 0, 0.65 * e, 0.48 * e, 0.28 * e); return; }
-    const [px, py] = rot(x, y, pitch); set(p, c, cu + px, cv + py, z, r, g, b); } },
-  { name: 'eagle', hold: 13, f(i, t, p, c) {   // a sea eagle coming towards you, wings beating slowly, banking a little
-    const s = shapes(), W = 100, k = W / 400, cu = 0, cv = 46, bank = 0.1 * Math.sin(t * 0.45), fl = Math.sin(t * TAU / 2.6);
-    let x, y, r, g, b;
-    if (i < 292) {   // the wings: up and down from the shoulder, the outer half bending a little behind at the wrist
-      const j = i % 146, side = i < 146 ? -1 : 1, q = s.eWing[j], a1 = 0.3 * fl, a2 = 0.28 * Math.sin(t * TAU / 2.6 - 0.9), sh = 2.5, wr = 25;
-      let wx = q[0] - sh, wy = q[1] - 4; if (wx > wr) { const [bx, by] = rot(wx - wr, wy, a2); wx = wr + bx; wy = by; }
-      const [ax, ay] = rot(wx, wy, a1); x = side * (sh + ax); y = 4 + ay;
-      const tip = q[0] > 36, lead = q[1] > 4 + (q[0] - 3) * 0.25 - 2.5; r = 0.95; g = 0.64; b = 0.36; if (lead) { r = 1; g = 0.86; b = 0.62; } if (tip) { r = 1; g = 0.78; b = 0.48; } }
-    else if (i < 336) { [x, y] = s.eBody[i - 292]; r = g = 0.9; b = 1; }
-    else if (i < 362) { [x, y] = s.eHead[i - 336]; r = g = b = 1; }
-    else if (i < 396) { [x, y] = s.eTail[i - 362]; r = g = b = 1; }
-    else { x = 0; y = 9.5 - (i - 396) * 0.6; r = 1; g = 0.8; b = 0.2; }   // (the hooked yellow beak)
-    y -= fl * 1.2;   // (the body lifts a touch on each downstroke)
-    const [px, py] = rot(x, y, bank); set(p, c, cu + px, cv + py, 0, r, g, b); } },
-  { name: 'sumba', hold: 12, f(i, t, p, c) {   // SUMBA in warm light, a slow shimmer running through the letters
-    const q = text()[i], sh = 0.5 + 0.5 * Math.sin(q[0] * 0.12 - t * 2.2), wv = Math.sin(q[0] * 0.05 + t * 0.9) * 1.2;
-    set(p, c, q[0], 46 + q[1] + wv, 0, 1, 0.72 + 0.2 * sh, 0.38 + 0.4 * sh); } },
-  { name: 'down', hold: 7, f(i, t, p, c) {   // back down to the sea as one line, the lights going out along it
-    const u = line(i), k = 1 - smooth((t - 1 - (u + 75) / 150 * 3) / 1.5); set(p, c, u, 4 + 0.6 * Math.sin(u * 0.1 + t), 0, k, 0.85 * k, 0.65 * k); } },
+  { name: 'stars', hold: 8, f(i, t, p, c) {   // they wake one by one off the water and climb into a field of stars, twinkling
+    const [x0, , z0] = scat(i), k = ease((t - R2[i] * 3.2) / 3.8), x = x0 * (0.9 + 0.1 * k), y = 0.5 + k * (18 + Math.pow(R1[(i * 7) % N], 0.8) * 78), tw = 0.55 + 0.45 * Math.sin(t * (1.3 + R1[i] * 2.2) + i);
+    set(p, c, x, y, z0, (0.75 + 0.25 * tw) * (0.4 + 0.6 * k), (0.82 + 0.18 * tw) * (0.4 + 0.6 * k), 1 * (0.4 + 0.6 * k)); } },
+  { name: 'boat', hold: 9.5, f(i, t, p, c) {   // a little boat sails in across the dark sea, rocking on the swell, a wake behind
+    const s = shapes(), cu = -24 + 2.2 * t, roll = 0.045 * Math.sin(t * 1.1), bob = 0.8 * Math.sin(t * 1.1 + 0.6);
+    let x, y, r = 1, g = 0.9, b = 0.75;
+    if (i < 110) { [x, y] = s.hullE[i]; r = 0.95; g = 0.72; b = 0.45; }
+    else if (i < 236) { [x, y] = s.main[i - 110]; y += 0.6 * Math.sin(t * 2 + x * 0.2) * (x / 12); r = g = 1; b = 0.9; }
+    else if (i < 316) { [x, y] = s.jib[i - 236]; r = 1; g = 0.95; b = 0.82; }
+    else if (i < 332) { [x, y] = s.mast[i - 316]; r = 0.9; g = 0.75; b = 0.55; }
+    else if (i < 382) { const [u, v] = sea(i - 332, 50, t, 22.5); set(p, c, u, v, 0, 0.12, 0.38, 0.95); return; }   // (the sea it sails on: the hull's keel is at ~20.5 m)
+    else { const j = i - 382, [a, fade] = loop((t * 0.5 + j / 18) % 1); set(p, c, cu - 26 - a * 30, 23 + 0.6 * Math.sin(a * 9 + j), 0, 0.5 * fade, 0.8 * fade, fade); return; }   // (the wake)
+    const [px, py] = rot(x, y, roll); set(p, c, cu + px, 40 + py + bob, 0, r, g, b); } },
+  { name: 'wave', hold: 15, f(i, t, p, c) {   // the big chorus: a wave rears up and a surfer rides it down the line, spray off the top
+    const s = shapes(), surge = 1 + 0.03 * Math.sin(t * 0.9);
+    if (i < 240) { let [x, y] = s.waveE[i]; const lip = smooth((x - 20) / 30) * smooth((y - 10) / 30);   // (the lip pitches forward and back a little)
+      x += lip * 2.2 * Math.sin(t * 1.4); const blue = i < 150 ? [0.35, 0.85, 1] : [0.08, 0.42, 0.9]; set(p, c, x * surge, 44 + y * surge, 0, ...blue); return; }
+    const ride = Math.sin(t * 0.55), sx = -6 * ride, sy = 5 * Math.cos(t * 0.55);   // (the surfer carves down and up the face)
+    if (i < 310) { const [x, y] = s.surfer[i - 240]; set(p, c, x + sx, 44 + y + sy, -1, 1, 0.82, 0.5); return; }
+    if (i < 340) { const [x, y] = s.board[i - 310]; set(p, c, x + sx, 44 + y + sy, -1, 1, 0.55, 0.3); return; }
+    if (i < 380) { const j = i - 340, [a, fade] = loop((t * 0.6 + j / 40) % 1); set(p, c, 32 + a * 20 + (R1[i] - 0.5) * 8, 70 + a * 12 - a * a * 18, 0, 0.8 * fade, 0.95 * fade, fade); return; }
+    const [u, v] = sea(i - 380, 20, t, 12); set(p, c, u, v, 0, 0.1, 0.32, 0.85); } },   // (the sea in front of it: the wave's foot is at ~12 m)
+  { name: 'friends', hold: 11, f(i, t, p, c) {   // one surfer becomes three friends on the sand, boards beside them; the middle one waves
+    const s = shapes(), XC = [-50, 0, 50], COL = [[1, 0.55, 0.42], [1, 0.82, 0.5], [0.45, 0.9, 0.85]];
+    if (i < 168) { const k = Math.floor(i / 56), q = s.friend[i % 56]; set(p, c, XC[k] + q[0], 42 + q[1] + 0.3 * Math.sin(t * 2 + k), 0, ...COL[k]); return; }
+    if (i < 270) { const k = Math.floor((i - 168) / 34), q = s.fBoard[(i - 168) % 34]; set(p, c, XC[k] + q[0], 42 + q[1], 0.5, COL[k][0] * 0.8, COL[k][1] * 0.8, COL[k][2] * 0.8); return; }
+    if (i < 330) { const j = i - 270, k = Math.floor(j / 20), f = (j % 20) / 19;   // (the left arms, from the shoulder: the middle friend waving overhead, the others hanging easy)
+      const a = k === 1 ? 0.45 + 0.45 * (0.5 + 0.5 * Math.sin(t * 5)) : 2.75 + 0.08 * Math.sin(t * 1.5 + k), L = 11 * f;   // (a: angle from straight up)
+      set(p, c, XC[k] - Math.sin(a) * L, 42 + 0.33 + Math.cos(a) * L, 0, ...COL[k]); return; }
+    const [u, v] = sea(i - 330, 70, t, 0); set(p, c, u, 42 - 28.5 + v * 0.3, 0, 0.75, 0.6, 0.38); } },   // (the sand they stand on)
+  { name: 'heart', hold: 11, f(i, t, p, c) {   // they gather into a heart that beats
+    const s = shapes(), b = Math.sin(t * TAU / 1.1), pulse = 1 + 0.05 * Math.max(0, b) * Math.max(0, b);
+    if (i < 380) { const [x, y] = s.heart[i]; const edge = i < 220; set(p, c, x * pulse, 44 + y * pulse, 0, 1, edge ? 0.35 : 0.5, edge ? 0.45 : 0.6); return; }
+    const j = i - 380, an = j / 20 * TAU + t * 0.4, [a, fade] = loop((t * 0.4 + j / 20) % 1); set(p, c, Math.cos(an) * (40 + a * 14), 44 + Math.sin(an) * (32 + a * 10), 0, fade, 0.8 * fade, 0.85 * fade); } },
+  { name: 'welcome', hold: 14, f(i, t, p, c) {   // WELCOME, in the quiet of the song, a slow warm shimmer through the letters
+    const q = text().welcome[i], sh = 0.5 + 0.5 * Math.sin(q[0] * 0.1 - t * 1.6), wv = Math.sin(q[0] * 0.05 + t * 0.8) * 1.1;
+    set(p, c, q[0], 46 + q[1] + wv, 0, 1, 0.75 + 0.2 * sh, 0.42 + 0.35 * sh); } },
+  { name: 'thanks', hold: 16, f(i, t, p, c) {   // THANK YOU on the last chorus, brighter, the shimmer running faster
+    const q = text().thanks[i], sh = 0.5 + 0.5 * Math.sin(q[0] * 0.14 - t * 2.6), wv = Math.sin(q[0] * 0.06 + t * 1.1) * 1.2;
+    set(p, c, q[0], 46 + q[1] + wv, 0, 1, 0.85 + 0.15 * sh, 0.6 + 0.4 * sh); } },
+  { name: 'fall', hold: 12, f(i, t, p, c) {   // the letters let go one by one and fall as shooting stars into the sea, and the lights go out
+    const q = text().thanks[i], d = (q[0] + 65) / 130 * 3.5 + R1[i] * 1.5, k = Math.max(0, t - d), y = 46 + q[1] - k * k * 3;   // (left to right they let go, then fall ever faster)
+    const vis = smooth((y - 0.5) / 4) * (0.45 + 0.55 * Math.max(0, 1 - k / 3)); set(p, c, q[0] + k * 2.5 * (R2[i] - 0.5), Math.max(0.5, y), 0, vis, 0.85 * vis, 0.55 * vis); } },   // (dimming as they fall, out as they reach the water)
 ];
 const START = []; { let a = 0; for (const s of SCENES) { START.push(a); a += s.hold; } }
 const END = START[START.length - 1] + SCENES[SCENES.length - 1].hold;
@@ -267,7 +197,7 @@ let PLAN = null, PLAN_P = null;   // PLAN[s][d]: drone d's slot in formation s
 // the shapes and the plan come ready-made in show-data.json (made once from this file with _export, 28 Sep 2026), so a
 // phone does no preparing at all and the show looks the same on every device. Change a formation and bump DATA_V: an
 // old file is then ignored and everything is worked out on the phone as before
-const DATA_V = 'animals-1';
+const DATA_V = 'story-1';
 export function _export() { plan(); const r = (a) => a.map(([x, y]) => [Math.round(x * 100) / 100, Math.round(y * 100) / 100]); return { v: DATA_V, shapes: Object.fromEntries(Object.entries(S_).map(([k, a]) => [k, r(a)])), text: r(TEXT), plan: PLAN.map((a) => Array.from(a)) }; }
 function load(d) {
   if (!d || d.v !== DATA_V || !Array.isArray(d.plan) || d.plan.length !== SCENES.length || d.plan.some((a) => a.length !== N) || !d.text || d.text.length !== N || READY || GEN) return false;
@@ -288,7 +218,7 @@ function plan() { while (!READY) step(); return PLAN; }
 
 export function droneShow(scene) {
   const bg = () => { work(5); if (!READY) setTimeout(bg, 40); };
-  fetch(new URL('./show-data.json?v=' + DATA_V, import.meta.url)).then((r) => (r.ok ? r.json() : null)).then((d) => { if (!load(d)) setTimeout(bg, 0); }).catch(() => setTimeout(bg, 0));   // (no file, or an old one: prepare here, a slice at a time)
+  fetch(new URL('./story-data.json?v=' + DATA_V, import.meta.url)).then((r) => (r.ok ? r.json() : null)).then((d) => { if (!load(d)) setTimeout(bg, 0); }).catch(() => setTimeout(bg, 0));   // (no file, or an old one: prepare here, a slice at a time)
   const pos = new Float32Array(N * 3), col = new Float32Array(N * 3), tw = new Float32Array(N);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('aTw', new THREE.BufferAttribute(tw, 1));
@@ -312,7 +242,7 @@ export function droneShow(scene) {
       SCENES[s].f(P ? P[s][d] : d, Math.max(0, T - START[s]), pb, cb);
       let x = pb[0], y = pb[1], z = pb[2], r = cb[0], gg = cb[1], b = cb[2];
       if (inT) { SCENES[s - 1].f(P[s - 1][d], T - START[s - 1], pa, ca); x = pa[0] + (x - pa[0]) * e; y = pa[1] + (y - pa[1]) * e; z = pa[2] + (z - pa[2]) * e; r = ca[0] + (r - ca[0]) * e; gg = ca[1] + (gg - ca[1]) * e; b = ca[2] + (b - ca[2]) * e; }
-      if (T < 0) { x = line(d); y = 0.5; z = 0; r = 1; gg = 0.9; b = 0.8; }   // (waiting on the water, before they lift)
+      if (T < 0) { [x, y, z] = scat(d); r = 0.4; gg = 0.42; b = 0.5; }   // (waiting on the water, scattered and dim, before they lift)
       y += Math.sin(S.t * 1.3 + d * 0.7) * 0.08;   // (hovering: never dead still)
       const i3 = d * 3;
       x *= SC; y *= SC; z *= SC;
