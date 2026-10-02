@@ -998,13 +998,16 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261002-1246</small>
+    <small id="build">build 261002-1421</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-02-noseview', date: '2 Oct 2026', time: '2:21 pm', title: 'See the nose on a longboard', items: [
+      'Walking up the longboard, the tip of the board now stays in view, so you can see when you are right at the nose for a hang ten.',
+    ] },
     { id: '2026-10-02-tailslide', date: '2 Oct 2026', time: '12:46 pm', title: 'New move: the tail slide', items: [
       'Tail slide: snap at the lip and press STALL as you turn. The tail breaks loose and slides out. Let go of STALL to catch it again. Hold too long and you slide out and fall.',
       'Hitting the lip now hits back: spray, a crack of sound, a kick of the camera and drops on your screen (and a buzz on Android phones).',
@@ -1517,6 +1520,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1173"></script>
+<script type="module" src="js/game.js?v=1199"></script>
 </body>
 </html>
