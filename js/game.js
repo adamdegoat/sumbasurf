@@ -463,7 +463,7 @@ function updateWaves(dt) {
 function freeSets() {
   if (FREE.net.role === 'client') return;   // (on a shared beach the host's waves come in over the network: see freeWaveApply)
   for (const z of FREE) {
-    if (z.next === undefined) { z.next = T + (z.sets ? 4 + Math.random() * 6 : 2 + Math.random() * 3); z.left = 0; z.pos = 0; }
+    if (z.next === undefined) { z.next = T + (z.sets ? 0.6 + Math.random() * 1.2 : 0.4 + Math.random() * 0.8); z.left = 0; z.pos = 0; }   // (2 Oct 2026, his report: arriving, the sea sat flat for up to 10 s and read as a glitch; the first wave now breaks a second or two in. You arrive on the boat or the hut, out of its way)
     const C = CONDITIONS[z.cond + (FREE.extreme ? '_x' : '')];
     while (z.next - T < 12) {   // (only the next few waves at each place exist: three places queuing 25 s ahead kept 15 waves alive, each costing work every frame)
       const w = addWave(z.next, z); w.netNew = true;
