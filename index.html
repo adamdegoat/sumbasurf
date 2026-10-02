@@ -79,6 +79,21 @@
   body.fsScoring #freeGuide { visibility: hidden; }   /* (the arrow steps aside while it shows) */
   #fsScore.on { opacity: 1; transform: translate(-50%, 0); }
   /* Party Point's big moments (1 Oct 2026): SET! when a set comes, PARTY WAVE x3 when friends share a wave. Big bouncy words, then gone */
+  /* a good wave on the free beach (7.0 and up, his call 2 Oct 2026): a small pill under MENU for everyone there, the score in
+     its level's colour (Advanced teal, Pro Surfer gold, a perfect 10 in every colour); taps go straight through it */
+  #sToast { position: fixed; z-index: 7; left: max(10px, env(safe-area-inset-left)); top: 86px; display: flex; align-items: center; gap: 10px; padding: 5px 16px 5px 5px; border-radius: 999px;
+    background: rgba(10, 18, 22, .66); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow: inset 0 0 0 1.5px var(--tc), 0 6px 16px rgba(0,0,0,.22);
+    color: #f6ecdc; white-space: nowrap; pointer-events: none; opacity: 0; transform: translateX(-115%); --tc: #9fe3d6; max-width: calc(100vw - 40px); }
+  #sToast b { display: grid; place-items: center; min-width: 52px; height: 38px; padding: 0 9px; border-radius: 999px; background: var(--tc); color: #0d1a1d; font: 800 25px/1 var(--disp); letter-spacing: .01em; }
+  #sToast span { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  #sToast i { font: 700 18px/1 var(--disp); font-style: normal; letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; }
+  #sToast em { font: 600 13px/1 var(--body); font-style: normal; color: rgba(246,236,220,.78); }
+  #sToast.pro { --tc: #ffc94a; } #sToast.pro b { background: linear-gradient(110deg, #ffbf3f 0%, #ffd978 35%, #fff4c4 50%, #ffd978 65%, #ffbf3f 100%); background-size: 220% 100%; animation: stShine 1.6s ease-in-out .35s 2; }
+  #sToast.p10 { --tc: #ff8fd0; } #sToast.p10 b { background: linear-gradient(90deg, #ff6b6b, #ffcf5a, #7be07b, #5ac8ff, #b48cff, #ff6b6b); background-size: 300% 100%; animation: stShine 2.4s linear infinite; }
+  #sToast.on { animation: stIn 4.2s cubic-bezier(.2,.9,.3,1.12) forwards; }
+  @keyframes stIn { 0% { transform: translateX(-115%); opacity: 0; } 9% { transform: translateX(4px); opacity: 1; } 13% { transform: translateX(0); } 88% { transform: translateX(0); opacity: 1; } 100% { transform: translateX(-30px); opacity: 0; } }
+  @keyframes stShine { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+  @media (prefers-reduced-motion: reduce) { #sToast.on { animation: stFade 4.2s linear forwards; } #sToast.pro b, #sToast.p10 b { animation: none; } @keyframes stFade { 0%, 100% { opacity: 0; transform: none; } 6%, 90% { opacity: 1; transform: none; } } }
   #pwBan { position: fixed; z-index: 8; left: 50%; top: 15%; transform: translate(-50%, 0) scale(.6); pointer-events: none; opacity: 0; text-align: center; white-space: nowrap;
     font: 900 46px/1 var(--disp); letter-spacing: .04em; color: #fff3df; text-shadow: 0 3px 0 rgba(0,0,0,.35); padding: 12px 26px 11px; border-radius: 18px; background: rgba(12,16,20,.78); border: 1px solid rgba(255,201,120,.45); color: #fff; }   /* (a dark backing: over a bright sky the words vanished) */
   #pwBan small { display: block; margin-top: 6px; font: 800 14px/1 var(--disp); letter-spacing: .18em; color: #ffd34d; text-shadow: 0 2px 0 rgba(0,0,0,.35); }
@@ -347,6 +362,10 @@
   #start .intro { margin: 8px 0 18px; color: rgba(246,236,220,.8); max-width: 40em; font-size: 14px; line-height: 1.4; }
   #start .intro p { margin: 0; }
   #start .introLead { font-size: 15px; color: rgba(246,236,220,.9); max-width: min(42em, calc(100% - 250px)); }   /* (clear of the music tip and the name tags, top right) */
+  /* a short, wide window (the game inside Wavedash's page on a laptop, ~980x550, his report 2 Oct 2026): the one-line
+     description goes, so both columns end above About us / Feedback / Patch notes instead of running under them */
+  @media (min-width: 761px) and (min-height: 461px) and (max-height: 640px) { #start .introLead { display: none; } }
+  @media (min-width: 761px) and (min-height: 641px) and (max-height: 900px) { #start .mmPanel { margin-bottom: 38px; } }   /* (a taller laptop window: the right panel stops short of the buttons, as on phones; the spot list keeps its full height) */
   #start .keys { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 9px !important; font-size: 13px; color: rgba(246,236,220,.7); }
   #start .keys span { display: inline-flex; align-items: center; white-space: nowrap; }
   #start .keys kbd { display: inline-block; min-width: 18px; margin-right: 7px; padding: 3px 7px 2px; border-radius: 6px; border: 1px solid rgba(246,236,220,.32); border-bottom-width: 2px; background: rgba(20,14,9,.5); font: 700 12px/1.25 var(--disp); letter-spacing: .06em; color: var(--sand); text-align: center; }
@@ -998,13 +1017,17 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261002-1654</small>
+    <small id="build">build 261002-1959</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-02-goodwaves', date: '2 Oct 2026', time: '7:59 pm', title: 'Good waves get noticed', items: [
+      'Free surf: score 7.0 or more and a small pill pops up for everyone on the beach, with your name, your score and your best move. Pro Surfer waves glow gold, a perfect 10 in every colour.',
+      'Fix: the menu no longer runs under the About us, Feedback and Patch notes buttons on smaller laptop windows.',
+    ] },
     { id: '2026-10-02-firstwave', date: '2 Oct 2026', time: '4:54 pm', title: 'Waves on arrival', items: [
       'Free surf: the first wave now breaks a second or two after you arrive, so the sea is never flat when you get there.',
     ] },
@@ -1529,6 +1552,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1203"></script>
+<script type="module" src="js/game.js?v=1208"></script>
 </body>
 </html>
