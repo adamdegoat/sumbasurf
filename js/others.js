@@ -99,6 +99,8 @@ export class OtherSurfer {
     this.body.traverse((o) => { o.layers.set(0); if (o.isMesh) { o.frustumCulled = false; o.renderOrder = 10; o.material = bodyMat(o.material);
       if (/shorts/i.test(o.name)) { o.material = o.material.clone(); this.shortsMat = o.material; if (shorts != null) o.material.color.set(shorts); } } });   // (one set of materials for every other surfer, but their own shorts colour)
     this.shorts = shorts; this.boardType = board; this.design = design; this.board = boardFor(board, design).clone(true); this.ghost = this.board.getObjectByName('ghost');
+    // (this surfer's own copy of the board's materials, so drawing it in front of the water can be switched off just for them)
+    this.boardMats = []; this.board.traverse((o) => { if (o.isMesh && o !== this.ghost) { o.material = o.material.clone(); this.boardMats.push(o.material); } });
     this.group.add(this.board, this.body);
     // (one skeleton for the whole body: the four meshes of a body each came with their own copy, the same bones, so the
     // graphics chip was sent four identical sets of bones every frame; only shared where they really are identical)
@@ -140,7 +142,12 @@ export class OtherSurfer {
       this._pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); this._fr.setFromProjectionMatrix(this._pm); this._sp.center.copy(S.pos); }
     const seen = !cam || this._fr.intersectsSphere(this._sp);
     this.group.visible = seen; if (!seen) { this.place(S); return; }   // (kept where they are even out of view: turning to look, they're never somewhere old for a frame)
-    this.ghost.visible = d < 30;
+    // (2 Oct 2026: a board is pulled in front of the water, and has a see-through copy under it, for a surfer lying on it:
+    //  the curved face hid the rails. Riding, neither: a friend deep in a barrel showed as a dark board floating through
+    //  the lip, their body rightly hidden behind the water. Standing up, the board is drawn plainly, behind the water like them)
+    const riding = S.state === 'RIDE' || S.state === 'POP';
+    if (riding !== this.ridingMat) { this.ridingMat = riding; for (const m of this.boardMats) m.polygonOffset = !riding; }
+    this.ghost.visible = d < 30 && !riding;
     const far = this.far ? d > 23 : d > 27;   // (a little apart, so someone paddling at 25 m doesn't flick between the two)
     if (far !== this.far) { let ok = !far; for (const [m, full] of this.lodM) { const lg = far ? farGeo(full) : null; if (lg) ok = true; m.geometry = lg || full; } this.far = far && ok; }
     const every = d < 15 ? 1 : d < 40 ? 2 : d < 80 ? 3 : 5;   // (measured 30 Sep 2026: posing costs ~0.24 ms a surfer a frame on his Mac, ~1 ms on a slow phone)
@@ -152,7 +159,7 @@ export class OtherSurfer {
   // bones' texture on the graphics chip and its shorts colour (the body's shapes and the board are shared, kept)
   dispose() {
     const done = new Set(); for (const m of this.skins || []) if (!done.has(m.skeleton)) { done.add(m.skeleton); m.skeleton.dispose(); }
-    if (this.shortsMat) this.shortsMat.dispose();
+    if (this.shortsMat) this.shortsMat.dispose(); for (const m of this.boardMats || []) m.dispose();
     if (this.mixer) { this.mixer.stopAllAction(); this.mixer.uncacheRoot(this.body); }
   }
   setShorts(c) { if (this.shorts === c || !this.shortsMat) return; this.shorts = c; this.shortsMat.color.set(c); }

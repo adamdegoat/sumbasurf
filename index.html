@@ -994,13 +994,17 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261002-0043</small>
+    <small id="build">build 261002-1002</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-02-barrelfix', wd: true, date: '2 Oct 2026', time: '10:02 am', title: 'Better barrel photos', items: [
+      'Party Point: the photographer now shoots your barrel from the water, looking into the tube, so you can see yourself inside it.',
+      'Fix: a friend riding deep in a barrel no longer shows as a board floating through the wave.',
+    ] },
     { id: '2026-10-02-partypoint', wd: true, date: '2 Oct 2026', time: '12:43 am', title: 'New free surf beach: Party Point', items: [
       'A long left peeling down white cliffs, made for riding together. Open a beach and pick Party Point.',
       'Ride a wave with friends for a PARTY WAVE bonus on your score.',
@@ -1502,6 +1506,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1155"></script>
+<script type="module" src="js/game.js?v=1158"></script>
 </body>
 </html>
