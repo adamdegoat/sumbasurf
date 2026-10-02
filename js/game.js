@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=218';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=207';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=209';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER, DESIGNS, SEASON, bakeDesigns } from './board.js?v=23';
 import { SurfAudio } from './audio.js?v=30';
 import { ranch, POOL } from './ranch.js?v=9';
@@ -13,8 +13,8 @@ import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=30';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=74';
-import { wildlife } from './wildlife.js?v=78';
+import { crew } from './crew.js?v=76';
+import { wildlife } from './wildlife.js?v=80';
 import { droneShow } from './show.js?v=17';
 import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=5';
 
@@ -283,6 +283,7 @@ vArm = 0.; vLeg = 0.;
   };
   m.side = THREE.DoubleSide;   // (inside faces are drawn as a solid cap colour, so a cut looks closed)
   m.transparent = true;   // (for the fade at the lens; everything else is drawn solid, alpha 1)
+  m.forceSinglePass = true;   // (2 Oct 2026, heat check: see-through and two-sided, three drew it in two passes and flipped its side between them, which re-did its whole shader setup twice a frame; both sides in one pass, back faces still capped via gl_FrontFacing)
   m.customProgramCacheKey = () => 'cutaway27' + (m.userData.near || 0);
   m.needsUpdate = true;
 }
@@ -2298,7 +2299,7 @@ const bowGlow = (() => {
 })();
 const TRACK_N = 320;
 const track = (() => {
-  const P = Array.from({ length: TRACK_N }, () => ({ x: 0, y: -99, z: 0, t: -99, w: 0, dx: 1, dz: 0 }));
+  const P = Array.from({ length: TRACK_N }, () => ({ x: 0, y: -99, z: 0, t: -99, w: 0, dx: 1, dz: 0, yl: 0, yr: 0, fresh: true, hot: false }));   // (every field there from the start, numbers kept numbers: see the heat note below)
   const pos = new Float32Array(TRACK_N * 2 * 3), uv = new Float32Array(TRACK_N * 2 * 2), al = new Float32Array(TRACK_N * 2), idx = [];
   for (let i = 0; i < TRACK_N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setAttribute('aA', new THREE.BufferAttribute(al, 1)); g.setIndex(idx);
@@ -2328,7 +2329,8 @@ const track = (() => {
         if (!last) { last = { x: fx, y: fy, z: fz }; dist = 1; }
         dist += Math.hypot(fx - last.x, fy - last.y, fz - last.z);   // (spaced along the path itself: climbing a steep face, points 30 cm apart across the water would be metres apart up it, and the flat strip between them would cut into the curved face)
         if (dist >= 0.3) { dist = 0; head = (head + 1) % TRACK_N; const q = P[head], pq = P[(head - 1 + TRACK_N) % TRACK_N], L = Math.hypot(fx - last.x, fz - last.z) || 1;
-          Object.assign(q, { x: fx, z: fz, y: heightAt(waves, fx, fz) + 0.04, yl: undefined, yr: undefined, t: T0, w: 0.36 + Math.min(0.55, Math.abs(rider.turn) * 0.2 + rider.skid * 0.6 + (rider.slide || 0) * 0.5), dx: L > 0.08 ? (fx - last.x) / L : pq.dx, dz: L > 0.08 ? (fz - last.z) / L : pq.dz });   // (straight up the face the step across the water is tiny: keep the last heading, not a jittering one)
+          const ndx = L > 0.08 ? (fx - last.x) / L : pq.dx, ndz = L > 0.08 ? (fz - last.z) / L : pq.dz;   // (2 Oct 2026, heat check: set field by field, no new object each point, and 'not placed yet' is a flag, not undefined in a number field)
+          q.x = fx; q.z = fz; q.y = heightAt(waves, fx, fz) + 0.04; q.fresh = true; q.t = T0; q.w = 0.36 + Math.min(0.55, Math.abs(rider.turn) * 0.2 + rider.skid * 0.6 + (rider.slide || 0) * 0.5); q.dx = ndx; q.dz = ndz;   // (straight up the face the step across the water is tiny: keep the last heading, not a jittering one)
           last.x = fx; last.y = fy; last.z = fz; }
       } else last = null;
       // build the ribbon from the newest point back (a gap where a ride ended: two rides never join up)
@@ -2338,7 +2340,7 @@ const track = (() => {
         const nq = P[(i - 1 + TRACK_N) % TRACK_N]; if (k < TRACK_N - 1 && (nq.t < 0 || Math.abs(q.t - nq.t) > 0.6)) a = 0;   // (the next point back belongs to another ride)
         if (k === 0) a *= 0.2;
         const w = a > 0 ? q.w * (1 + Math.min(age, 5) * 0.5) : 0, sx = -q.dz * w, sz = q.dx * w;   // (faded out: no width, so nothing is drawn there at all)
-        if (a > 0) { q.z += 1.1 * dt; if (q.yl === undefined || q.hot || (i + frame) % 3 === 0) { const y0 = q.y; q.y = heightAt(waves, q.x, q.z) + 0.04; q.hot = Math.abs(q.y - y0) > 0.02; q.yl = heightAt(waves, q.x + sx, q.z + sz) + 0.04; q.yr = heightAt(waves, q.x - sx, q.z - sz) + 0.04; } }   // (each edge sits on the water where it is: up a steep face, one edge level with the middle would be buried in the wave and the line drawn as a saw. A point the moving face is lifting ('hot') is re-seated every frame, not every third: out of step with its neighbours, every third one sank into the face and the line showed as rungs)
+        if (a > 0) { q.z += 1.1 * dt; if (q.fresh || q.hot || (i + frame) % 3 === 0) { q.fresh = false; const y0 = q.y; q.y = heightAt(waves, q.x, q.z) + 0.04; q.hot = Math.abs(q.y - y0) > 0.02; q.yl = heightAt(waves, q.x + sx, q.z + sz) + 0.04; q.yr = heightAt(waves, q.x - sx, q.z - sz) + 0.04; } }   // (each edge sits on the water where it is: up a steep face, one edge level with the middle would be buried in the wave and the line drawn as a saw. A point the moving face is lifting ('hot') is re-seated every frame, not every third: out of step with its neighbours, every third one sank into the face and the line showed as rungs)
         pos[o * 3] = q.x + sx; pos[o * 3 + 1] = a > 0 ? q.yl : q.y; pos[o * 3 + 2] = q.z + sz; pos[o * 3 + 3] = q.x - sx; pos[o * 3 + 4] = a > 0 ? q.yr : q.y; pos[o * 3 + 5] = q.z - sz;
         uv[o * 2] = q.t * 3; uv[o * 2 + 1] = 0; uv[o * 2 + 2] = q.t * 3; uv[o * 2 + 3] = 1; al[o] = al[o + 1] = a;
       }

@@ -1,7 +1,7 @@
 // Tail slide scoring vet (2 Oct 2026): every ride scored twice, as it happened and as if each tail slide had stayed the
 // snap it started as (same ride, same moves otherwise), so the difference is exactly what the tail slide added.
 //   const S = await import('./test/tsscore.js?v=' + Date.now()); await S.run('medium', 8)
-import { scoreRide } from '../js/surf.js?v=207';
+import { scoreRide } from '../js/surf.js?v=209';
 import * as V from './tsvet.js?v=4';
 export async function run(mode, n = 8, board = 'short') {
   const g = window.__g; if (!g.rider) await V.ride({ mode, board, maxT: 0.5 }); const P = g.rider.constructor.prototype;

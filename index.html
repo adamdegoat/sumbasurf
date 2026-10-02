@@ -998,13 +998,16 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261002-1438</small>
+    <small id="build">build 261002-1519</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-02-cooler', date: '2 Oct 2026', time: '3:19 pm', title: 'Lighter on your phone', items: [
+      'The game now does less work every frame while you surf, so phones stay cooler and smoother on long sessions.',
+    ] },
     { id: '2026-10-02-bayheat', date: '2 Oct 2026', time: '2:38 pm', title: 'Free surf runs cooler', items: [
       'Fix: at The Bay, phones could run hot while you were paddling near the beach. That work is now a small fraction of what it was.',
     ] },
@@ -1523,6 +1526,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1200"></script>
+<script type="module" src="js/game.js?v=1202"></script>
 </body>
 </html>
