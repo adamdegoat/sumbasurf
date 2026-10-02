@@ -1017,13 +1017,17 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261002-1959</small>
+    <small id="build">build 261002-2033</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-02-roomwaves', wd: true, date: '2 Oct 2026', time: '8:33 pm', title: 'Waves for everyone on the beach', items: [
+      'Fix: if the player making the waves left the game in the background, a beach could go flat. Someone else now takes over in a second, and joining a beach never waits long for its waves.',
+      'Party Point: the barrel photo is gone.',
+    ] },
     { id: '2026-10-02-goodwaves', date: '2 Oct 2026', time: '7:59 pm', title: 'Good waves get noticed', items: [
       'Free surf: score 7.0 or more and a small pill pops up for everyone on the beach, with your name, your score and your best move. Pro Surfer waves glow gold, a perfect 10 in every colour.',
       'Fix: the menu no longer runs under the About us, Feedback and Patch notes buttons on smaller laptop windows.',
@@ -1552,6 +1556,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1208"></script>
+<script type="module" src="js/game.js?v=1209"></script>
 </body>
 </html>

@@ -723,11 +723,12 @@ function ripFoam(dt) {
 // everyone's names, to save or share. You're drawn as your friends see you (others.js), not your own first-person body,
 // which has no head and is cut away for your eyes. Costs one extra picture of the world, once, at the moment of the snap
 const PHOTO = { x: -277, y: 7.5, z: 96 };
+const PHOTO_ON = false;   // (2 Oct 2026, his call 'take that away': the photographer no longer snaps barrels, so no YOUR PHOTO button; the code stays for now)
 let photo = null, photoCam = null, selfOS = null, pcBtn = null, pcCard = null; const V3P = new THREE.Vector3();
 function photoTick() {
   const r = rider; if (!r || spec) return;
   const w = r.wave;
-  if (r.standing && w && w.sid && r.inBarrel && (r.ride.tubeT || 0) > 0.6 && (!photo || photo.ride !== r.ride) && w.x0 !== undefined && w.peelX - w.x0 < (w.cond.bowl || 90) + 25 && OSmod && surferGltf) snapPhoto(r);
+  if (PHOTO_ON && r.standing && w && w.sid && r.inBarrel && (r.ride.tubeT || 0) > 0.6 && (!photo || photo.ride !== r.ride) && w.x0 !== undefined && w.peelX - w.x0 < (w.cond.bowl || 90) + 25 && OSmod && surferGltf) snapPhoto(r);
   if (photo && !photo.shown && photo.ride === r.ride && !r.standing) { photo.endT ??= T; if (T - photo.endT > 3.4) { photo.shown = true; photoThumb(); } }
   if (photo && !photo.shown && photo.ride !== r.ride && r.ride && r.standing) { photo.shown = true; photoThumb(); }   // (straight onto another wave: show it anyway)
 }
