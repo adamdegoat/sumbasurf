@@ -3337,6 +3337,7 @@ function villaBody(dt, moving) {
   if (bones.head) { bones.head.getWorldPosition(B.h); B.T.copy(camera.position).addScaledVector(fw, -0.1).addScaledVector(WORLD_UP, -0.06).sub(B.h); rig.position.add(B.T); rig.updateMatrixWorld(true); }
 }
 
+const sandChk = { t: -9, x: 0, z: 0, on: false };   // (the last look at whether you've drifted onto the sand: see tick)
 function tick(dt) {
   T += dt;
   ENV.uTime.value += dt;
@@ -3355,7 +3356,10 @@ function tick(dt) {
     updateRanch(dt);
     rider.caughtT = rider.washed ? 6 : Math.max(0, (rider.caughtT || 0) - dt);   // (remember being washed in for a few seconds: that's why you ended up inside)
     // drifting too far inside or out wide on a lie: bring the surfer back to the lineup (the pool's walls hold you in)
-    if (!spec && isFree() && rider.state === 'LIE' && rider.z > REEF.zBeach - 70 && groundAt(rider.x, rider.z) > heightAt(waves, rider.x, rider.z) - 0.45) rider.z -= 4 * dt;   // (the edge of the sand: the shallows hold you off it, his call 30 Sep 2026: nothing to do on the beach, so no walking there)
+    if (!spec && isFree() && rider.state === 'LIE' && rider.z > REEF.zBeach - 70) {   // (2 Oct 2026, heat check: the ray down onto the beach cost 1.2 ms a frame here, twice everything else in a free-surf frame; you paddle under 2 m/s, so asking ~8 times a second, or after 0.6 m, gives the same answer)
+      if (T - sandChk.t > 0.12 || Math.hypot(rider.x - sandChk.x, rider.z - sandChk.z) > 0.6) { sandChk.t = T; sandChk.x = rider.x; sandChk.z = rider.z; sandChk.on = groundAt(rider.x, rider.z) > heightAt(waves, rider.x, rider.z) - 0.45; }
+      if (sandChk.on) rider.z -= 4 * dt;
+    }   // (the edge of the sand: the shallows hold you off it, his call 30 Sep 2026: nothing to do on the beach, so no walking there)
     if (!spec && isFree() && rider && rider.state === 'LIE' && (rider.x < freeLim().x0 || rider.x > freeLim().x1 || rider.z < freeLim().z0)) { const L = freeLim(); rider.x = Math.max(L.x0, Math.min(L.x1, rider.x)); rider.z = Math.max(L.z0, rider.z); FREE.edgeT = 2.5; }   // (the edge of the bay: you just can't paddle further, and the pill up top says to head back; it used to end your go with a score screen, which the free beach no longer has, so it reset you on the spot again and again)   // (the free-surf beach: the whole bay is yours to paddle round)
     else if (!spec && !isRanch() && !isFree() && rider.state === 'LIE' && (rider.z > (isTow() ? REEF.zBeach - 80 : 40) || Math.abs(rider.x - 5) > (isTow() ? 700 : 70) || rider.z < (isTow() ? -120 : -60))) { rider.out(rider.z > 40 && rider.caughtT > 0 ? 'Caught inside: the whitewater washed you in' : 'Drifted out of the lineup'); }
     stallFx(dt);
