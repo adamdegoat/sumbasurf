@@ -35,6 +35,7 @@ export const RIDE = {
   air: true,                           // can this board launch an air
   slipSoft: 0.3, slipHard: 0.62,       // how far the tail can hang out before the fins pull it back (rad): gently from soft, never past hard
   slideMove: false,                    // the alaia's slide: held well past what fins allow, scored as a move (finned boards: off)
+  tail: 1,                             // the tail slide (STALL held in a snap at the lip): how far the fins let go (shortboard, fish: fully)
 };
 
 // The boards. Each changes the physics the way the real thing does (relative to the 6'2" shortboard above):
@@ -53,11 +54,11 @@ const NOSE_STEP = 0.38, NOSE_BACK = 0.24, PEARL_T = 0.8, WOB_MAX = 0.3, WOB_STEE
 export const BOARDS = {
   short: {},
   fish: { planeV: 3.0, snap: 0.85, paddleThrust: 3.0, paddleMax: 2.7, drag: 0.07, drag2: 0.011, leanMax: 1.3, relFrom: 0.3, leanRate: 10.0, yawLag: 0.06, railBite: 0.25, gripMax: 18, tailLet: 0.25, skidLoss: 0.12, glide: 0.78, pump: 0.62, catchK: 0.85, catchPaddle: 0.6, catchLate: 1.9, catchReach: 1.4 },
-  long: { planeV: 2.3, walk: true, snap: 0.3, paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.85, catchK: 0.65, catchPaddle: 0.35, catchLate: 2.5, catchReach: 3.0, air: false, turnMin: 0.55 },
+  long: { tail: 0.2, planeV: 2.3, walk: true, snap: 0.3, paddleThrust: 3.4, paddleMax: 3.1, lieDrag: 0.18, drag: 0.075, drag2: 0.009, leanMax: 0.85, leanRate: 4.0, leanEase: 7, yawLag: 0.35, railBite: 0.42, gripMax: 20, glide: 0.82, pump: 0.3, popTime: 0.85, catchK: 0.65, catchPaddle: 0.35, catchLate: 2.5, catchReach: 3.0, air: false, turnMin: 0.55 },
   alaia: { planeV: 4.2, snap: 1.1, paddleThrust: 2.2, paddleMax: 2.1, lieDrag: 0.32, lieLat: 1.6, drag: 0.055, drag2: 0.009, leanMax: 1.15, leanRate: 8.0, yawLag: 0.07, railBite: 0.26,
     finGrip: 2.3, gripMax: 11, relFrom: 0.22, tailLet: 0.18, tailBack: 0.45, skidLoss: 0.05, glide: 0.82, pump: 0.42, popTime: 0.66, catchK: 1.2, catchPaddle: 1.05, catchLate: 1.4, catchReach: 0.85,
     air: false, slipSoft: 0.55, slipHard: 1.2, slideMove: true },
-  gun: { planeV: 3.0, snap: 0.45, paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.72, catchK: 0.75, catchPaddle: 0.5, catchLate: 2.0, catchReach: 1.8, turnMin: 0.75 },
+  gun: { tail: 0.35, planeV: 3.0, snap: 0.45, paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.72, catchK: 0.75, catchPaddle: 0.5, catchLate: 2.0, catchReach: 1.8, turnMin: 0.75 },
 };
 export function setBoard(name) { Object.assign(RIDE, BASE, BOARDS[name] || {}); }
 
@@ -68,7 +69,8 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 // what each move is worth before how well and where you did it (28 Sep 2026: turns, snaps and cutbacks raised so a
 // wave of hard, committed turns in the pocket can score like a barrel, as real judges score it)
 const LINK_TOP = new Set(['SNAP', 'CUTBACK', 'FLOATER', 'AIR', 'AIR 360']);   // (the moves a bottom turn sets up)
-export const MOVE_BASE = { SLIDE: 4.2, TURN: 1.0, CARVE: 3.8, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0, 'HANG FIVE': 3.6, 'HANG TEN': 5.2, ROUNDHOUSE: 5.8, 'LATE DROP': 4.0 };   // (airs kept above the turns: the hardest move scores most)
+export const RH = { s: 0.6, v: 0.5 };   // (the roundhouse's rebound: how close to the whitewater, in wave heights, and how much of the wave's speed kept)
+export const MOVE_BASE = { 'TAIL SLIDE': 5.0, SLIDE: 4.2, TURN: 1.0, CARVE: 3.8, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0, 'HANG FIVE': 3.6, 'HANG TEN': 5.2, ROUNDHOUSE: 5.8, 'LATE DROP': 4.0 };   // (airs kept above the turns: the hardest move scores most)
 export const MOVE_BASE_OLD = { TURN: 0.9, SNAP: 2.2, CUTBACK: 2.4, FLOATER: 2.0, AIR: 3.0, 'AIR 360': 4.2 };
 const JUDGE_K = 6;   // (28 Sep 2026: with quality over quantity below, 3 to 5 great moves reach the 8s; was 8)   // how hard the top of the scale is (calibrated with test riders: see HANDOVER)
 
@@ -406,10 +408,21 @@ export class Rider {
       const zone = this.state === 'RIDE' && sl && backDown ? smooth(0.5, 0.72, hRel) * smooth(0.3, 1.6, climb) * smooth(0.55, 0.85, Math.abs(this.lean) / P.leanMax) * smooth(0.45 * C.speed, 0.8 * C.speed, speed) : 0;
       this.snapK = zone > (this.snapK || 0) ? this.snapK + (zone - this.snapK) * Math.min(1, h * 14) : Math.max(0, (this.snapK || 0) - h * 3.2);   // (in quickly, out over about a third of a second)
       const sk = this.snapK * (P.snap ?? 1);
+      // the tail slide (his pick 2 Oct 2026): hold STALL as you snap at the lip and the fins let go: the tail skates out much
+      // further than a snap's, spraying, then let go of STALL and the fins catch again. Only in a snap at the top (snapK);
+      // STALL anywhere else is the brake it always was. Held too long, the fins never catch and the tail slides out from
+      // under you. How loose: P.tail (shortboard and fish fully, longboard a little, the gun hardly; the alaia has its own slide)
+      const tailP = P.slideMove ? 0 : (P.tail ?? 1), stallIn = (inp.stall || 0) > 0.5;
+      // (vet 2 Oct 2026, his call: only a FRESH press starts it, STALL pressed as you snap (within 0.35 s); already holding STALL
+      //  before the snap, as barrel hunters do up high, it stays the brake it always was, so they never slide out by surprise)
+      this.stallInT = stallIn ? (this.stallInT || 0) + h : 0;
+      if (tailP && stallIn && this.state === 'RIDE' && (this.tailOn || ((this.snapK || 0) > 0.45 && this.stallInT < 0.35))) this.tailOn = true; else if (!stallIn) this.tailOn = false;
+      this.tailK = (this.tailK || 0) + ((this.tailOn ? 1 : 0) - (this.tailK || 0)) * Math.min(1, h * 10);
+      const tk = this.tailK * tailP;
       if (sk > (this.snapPk || 0)) this.snapPk = sk;
       if (this.lipPush > 0) { this.lipPush -= h; az += 14 * this.lipPush / 0.35; }   // (met the lip as it threw: it shoves you back down the face)
       const turnCap = Math.min(5.2, 2.3 * P.g / Math.max(speed, 3.2)) * (1 + 1.7 * sk);
-      const pivot = Math.sign(this.lean) * sk * 5.5 * Math.min(1, Math.abs(this.lean) / P.leanMax);   // (the back foot swinging the tail round: up to ~300 deg/s on top of the carve)
+      const pivot = Math.sign(this.lean) * sk * 5.5 * Math.min(1, Math.abs(this.lean) / P.leanMax) * (1 + 0.6 * tk);   // (fins let go: the tail swings round further)   // (the back foot swinging the tail round: up to ~300 deg/s on top of the carve)
       const wantTurn = Math.max(-turnCap, Math.min(turnCap, bite * railHold * P.g * Math.tan(this.lean) / Math.max(speed, 3.2) + pivot));
       this.turn += (wantTurn - this.turn) * Math.min(1, h / (P.yawLag * (1 - 0.45 * sk)));
       this.th += this.turn * h;
@@ -419,13 +432,16 @@ export class Rider {
       if (Math.hypot(rx, rz) > 1.5) {
         // measured against the water the board is sliding on, not the ground
         const vd = Math.atan2(rz, rx); let slip = this.th - vd; slip = Math.atan2(Math.sin(slip), Math.cos(slip));
-        const a = Math.abs(slip), soft = P.slipSoft + 0.5 * sk, hard = P.slipHard + 0.7 * sk;   // (in a snap the tail swings right out)
+        const a = Math.abs(slip), soft = P.slipSoft + 0.5 * sk + 0.4 * tk, hard = Math.min(tk > 0.05 ? 1.31 : 9, P.slipHard + 0.7 * sk + 0.25 * tk);   // (a tail slide never passes ~75 deg: a slide, not a spin)   // (in a snap the tail swings right out; in a tail slide, further)
         this.slide = a;   // how far the tail is hanging out (rad): drives the spray fan and the hiss
-        if (a > soft) { const na = a > hard ? hard : a - (a - soft) * Math.min(1, h * 6); this.th = vd + Math.sign(slip) * na; }
+        if (a > soft) { const na = a > hard ? hard : a - (a - soft) * Math.min(1, h * 6 * (1 - 0.8 * tk)); this.th = vd + Math.sign(slip) * na; }   // (fins let go in a tail slide: they hardly pull the tail back till you let go of STALL)
       }
+      // (a tail slide held out too long: the fins never catch and it slides out from under you)
+      // (the rule a player can learn: let go of STALL within about a second of the release, or the fins never catch)
+      this.tailOutT = this.tailOn ? (this.tailOutT || 0) + h : 0; if (this.tailOutT > 1.1) { this.tailOn = false; this.tailOutT = 0; return this.wipe("Held the slide too long: the fins never caught"); }
       // (the alaia: held right out at the limit too long, it loses the water and slides out from under you)
       if (P.slideMove) { if ((this.slide || 0) > 0.93 * P.slipHard) { this.slideOutT = (this.slideOutT || 0) + h; if (this.slideOutT > 0.6) return this.wipe('Slid out: the alaia lost the water'); } else this.slideOutT = Math.max(0, (this.slideOutT || 0) - 2 * h); }
-      const dr = P.drag * along + P.drag2 * along * Math.abs(along) + 1.6 * sk * (this.slide || 0) * Math.sign(along);   // (a snap scrubs speed: the tail sliding across the water)
+      const dr = P.drag * along + P.drag2 * along * Math.abs(along) + 1.6 * (sk + 0.5 * tk) * (this.slide || 0) * Math.sign(along);   // (a snap scrubs speed: the tail sliding across the water; a held tail slide keeps scrubbing)
       ax += -dr * dx; az += -dr * dz;
       // a monster wave (C.vSoft, C.chatter; 1 Oct 2026): past ~86 km/h the water and air drag climb steeply, so you top out near
       // the 80-100 km/h real big-wave riders reach (it ran to 148); and the bumps on a giant face rattle the board at speed: the
@@ -448,8 +464,8 @@ export class Rider {
       this.stalling = inp.stall || 0;
       this.stallT = this.stalling ? (this.stallT || 0) + h : 0;
       if (this.spitOut > 0 && this.inBarrel) this.stalling = 0;   // (the spit blows you out: no braking against it)
-      if (this.stalling) { const bite = 1 + (P.stallBite ?? 1.1) * Math.exp(-this.stallT / 0.45), sd = P.stallDrag * bite * this.stalling * Math.min(1, Math.abs(along) / 2) * Math.sign(along); ax -= sd * dx; az -= sd * dz; }
-      { const vr = Math.hypot(rx, rz); if (this.stalling && vr < (P.planeV ?? 3.6)) this.bogT = (this.bogT || 0) + h; else this.bogT = Math.max(0, (this.bogT || 0) - 2.5 * h);
+      if (this.stalling) { const bite = 1 + (P.stallBite ?? 1.1) * Math.exp(-this.stallT / 0.45), sd = P.stallDrag * bite * this.stalling * Math.min(1, Math.abs(along) / 2) * Math.sign(along) * (1 - 0.7 * (this.tailK || 0) * (P.slideMove ? 0 : (P.tail ?? 1))); ax -= sd * dx; az -= sd * dz; }   // (in a tail slide STALL lets the fins go rather than braking: the slide itself scrubs the speed)
+      { const vr = Math.hypot(rx, rz); if (this.stalling && !this.tailOn && vr < (P.planeV ?? 3.6)) this.bogT = (this.bogT || 0) + h; else this.bogT = Math.max(0, (this.bogT || 0) - 2.5 * h);
         this.bogK = Math.min(1, this.bogT / BOG_FALL);
         if (this.bogT > BOG_FALL) return this.wipe('Stalled too long: the tail sank'); }
       // inside the tube the wave's own flow helps you hold your spot (the tiny foot adjustments a real surfer makes that a
@@ -626,6 +642,14 @@ export class Rider {
           if (this.slideT >= 0.3 && this.slidePk >= 0.75 && this.v > 0.45 * C.speed && this.slideOn) { this.ride.slides = (this.ride.slides || 0) + 1; this.move('SLIDE', crit, this.slideT, (0.8 + 0.4 * smooth(0.75, 1.15, this.slidePk)) * (0.45 + 0.55 * smooth(5.0, 7.0, C.H))); }   // (worth less on a small, soft wave, as a judge scores it: Pantai Kuda (5 m) about half, 7 m and up in full; his call 30 Sep 2026, it out-scored every board there)
           this.slideT = 0; this.slidePk = 0; }
       }
+      // the tail slide, scored when the fins catch again (STALL let go, the tail back under you) with the board still running:
+      // out at least ~41 deg for a quarter second. It upgrades the snap it was part of (one move, scored as the bigger one)
+      if (!P.slideMove && (P.tail ?? 1)) {
+        if ((this.tailK || 0) > 0.3 && (this.slide || 0) > 0.6) { if (!(this.tsT > 0)) this.tsOn = onFront; this.tsT = (this.tsT || 0) + h; this.tsPk = Math.max(this.tsPk || 0, this.slide); }
+        else if (this.tsT > 0 && (!this.tailOn || (this.slide || 0) < 0.45)) {
+          if (this.tsT >= 0.25 && this.tsPk >= 0.72 && this.v > 0.4 * C.speed && this.tsOn) this.tailSlide(crit, this.tsT, this.tsPk);   // (caught: STALL let go, or the tail back under you)
+          this.tsT = 0; this.tsPk = 0; }
+      }
       // a cutback: from running down the line, turn right round to face the breaking part, still with speed
       const hd = Math.cos(this.th);
       if (hd > 0.5) this.cbArmed = true;
@@ -634,12 +658,14 @@ export class Rider {
       // the line with speed. The cutback you just did becomes the roundhouse (one move, scored as the bigger one)
       if (this.trick && this.trick.name.endsWith('CUTBACK') && this.trick.t < 0.05) this.rhT = this.ride.t;
       if (this.rhT != null && (this.ride.t - this.rhT > 2.2 || this.ride.t < this.rhT)) this.rhT = null;
-      if (this.rhT != null && hd > 0.5 && s / H < 0.8 && this.v > 0.45 * C.speed) { this.rhT = null; this.roundhouse(crit); }
+      // (2 Oct 2026, his call: it came out on almost every cutback. Now only a real rebound: right up against the whitewater
+      //  as you come round (RH.s, was 0.8), and still carrying speed out of it (RH.v, was 0.45); tested: Tanjung Uma 7/10 -> ~1/3, Watu Kanan 10/10 -> ~2/3)
+      if (this.rhT != null && hd > 0.5 && s / H < RH.s && this.v > RH.v * C.speed) { this.rhT = null; this.roundhouse(crit); }
       // a snap (top turn): climb hard up to the lip, then whip the board back down the face from up there
       const relVz = this.vz - C.speed, hTop = y / Math.max(sl.top, 0.3);
       if (relVz < -1.2 && hTop > 0.6) this.snapArm = 1.2; else this.snapArm = Math.max(0, this.snapArm - h);
       if (!(this.snapArm > 0) && !(this.snapK > 0)) { this.snapPk = 0; this.lipHit = false; }   // (a snap that never came round to a scored one leaves nothing behind)
-      if (this.snapArm > 0 && relVz > 0.8 && hTop > 0.5 && Math.abs(this.turn) > 1.3 && !(this.trick && this.trick.name.endsWith('SNAP'))) {
+      if (this.snapArm > 0 && relVz > 0.8 && hTop > 0.5 && Math.abs(this.turn) > 1.3 && !(this.trick && this.trick.name.endsWith('SNAP')) && !(this.ride.t - (this.tsAteT ?? -9) < 1.5 && this.ride.t >= this.tsAteT)) {   // (not the same turn again straight after a tail slide that already scored it)
         this.snapArm = 0; this.ride.snaps++; this.move('SNAP', crit, 0, 1, { pivot: this.snapPk || 0, lip: !!this.lipHit }); this.snapPk = 0; this.lipHit = false;
       }
       if (this.trick) { this.trick.t += h; if (this.trick.t > 1.4) this.trick = null; }
@@ -677,7 +703,7 @@ export class Rider {
     const spin = mine ? inp.steer * 5.2 : Math.max(-2.8, Math.min(2.8, off * 5));
     this.th += spin * h; A.spin += mine ? spin * h : 0; this.turn = spin * 0.5;
     this.lean += (inp.steer * 0.3 - this.lean) * Math.min(1, h * 6);
-    this.skid = 0; this.slide = 0; this.stalling = 0; this.stallT = 0; this.bogT = 0; this.bogK = 0; this.nose = 0; this.noseStep = 0; this.stepDir = 0; this.stepU = 0; this.pearlT = 0; this.pearlK = 0; this.shoulderK = 0; this.wob = 0; this.wobV = 0; this.wobK = 0; this.rhT = null; this.lateK = 0; this.lateDone = true; this.grabbing = false; this.hangT = 0; this.hang10T = 0; this.hangPocket = 0; this.pumping = false; this.inBarrel = false; this.onFace = false;
+    this.skid = 0; this.slide = 0; this.tailOn = false; this.tailK = 0; this.tsT = 0; this.tsPk = 0; this.tailOutT = 0; this.stallInT = 0; this.tsAteT = -9; this.stalling = 0; this.stallT = 0; this.bogT = 0; this.bogK = 0; this.nose = 0; this.noseStep = 0; this.stepDir = 0; this.stepU = 0; this.pearlT = 0; this.pearlK = 0; this.shoulderK = 0; this.wob = 0; this.wobV = 0; this.wobK = 0; this.rhT = null; this.lateK = 0; this.lateDone = true; this.grabbing = false; this.hangT = 0; this.hang10T = 0; this.hangPocket = 0; this.pumping = false; this.inBarrel = false; this.onFace = false;
     this.ride.t += h;
     const q = waterAt(waves, this.x, this.z, _c), e = 0.15;
     if (q.w) { this.wave = q.w; this.s = q.s; this.zl = q.zl; }
@@ -709,6 +735,15 @@ export class Rider {
     if (this.wave && (t10 >= 0.8 || t >= 0.6)) this.move(t10 >= 0.8 ? 'HANG TEN' : 'HANG FIVE', 0.4 + 0.6 * inPocket, t10 >= 0.8 ? t10 : t, 1 + 0.25 * Math.min(2, t - 0.6));
     this.hangT = 0; this.hang10T = 0; this.hangPocket = 0;
   }
+  tailSlide(crit, dur, pk) {
+    const R = this.ride, k = (0.8 + 0.4 * smooth(0.72, 1.1, pk)) * (0.6 + 0.4 * smooth(0.25, 0.6, dur)), m = [...R.moves].reverse().find((x) => x.name === 'SNAP' && R.t - x.t < 1.8);
+    R.tailSlides = (R.tailSlides || 0) + 1;
+    // (no snap scored yet: the tail slide IS that turn, so the snap it was part of must not score again when the board comes
+    //  back down; vet 2 Oct 2026: one turn was counting twice, TAIL SLIDE then SNAP)
+    if (!m) { this.snapArm = 0; this.snapPk = 0; this.lipHit = false; this.tsAteT = R.t; return this.move('TAIL SLIDE', crit, dur, k, { pivot: pk, lip: false }); }
+    m.pts *= MOVE_BASE['TAIL SLIDE'] / (m.base || MOVE_BASE.SNAP) * k; m.base = MOVE_BASE['TAIL SLIDE']; m.name = 'TAIL SLIDE'; m.dur = dur;
+    m.strong = m.strong || (pk >= 0.95 && dur >= 0.35); this.trick = { name: (m.strong ? 'BIG ' : '') + 'TAIL SLIDE', t: 0 };
+  }
   roundhouse(crit) {
     const R = this.ride, m = [...R.moves].reverse().find((x) => x.name === 'CUTBACK' && R.t - x.t < 2.4); if (!m) return;
     m.pts *= MOVE_BASE.ROUNDHOUSE / MOVE_BASE.CUTBACK; m.base = MOVE_BASE.ROUNDHOUSE; m.name = 'ROUNDHOUSE'; if (crit > 0.6) m.notes.push('off the whitewater');
@@ -736,8 +771,12 @@ export class Rider {
     const linked = R.t - R.lastMoveT < 1.6; R.combo = !linked ? 1 : name !== R.lastMove ? Math.min(5, R.combo + 1) : R.combo; R.lastMoveT = R.t; R.lastMove = name;
     const comboK = 1 + 0.1 * Math.min(R.combo - 1, 4); if (R.combo > 1) notes.push(`combo x${R.combo}`);
     const pts = k * base * posK * (0.2 + 0.8 * Math.pow(q, 1.3)) * comboK * (offBottom ? 1.25 : 1) * (0.8 + 0.2 * Math.min(1.5, C.H / 3));   // bigger surf, bigger scores
-    this.ride.moves.push({ name, pts, t: this.ride.t, notes, dur, base, strong: name === 'BARREL' ? dur >= 1.5 : q >= 0.65 && crit >= 0.55 });   // (strong: a big, committed one: see the excellent rule in scoreRide)
-    const big = q > 0.75 ? (name === 'BARREL' ? 'DEEP ' : 'BIG ') : '';
+    // (2 Oct 2026, his call: 0 of 17 test snaps ever counted. A snap's at the top, rarely right in the pocket: one hit hard off
+    //  the lip, or whipped round at full pivot, with speed, counts as a big one a little further from the curl)
+    const bigSnap = snap && (name === 'SNAP' || name === 'TAIL SLIDE') && q >= 0.6 && crit >= 0.3 && (snap.lip || snap.pivot > 0.6);
+    const strong = name === 'BARREL' ? dur >= 1.5 : (q >= 0.65 && crit >= 0.55) || !!bigSnap;
+    this.ride.moves.push({ name, pts, t: this.ride.t, notes, dur, base, strong });   // (strong: a big, committed one: see the excellent rule in scoreRide)
+    const big = q > 0.75 || bigSnap ? (name === 'BARREL' ? 'DEEP ' : 'BIG ') : '';
     this.trick = { name: big + (offBottom ? 'BOTTOM TURN + ' : '') + name + (name === 'BARREL' || name.startsWith('HANG') ? ` ${dur.toFixed(1)}s` : name.startsWith('AIR') ? ` ${dur.toFixed(1)}m` : ''), t: 0 };
   }
   // like a contest judge, out of 10: the best moves count most (diminishing after that), variety earns a bonus,

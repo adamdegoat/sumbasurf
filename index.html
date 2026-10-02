@@ -160,11 +160,15 @@
   #tube.slam.big .cword { animation: cslamBig .46s cubic-bezier(.2,.9,.3,1.2) both; }
   #tube.slam .cbig, #tube.slam .cpts { animation: cfade .3s .08s both; }
   #tube.live .cword { animation: cpulse .9s ease-in-out infinite; }
+  /* the tail slide (his call 2 Oct 2026): its own pink, skids in sideways like the board, with a trail of spray behind it, and wobbles to a stop */
+  #tube.skid .cword { animation: cskid .6s cubic-bezier(.15,.8,.3,1) both; }
+  #tube.skid .cbig, #tube.skid .cpts { animation: cfade .3s .25s both; }
   @keyframes cslam { 0% { opacity: 0; transform: rotate(-4deg) scale(1.5); } 50% { opacity: 1; transform: rotate(-4deg) scale(.93); } 75% { transform: rotate(-4deg) scale(1.04); } 100% { transform: rotate(-4deg) scale(1); } }
   @keyframes cslamBig { 0% { opacity: 0; transform: rotate(-4deg) scale(1.8); } 40% { opacity: 1; transform: rotate(-4deg) scale(.9); } 55% { transform: rotate(-6deg) scale(1.05) translateX(-4px); } 70% { transform: rotate(-2deg) scale(1) translateX(4px); } 85% { transform: rotate(-4deg) translateX(-2px); } 100% { transform: rotate(-4deg) scale(1); } }
+  @keyframes cskid { 0% { opacity: 0; transform: translateX(-70vw) rotate(-4deg) skewX(-28deg); text-shadow: 3px 3px 0 var(--ink), -14px 0 0 rgba(255,255,255,.4), -28px 0 0 rgba(255,255,255,.2); } 45% { opacity: 1; transform: translateX(14px) rotate(-7deg) skewX(-18deg); text-shadow: 3px 3px 0 var(--ink), -14px 0 0 rgba(255,255,255,.4), -28px 0 0 rgba(255,255,255,.2); } 65% { transform: translateX(-6px) rotate(-2deg) skewX(8deg); text-shadow: 3px 3px 0 var(--ink); } 82% { transform: translateX(2px) rotate(-4deg) skewX(-3deg); } 100% { transform: translateX(0) rotate(-4deg) skewX(0); } }
   @keyframes cfade { 0% { opacity: 0; } 100% { opacity: 1; } }
   @keyframes cpulse { 0%, 100% { transform: rotate(-4deg) scale(1); } 50% { transform: rotate(-4deg) scale(1.05); } }
-  @media (prefers-reduced-motion: reduce) { #tube.slam .cword, #tube.slam.big .cword, #tube.live .cword { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { #tube.slam .cword, #tube.slam.big .cword, #tube.live .cword, #tube.skid .cword { animation: none; } }
   body.hinting #cond { opacity: 0; } #cond { transition: opacity .3s; }
   #hint { top: max(10px, env(safe-area-inset-top)); left: 22%; right: 22%; text-align: center; text-shadow: none; }
   #hint span { display: inline-block; padding: 4px 10px 3px; border-radius: 11px; background: rgba(24,18,13,.42); border: 1px solid rgba(255,201,120,.22);
@@ -994,13 +998,20 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261002-1002</small>
+    <small id="build">build 261002-1246</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-02-tailslide', date: '2 Oct 2026', time: '12:46 pm', title: 'New move: the tail slide', items: [
+      'Tail slide: snap at the lip and press STALL as you turn. The tail breaks loose and slides out. Let go of STALL to catch it again. Hold too long and you slide out and fall.',
+      'Hitting the lip now hits back: spray, a crack of sound, a kick of the camera and drops on your screen (and a buzz on Android phones).',
+      'Big snaps off the lip now count as strong moves.',
+      'Roundhouse cutbacks now need a real rebound off the whitewater.',
+      'Your combo now shows live as you link moves.',
+    ] },
     { id: '2026-10-02-barrelfix', wd: true, date: '2 Oct 2026', time: '10:02 am', title: 'Better barrel photos', items: [
       'Party Point: the photographer now shoots your barrel from the water, looking into the tube, so you can see yourself inside it.',
       'Fix: a friend riding deep in a barrel no longer shows as a board floating through the wave.',
@@ -1506,6 +1517,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1158"></script>
+<script type="module" src="js/game.js?v=1173"></script>
 </body>
 </html>

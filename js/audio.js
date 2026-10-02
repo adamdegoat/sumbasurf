@@ -70,9 +70,10 @@ export class SurfAudio {
     this.set(this.hiss.g.gain, o.riding ? Math.min(0.45, 0.015 * o.v + 0.12 * lean * sp) : 0, 0.06);
     this.set(this.hiss.fl.frequency, 1200 + 90 * o.v + 900 * lean);
     // the tail letting go: a rougher spray noise comes in on top
-    this.set(this.spray.g.gain, o.riding ? Math.min(0.5, 0.55 * slide * (0.4 + sp)) : 0, 0.05);
-    this.set(this.spray.fl.frequency, 1900 + 1400 * slide);
-    this.set(this.drag.g.gain, o.riding && o.stall ? 0.22 * Math.min(1, o.v / 4) : 0, 0.08);
+    const tail = o.tail || 0;   // (a tail slide: the spray louder and rougher, and a low scrape of the board skidding across the water under it)
+    this.set(this.spray.g.gain, o.riding ? Math.min(0.5 + 0.35 * tail, (0.55 + 0.5 * tail) * slide * (0.4 + sp)) : 0, 0.05);
+    this.set(this.spray.fl.frequency, 1900 + 1400 * slide - 700 * tail);
+    this.set(this.drag.g.gain, o.riding && o.stall ? (0.22 + 0.28 * tail) * Math.min(1, o.v / 4) : 0, 0.08);
     this.set(this.echo.gain, o.barrel ? 0.55 : 0, 0.2);
     // chop slapping the bottom of the board: little low taps, more often the faster you go and the rougher the sea
     if (o.riding && o.dt) {

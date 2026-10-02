@@ -3,9 +3,9 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=218';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=197';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=207';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER, DESIGNS, SEASON, bakeDesigns } from './board.js?v=23';
-import { SurfAudio } from './audio.js?v=29';
+import { SurfAudio } from './audio.js?v=30';
 import { ranch, POOL } from './ranch.js?v=9';
 import { SPOTS, spotGroup, builtSpots } from './spots.js?v=161';
 import { villa, VILLA } from './villa.js?v=194';
@@ -13,8 +13,8 @@ import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=30';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=64';
-import { wildlife } from './wildlife.js?v=68';
+import { crew } from './crew.js?v=74';
+import { wildlife } from './wildlife.js?v=78';
 import { droneShow } from './show.js?v=17';
 import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=5';
 
@@ -1600,6 +1600,7 @@ function povCamera(dt) {
   // look mostly where you're travelling, partly where the board points (you see the nose swing in a turn/drift)
   const dh = Math.atan2(Math.sin(rider.th - travel), Math.cos(rider.th - travel));
   const popIn = st === 'POP' ? smooth01(popClock() / 0.2) : 1;   // (the catch: the view eases into the pop over 0.2 s; it used to lurch and tip in the first frame)
+  tsV += ((st === 'RIDE' && rider.tsT > 0 ? 1 : 0) - tsV) * Math.min(1, dt * 12);   // (a tail slide: the horizon tips and you drift out with the tail; the eyes still follow the board, so it stays in view sliding)
   let yawT = travel + dh * (standing ? 0.8 - 0.4 * popIn : 0.8);
   if (noseV > 0.001) yawT += Math.atan2(Math.sin(rider.th - yawT), Math.cos(rider.th - yawT)) * 0.35 * noseV;   // (on the nose, head up and looking ahead down the wave, as real longboarders do: only partly round to the board, his call 29 Sep 2026)   // (up the longboard you look along the board, down at its nose)   // (a little toward where the board points: you see the nose swing in a turn)
   // in the barrel look down the tube toward the exit (along the line), not out through the open side at the beach
@@ -1651,13 +1652,14 @@ function povCamera(dt) {
   // they used to lift to when a wave came, so you watch the sets coming yourself and nothing shifts on its own
   let pitchT = standing ? POVCAM.pitch - POVCAM.drop * dropK : -0.22;
   if (!standing && isRanch()) pitchT = Math.max(pitchT, -0.2);   // at the Sumba Ranch, eyes up on the machine wall where your wave comes from
-  pitchT += 0.14 * tubeEase + 0.07 * stallV + 0.035 * bogV * Math.sin(T * 7.3) + 0.12 * noseV + (standing && noseV > 0.01 ? 0.25 * noseV * Math.min(0, Math.asin(Math.max(-1, Math.min(1, pose.fwd.y)))) : 0); if (glK > 0.001) pitchT += (glP - pitchT) * glK;   // (on the nose your eyes follow the board's slope: heading down the face you look down it, so the tip stays in view)   // (up on the nose your eyes drop a little; when it starts to dig in you glance down at it, so you see the tip going under)   // (a stall: you sit back and your eyes tip up a little; sinking, they bob)   // (in the barrel your eyes lift ~8 deg, so you see the tube arching over you)   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
+  lipKick *= Math.exp(-dt * 9); pitchT += lipKick + 0.14 * tubeEase + 0.07 * stallV + 0.035 * bogV * Math.sin(T * 7.3) + 0.12 * noseV + (standing && noseV > 0.01 ? 0.25 * noseV * Math.min(0, Math.asin(Math.max(-1, Math.min(1, pose.fwd.y)))) : 0); if (glK > 0.001) pitchT += (glP - pitchT) * glK;   // (on the nose your eyes follow the board's slope: heading down the face you look down it, so the tip stays in view)   // (up on the nose your eyes drop a little; when it starts to dig in you glance down at it, so you see the tip going under)   // (a stall: you sit back and your eyes tip up a little; sinking, they bob)   // (in the barrel your eyes lift ~8 deg, so you see the tube arching over you)   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
   pov.pitch += (pitchT - pov.pitch) * Math.min(1, dt * (st === 'POP' ? 4 + 20 * Math.min(1, popClock() / 0.3) : st === 'RIDE' ? 5 + 19 * Math.max(0, 1 - rider.stateT / 0.4) : 5));   // (and out of it without a kink: the rates hand over gradually when you're up)   // (the pop: eyes snap down to the board between your hands)
-  pov.roll += ((standing ? -rider.lean * 0.2 - 0.55 * (rider.wob || 0) + 0.05 * bogV * Math.sin(T * 9.1) : 0) - pov.roll) * Math.min(1, dt * 6);   // (the wobble of a sinking tail rocks the horizon)   // you feel the lean: the horizon tips as you lay into a carve (less than the board: people hold their head nearer level)
+  pov.roll += ((standing ? -rider.lean * 0.2 - 0.09 * tsV * Math.sign(rider.lean) - 0.55 * (rider.wob || 0) + 0.05 * bogV * Math.sin(T * 9.1) : 0) - pov.roll) * Math.min(1, dt * 6);   // (the wobble of a sinking tail rocks the horizon)   // you feel the lean: the horizon tips as you lay into a carve (less than the board: people hold their head nearer level)
   // three.js cameras look down -z: turn our heading (angle in x/z) into a yaw about y
   _pe.set(pov.pitch - (rider.standing ? 0.055 * pumpA : 0), -pov.yaw - Math.PI / 2, pov.roll);   // (each pump stroke: the head nods down ~3 deg as you compress, like real POV footage)
   camera.quaternion.setFromEuler(_pe);
   camera.position.copy(pov.pos).add(rig.position);
+  if (tsV > 0.01) { const out = Math.sign(rider.lean) || 1; camera.position.x += Math.sin(rider.th) * out * 0.18 * tsV; camera.position.z -= Math.cos(rider.th) * out * 0.18 * tsV; }   // (the tail slide: your body swings out with the tail, ~18 cm toward the outside)
   // feel the water: small quick bumps through the board (chop under you), stronger with speed and chop, and a
   // rattle when the tail slides; tiny, so it reads as texture, never as shake
   if (standing && st === 'RIDE') {
@@ -1916,7 +1918,8 @@ function stallFx(dt) {
   if (pearlV < 0.5) pearlBuzzed = false;
   stallV += ((on ? rider.stalling || 0 : 0) - stallV) * Math.min(1, dt * (rider && rider.stalling ? 7 : 4));
   bogV += ((on ? rider.bogK || 0 : 0) - bogV) * Math.min(1, dt * 8);
-  if (ui.stall.classList.contains('bog') !== bogV > 0.12) ui.stall.classList.toggle('bog', bogV > 0.12);
+  const red = bogV > 0.12 || tailWarn();   // (and a tail slide held past 0.6 s: let go before it slides out at 1.1 s, his call 2 Oct 2026)
+  if (ui.stall.classList.contains('bog') !== red) ui.stall.classList.toggle('bog', red);
   if (!on || stallV < 0.2 || rider.v < 1.5) return;
   // spray off the hand dragging in the face, on the wave side, thrown back and up; less as you slow down
   stallSprayAcc += 170 * stallV * Math.min(1, rider.v / 6) * dt;
@@ -2034,7 +2037,7 @@ const railSpray = (() => {
   const tex = new THREE.CanvasTexture(cv);
   const pts = new THREE.Points(g, bioMat(new THREE.PointsMaterial({ color: 0xf6f1ea, size: 0.11, map: tex, transparent: true, opacity: 0.8, depthWrite: false })));   // (bigger, soft drops: at 7 cm they read as specks)
   pts.frustumCulled = false; scene.add(pts);
-  let next = 0, acc = 0, fanAcc = 0, fanHit = false, ballAcc = 0, ballLens = 0;
+  let next = 0, acc = 0, fanAcc = 0, fanHit = false, tsAcc = 0, tsHit = false, ballAcc = 0, ballLens = 0;
   const emit = (p, v, n, spread) => {
     for (let k = 0; k < n; k++) {
       const i = next; next = (next + 1) % SPRAY_N;
@@ -2076,16 +2079,29 @@ const railSpray = (() => {
         if (!hitK) fanHit = false;
         const slideK = Math.max(rider.skid, Math.min(1, ((rider.slide || 0) - 0.12) * 2.2));   // tail hanging out ~7 deg+ starts to spray
         if (slideK > 0.05 || hitK) {
-          fanAcc += (Math.max(slideK, 0.3 * hitK) + 2.2 * hitK) * rider.v * 55 * dt;
+          fanAcc += (Math.max(slideK, 0.3 * hitK) + 2.2 * hitK + 1.6 * tsV) * rider.v * 55 * dt;   // (a tail slide throws a big fan off the tail the whole time it slides)
           while (fanAcc >= 1) {
             fanAcc--;
             _p.copy(rig.position).addScaledVector(pose.fwd, -0.7 + Math.random() * 0.5);
             const keep = 0.6 + Math.random() * 0.3;
-            _v.set(rider.vx * keep, 0, rider.vz * keep).add(_cv.set(sideX, 0, sideZ).multiplyScalar(2.5 + Math.random() * 3.5 * Math.max(rider.skid, hitK)))
-              .add(_cv.set(0, 1.6 + Math.random() * 2.4 + 1.5 * hitK, 0));
+            _v.set(rider.vx * keep, 0, rider.vz * keep).add(_cv.set(sideX, 0, sideZ).multiplyScalar(2.5 + Math.random() * 3.5 * Math.max(rider.skid, hitK, tsV)))
+              .add(_cv.set(0, 1.6 + Math.random() * 2.4 + 1.5 * Math.max(hitK, 0.8 * tsV), 0));
             emit(_p, _v, 1, 0.9);
           }
         } else fanAcc = 0;
+        // a tail slide: the whole rail sheets water out to the side and up in front of you, so you see it from your own eyes
+        // (the tail's fan above flies out behind, out of view), and a few drops hit the lens as it lets go
+        if (tsV > 0.2) {
+          if (!tsHit) { tsHit = true; splashLens(4, 0.6); }
+          tsAcc += tsV * rider.v * 40 * dt;
+          while (tsAcc >= 1) {
+            tsAcc--;
+            _p.copy(rig.position).addScaledVector(pose.fwd, 0.2 + Math.random() * 1.1);
+            const keep = 0.75 + Math.random() * 0.25;
+            _v.set(rider.vx * keep, 0, rider.vz * keep).add(_cv.set(sideX, 0, sideZ).multiplyScalar(1.5 + Math.random() * 3)).add(_cv.set(0, 2.2 + Math.random() * 2.6, 0));
+            emit(_p, _v, 1, 0.9);
+          }
+        } else { tsAcc = 0; if (tsV < 0.05) tsHit = false; }
       // the foam ball behind you in the tube: sit too deep and its spray blows past you from behind, thicker the deeper you
       // are (surf.js catches you from ~2 wave heights behind the curl: you can't see behind you, but you can feel this)
       if (rider.inBarrel && rider.wave) {
@@ -2697,7 +2713,7 @@ const hudSpdB = ui.speed.querySelector('b'), hudBar = ui.speed.querySelector('.s
 const cBig = ui.tube.querySelector('.cbig'), cWord = ui.tube.querySelector('.cword'), cPts = ui.tube.querySelector('.cpts'), cWhy = ui.tube.querySelector('.cwhy'), cBal = ui.tube.querySelector('.cbal'), cBalDot = cBal.querySelector('i');
 let hudKmh = -2, scShown = -1, callKey = null, callOn = false, callSlamT = 0, whyT = 0;
 // the first time you land a move with a surfer's name, a line under it says what it is (held a little longer to read)
-const MOVE_WHY = { 'HANG FIVE': "One foot's toes over the nose", 'HANG TEN': "Both feet's toes over the nose" };
+const MOVE_WHY = { 'HANG FIVE': "One foot's toes over the nose", 'HANG TEN': "Both feet's toes over the nose", 'TAIL SLIDE': 'The fins let go at the lip. Let go of STALL to catch them, or you slide out', SNAP: 'Hold STALL as you snap to throw a tail slide' };   // (shown once each, the first time you land it)
 let movesSeen = {}; try { movesSeen = JSON.parse(localStorage.getItem('ssMovesSeen') || '{}') || {}; } catch (e) { movesSeen = {}; }
 function moveWhy(word) {
   const k = Object.keys(MOVE_WHY).find((n) => word.startsWith(n)); if (!k || movesSeen[k]) return '';
@@ -2716,16 +2732,26 @@ function hudScore(v, dt) {
   else scShown = v;
   const t = scShown.toFixed(1); if (hudScB.textContent !== t) hudScB.textContent = t;
 }
-const CALL_COL = { gold: '#ffcf8a', sea: '#8fe6d6', coral: '#ff8e6e' };
+const CALL_COL = { gold: '#ffcf8a', sea: '#8fe6d6', coral: '#ff8e6e', pink: '#ff7ad6' };   // (pink: the tail slide's own colour, his call 2 Oct 2026, so it stands out from every other move)
 function hudCallOff(now) { ui.tube.classList.remove('bal'); if (!callOn && !now) return; callOn = false; whyT = 0; cWhy.textContent = ''; callKey = null; ui.tube.classList.remove('on', 'slam', 'big', 'live'); if (!now) ui.tube.classList.add('out'); else ui.tube.classList.remove('out'); }
 function hudCallShow(key, big, word, pts, col, slam) {
   if (cWord.textContent !== word) cWord.textContent = word;
   if (key === callKey) return;
   callKey = key; callOn = true; cBig.textContent = big; cPts.textContent = pts; ui.tube.style.setProperty('--c', CALL_COL[col]);
-  ui.tube.classList.remove('out', 'slam', 'big', 'live'); void ui.tube.offsetWidth; ui.tube.classList.add('on');
+  ui.tube.classList.remove('out', 'slam', 'big', 'live', 'skid'); void ui.tube.offsetWidth; ui.tube.classList.add('on');
+  if (slam && col === 'pink') { ui.tube.classList.add('slam', 'skid'); callSlamT = 0.6; return; }   // (the tail slide skids in sideways instead of slamming)
   if (slam) { ui.tube.classList.add('slam'); if (big) ui.tube.classList.add('big'); callSlamT = big ? 0.46 : 0.34; }
 }
 // the callout: the barrel's own clock while you're in it (counting up, pulsing), or the move you just landed with its points
+// (2 Oct 2026, players' note: hitting the lip should feel like it) a crack of the board through the lip and a low thump, your
+// eyes dipping for a moment with the hit, drops on the lens, a short buzz on Android phones (iPhones don't allow it in a browser)
+const tailWarn = () => !!(rider && rider.state === 'RIDE' && (rider.tailOutT || 0) > 0.6);   // (a tail slide held too long: warn before it slides out)
+let lipKick = 0, tsV = 0;   // (tsV: a tail slide in progress, eased 0..1: bigger spray fan, the view drifting with the tail, the scrape)
+function lipHitFx(k) {
+  audio.burst(0.2 * k, 2800, 0.1, 'highpass'); audio.burst(0.26 * k, 210, 0.28, 'lowpass', 0.02);
+  lipKick = Math.max(lipKick, 0.05 * k); splashLens(Math.round(3 * k), 0.7 * k);
+  if (!DESK) try { navigator.vibrate && navigator.vibrate(k > 1.2 ? 35 : 20); } catch (e) {}
+}
 function hudCall(st, dt) {
   callSlamT = Math.max(0, callSlamT - dt);
   if (st === 'RIDE' && tubeShowT > 0) {
@@ -2751,7 +2777,9 @@ function hudCall(st, dt) {
   if (!tr) { if (whyT > 0 && st === 'RIDE') return; hudCallOff(false); return; }
   if (tr !== callKey) {
     const m = /^(BIG |DEEP )?(.*)$/.exec(tr.name), word = m[2], mv = rider.ride.moves[rider.ride.moves.length - 1];
-    hudCallShow(tr, (m[1] || '').trim(), word, mv ? `+${mv.pts.toFixed(1)}` : '', /^BARREL/.test(word) ? 'sea' : /^AIR/.test(word) ? 'coral' : 'gold', true);
+    const combo = rider.ride.combo > 1 ? `   COMBO x${rider.ride.combo}` : '';   // (moves linked with no dead time between: the game always counted it, now you see it)
+    hudCallShow(tr, (m[1] || '').trim(), word, mv ? `+${mv.pts.toFixed(1)}${combo}` : '', /^BARREL/.test(word) ? 'sea' : /^AIR/.test(word) ? 'coral' : /^TAIL SLIDE/.test(word) ? 'pink' : 'gold', true);
+    if (/SNAP|TAIL SLIDE/.test(word)) lipHitFx(m[1] === 'BIG ' ? 1.4 : 1);
     const why = moveWhy(word); cWhy.textContent = why; whyT = why ? 3.2 : 0;   // (1.4 s callout + time to read the line)
   }
 }
@@ -2791,7 +2819,7 @@ function updateHUD(dt) {
   if (st === 'RIDE' && rider.inBarrel && rider.pinchAt > 0 && rider.pinchAt < 1e8 && (rider.ride.tubeT || 0) > rider.pinchAt - 1.2) hint = 'The barrel is closing: race for the opening!';   // (C.tubeMax: see updateWaves)
   if ((isTow() || (rider.wave && rider.wave.cond.chatter)) && st === 'RIDE' && !tow && (rider.dropT || 0) > 0.15) hint = 'Too straight! Turn along the wave or the chop bucks you off';   // (the drop: see surf.js dropT)
   if (isTow() && (st === 'LIE' || tow)) hint = tow ? (tow.on ? 'Hold on: the rope drops by itself, then carve down the line' : '') : rider.washed ? 'Caught inside! Tap TOW IN to get back out' : 'Tap TOW IN: the jet ski takes you onto the next wave';
-  setText(ui.hint, spec ? '' : pearlV > 0.25 ? (rider.noseHard ? 'Turning too hard on the nose: ease off, walk back' : 'Nose digging in: walk back') : shoulderV > 0.4 ? (DESK ? 'Out on the shoulder: walk back, Shift to stall to the curl' : 'Out on the shoulder: walk back, STALL to the curl') : bogV > 0.3 ? (DESK ? 'Too slow: let go of Shift' : 'Too slow: let go of STALL') : session.waves < 5 || st === 'POP' || HINT_WARN.test(hint) ? (DESK ? deskHint(hint) : hint) : '');   // (danger warnings show every time, not only in the first waves)   // (the sinking-tail warning shows every time, not only in the first waves)   // (no coaching while you watch someone else)
+  setText(ui.hint, spec ? '' : tailWarn() ? (DESK ? 'Let go of Shift: the fins need to catch' : 'Let go of STALL: the fins need to catch') : pearlV > 0.25 ? (rider.noseHard ? 'Turning too hard on the nose: ease off, walk back' : 'Nose digging in: walk back') : shoulderV > 0.4 ? (DESK ? 'Out on the shoulder: walk back, Shift to stall to the curl' : 'Out on the shoulder: walk back, STALL to the curl') : bogV > 0.3 ? (DESK ? 'Too slow: let go of Shift' : 'Too slow: let go of STALL') : session.waves < 5 || st === 'POP' || HINT_WARN.test(hint) ? (DESK ? deskHint(hint) : hint) : '');   // (danger warnings show every time, not only in the first waves)   // (the sinking-tail warning shows every time, not only in the first waves)   // (no coaching while you watch someone else)
   // the callout: BARREL while you're in it, or the move you just landed
   tubeShowT = rider.inBarrel ? 0.4 : Math.max(0, tubeShowT - dt);   // (held a moment: a wobble at the tube's edge doesn't flicker the word)
   hudCall(st, dt);
@@ -2812,7 +2840,7 @@ function updateHUD(dt) {
     const judge = r.score < 2 ? 'Poor' : r.score < 5 ? 'Fair' : r.score < 6.5 ? 'Good' : r.score < 8 ? 'Very good' : r.score < 10 ? 'Excellent' : 'Perfect';   // (the contest judges' own words for the range, 28 Sep 2026)
     ui.msgN.innerHTML = r.t > 0 ? `${r.score.toFixed(1)}<small>${judge.toUpperCase()}${newBest ? '  \u00b7  NEW BEST' : ''}</small>` : '';
     ui.msgS.innerHTML = '';
-    { const J = r.t > 0 ? rider.liveScore(st === 'WIPE', true) : null, NM = { TURN: 'Turn', SNAP: 'Snap', CUTBACK: 'Cutback', FLOATER: 'Floater', AIR: 'Air', 'AIR 360': 'Air 360', 'HANG FIVE': 'Hang five', 'HANG TEN': 'Hang ten', BARREL: 'Barrel' , ROUNDHOUSE: 'Roundhouse', 'LATE DROP': 'Late drop' };
+    { const J = r.t > 0 ? rider.liveScore(st === 'WIPE', true) : null, NM = { TURN: 'Turn', SNAP: 'Snap', CUTBACK: 'Cutback', FLOATER: 'Floater', AIR: 'Air', 'AIR 360': 'Air 360', 'HANG FIVE': 'Hang five', 'HANG TEN': 'Hang ten', BARREL: 'Barrel' , ROUNDHOUSE: 'Roundhouse', 'LATE DROP': 'Late drop', 'TAIL SLIDE': 'Tail slide', SLIDE: 'Slide' };
       const top = J ? J.lines.filter((l) => NM[l.name]).slice(0, 3) : [];
       ui.msgJ.innerHTML = top.map((l) => `<div><span><b>${NM[l.name]}${l.name === 'BARREL' || l.name.startsWith('HANG') ? ` ${l.dur.toFixed(1)}<small>s</small>` : ''}</b>${l.notes.length ? `<i>${l.notes.join(', ')}</i>` : ''}</span><em>${l.pts.toFixed(1)}</em></div>`).join('') + (J && J.fell ? '<div><span><i>fell at the end: moves in the last second did not count</i></span></div>' : ''); }
     // the level this wave reached stands out (amber, with the menu's three dots), then how far the next one is
@@ -3333,7 +3361,7 @@ function tick(dt) {
     for (const v of waves) { const s = rider.x - v.peelX, zl = rider.z - v.zW; if (zl > -20 && zl < 25) near = Math.max(near, Math.max(0, 1 - Math.hypot(s < 0 ? s * 0.4 : s, zl) / (7 * v.cond.H))); }
     let underwater = false;
     if (st === 'WIPE' && W.on && surfer) { const b = surfer.position; underwater = W.t < (W.hold || 1.4) && b.y < heightAt(waves, b.x, b.z) - 0.2; }
-    audio.update({ H: w ? w.cond.H : 1.5, near, barrel: rider.inBarrel && st === 'RIDE', riding: rider.standing, v: rider.v, turn: rider.turn, lean: rider.lean, slide: Math.max(rider.skid, (rider.slide || 0) * 2.5), stall: !!(inp.stall), dt, chop: ENV.weather ? ENV.weather.chop : 1, storm: ENV.weather ? ENV.weather.chop / 2.4 : 0, rain: ENV.weather ? ENV.weather.rain : 0, underwater });
+    audio.update({ H: w ? w.cond.H : 1.5, near, barrel: rider.inBarrel && st === 'RIDE', riding: rider.standing, v: rider.v, turn: rider.turn, lean: rider.lean, slide: Math.max(rider.skid, (rider.slide || 0) * 2.5), stall: !!(inp.stall), tail: tsV, dt, chop: ENV.weather ? ENV.weather.chop : 1, storm: ENV.weather ? ENV.weather.chop / 2.4 : 0, rain: ENV.weather ? ENV.weather.rain : 0, underwater });
     // the nearest breaking wave thumps each time a new stretch of lip lands (every second or two, faster in big surf)
     crashT -= dt;
     if (crashT <= 0) {
