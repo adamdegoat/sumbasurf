@@ -1116,7 +1116,7 @@ function towTick(dt) {
   if (left <= 0) {   // the rope drops: you're on your own
     towNow(w); rope.visible = false; skiAway = { t: 0, x: sx, z: sz, th: p.th, v: p.v };
     towCount.innerHTML = 'GO<small>CARVE DOWN THE LINE</small>'; towCount.classList.remove('on'); void towCount.offsetWidth; towCount.classList.add('on');
-    tow = null; return false;
+    tow = null; return true;   // (this frame you were already carried forward on the rope: your own physics start next frame, or you moved twice in one frame, a 0.4 m lurch)
   }
   return true;
 }
@@ -1124,6 +1124,7 @@ function spawnRider() {
   if (surfer) endWipe(); rig.visible = true; board.visible = true; for (const b of birds) b.visible = !isRanch();
   pumpC = 0; pumpA = 0; stanceW = 0; lastState = ''; endT = -1; snapCam = true;
   rider = rider || new Rider();
+  rider.towed = false;   // (a fresh go: only a tow-in sets it again, see visT)
   track.clear();
   rider.backside = physStance() === 'regular';   // (on a left regular is backside; at a mirrored right, goofy)
   // in the lineup: just outside and a little down the line from the peak, sitting up facing the sets
@@ -1568,6 +1569,11 @@ const camOff = new THREE.Vector3(0, 1.3, 3), lookOff = new THREE.Vector3(), _anc
 // the pop-up's own clock: every bit of the stand-up animation was timed for a 0.35 s pop; this stretches it to the
 // physics' pop time, so the body and your view take as long to get up as the rider really does
 const popClock = () => rider.stateT * 0.35 / (RIDE.popTime || 0.35);
+// (2 Oct 2026, his report: 'when the jet ski lets go the camera glitches'. Letting go of the tow rope restarts the ride's clock,
+//  and every 'just stood up' ease (eyes down at the board, the deep squat rising, the view turning to the line) replayed in one
+//  frame: a 7 deg snap and a 0.7 m lurch at 90 km/h. Coming off the rope you're already up and riding, so what you see runs as
+//  if you'd been riding 2 s; the physics keep their own clock)
+const visT = () => rider.state === 'RIDE' && rider.towed ? rider.stateT + 2 : rider.stateT;
 const smooth01 = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
 const _wq2 = {};
 // how high the wave reaches at a point for sight-line purposes, including a lip overhanging in front of the face
@@ -1608,7 +1614,7 @@ function povCamera(dt) {
   // standing, you look down the line: where you're going along the wave (your motion with most of the wave's own run at
   // the beach taken out), not where you're drifting over the sea bed, which on a big wave is mostly toward the beach and
   // in the barrel pointed your eyes at the lip's curtain instead of down the tube to the exit
-  const waveRun = standing && rider.wave && rider.state === 'RIDE' ? 0.55 * rider.wave.cond.speed * Math.min(1, rider.stateT / 1.2) : 0;   // (eased in after the drop: no swing as you stand up)
+  const waveRun = standing && rider.wave && rider.state === 'RIDE' ? 0.55 * rider.wave.cond.speed * Math.min(1, visT() / 1.2) : 0;   // (eased in after the drop: no swing as you stand up)
   const travel = moving ? Math.atan2(rider.vz - waveRun, rider.vx) : rider.th;
   // look mostly where you're travelling, partly where the board points (you see the nose swing in a turn/drift)
   const dh = Math.atan2(Math.sin(rider.th - travel), Math.cos(rider.th - travel));
@@ -1622,7 +1628,7 @@ function povCamera(dt) {
   // (no automatic turn in the barrel: the view swinging on its own as you went in felt like losing control; your view
   // follows your line as always, and the tube wraps around it)   // (more of the board heading: in a snap the board stays in view instead of swinging out of shot)
   // popping up, the head drives forward over the board (the eye ahead of the shoulders, which stay out of view), easing back as you rise
-  const popFwd = st === 'POP' ? 0.15 : st === 'RIDE' ? 0.15 * Math.max(0, 1 - rider.stateT / 0.8) : 0;
+  const popFwd = st === 'POP' ? 0.15 : st === 'RIDE' ? 0.15 * Math.max(0, 1 - visT() / 0.8) : 0;
   const sK = standing ? (st === 'POP' ? Math.min(1, popClock() / 0.25) : 1) : 0;   // (lying -> standing eye point blended over the start of the pop, not switched in a frame)
   const ef = -0.05 + (POVCAM.fwd + popFwd + 0.05 + 0.18 * noseV - NOSEVIEW.back * noseTip()) * sK, eu = 0.2 + (POVCAM.up - 0.2 + 0.06 * noseV) * sK;   // (walking to the nose you turn square to it and your shoulders come round beside the camera: the eyes sit a little further ahead, clear of them)   // lying: eyes at the head, a bit up, so your paddling hands pass below them
   _eye.x += Math.cos(yawT) * ef; _eye.z += Math.sin(yawT) * ef; _eye.y += eu - 0.08 * stallV;   // (sitting back in a stall: a little lower)   // camera just in front of the face, like a surfer's mouth-mounted camera
@@ -1638,8 +1644,8 @@ function povCamera(dt) {
   if (_eye.y < eyeFloor) _eye.y = eyeFloor;
   // pop-up: the clip throws the head out over the rail; a real pop keeps your head over the stringer, eyes on the
   // board between your hands, so the camera stays over the middle of the board while you come up
-  if (st === 'POP' || (st === 'RIDE' && rider.stateT < 0.4)) {
-    const k = st === 'POP' ? 0.8 * popIn : 0.8 * (1 - rider.stateT / 0.4);
+  if (st === 'POP' || (st === 'RIDE' && visT() < 0.4)) {
+    const k = st === 'POP' ? 0.8 * popIn : 0.8 * (1 - visT() / 0.4);
     _pq2.copy(rig.quaternion).invert(); _eye.applyQuaternion(_pq2); _eye.x *= 1 - k; _eye.applyQuaternion(rig.quaternion);
   }
   // the pop swaps the lying pose for the crouch in one frame (the head jumps ~20 cm): the eye goes from where it was
@@ -1647,26 +1653,26 @@ function povCamera(dt) {
   if (st === 'POP' && popIn < 1) _eye.lerpVectors(popEye0, _eye, popIn); else if (!standing) popEye0.copy(_eye);
   // and as you finish standing (pop -> ride) the body's pose hands over and the head steps ~5 cm: carry that step away over ~0.2 s
   if (st === 'RIDE' && lastEyeSt === 'POP') eyeCarry.subVectors(lastEye, _eye);
-  if (st === 'RIDE' && rider.stateT < 0.4) _eye.addScaledVector(eyeCarry, Math.exp(-rider.stateT * 14)); else eyeCarry.set(0, 0, 0);
+  if (st === 'RIDE' && visT() < 0.4) _eye.addScaledVector(eyeCarry, Math.exp(-visT() * 14)); else eyeCarry.set(0, 0, 0);
   lastEye.copy(_eye); lastEyeSt = st;
   if (!pov.ready || snapCam) { pov.pos.copy(_eye); pov.vel.set(0, 0, 0); pov.yaw = yawT; pov.ready = true; }
   else {
     // (a plain exponential follow: stays glued to your head through the pop-up, just takes the jitter off; the old
     // spring was so over-damped it closed only ~2% of the gap a frame and left the camera inside your chest)
-    const k = st === 'POP' ? 8 + 50 * Math.min(1, popClock() / 0.35) : st === 'RIDE' && rider.stateT < 0.5 ? 16 + 42 * (1 - rider.stateT / 0.5) : 16;   // (eases into the pop instead of snapping to the new eye height in one frame)
+    const k = st === 'POP' ? 8 + 50 * Math.min(1, popClock() / 0.35) : st === 'RIDE' && visT() < 0.5 ? 16 + 42 * (1 - visT() / 0.5) : 16;   // (eases into the pop instead of snapping to the new eye height in one frame)
     pov.pos.lerp(_eye, 1 - Math.exp(-k * dt));
     const dy = Math.atan2(Math.sin(yawT - pov.yaw), Math.cos(yawT - pov.yaw)), maxY = 3.2 * dt;
     pov.yaw += Math.max(-maxY, Math.min(maxY, dy * Math.min(1, dt * 7)));
   }
   snapCam = false;
   // head pitch: riding, look down the line and at the nose; lying, look ahead over the nose; at the drop, look down the face
-  const dropK = st === 'POP' ? 4 * popIn : st === 'RIDE' ? 4 * Math.max(0, 1 - rider.stateT / 0.5) : 0;   // the pop: eyes down on the board between your hands, then back up to the line
+  const dropK = st === 'POP' ? 4 * popIn : st === 'RIDE' ? 4 * Math.max(0, 1 - visT() / 0.5) : 0;   // the pop: eyes down on the board between your hands, then back up to the line
   // waiting in the water, lying or sitting (his call 30 Sep 2026): one fixed view, eyes level on the water at the height
   // they used to lift to when a wave came, so you watch the sets coming yourself and nothing shifts on its own
   let pitchT = standing ? POVCAM.pitch - POVCAM.drop * dropK : -0.22;
   if (!standing && isRanch()) pitchT = Math.max(pitchT, -0.2);   // at the Sumba Ranch, eyes up on the machine wall where your wave comes from
   lipKick *= Math.exp(-dt * 9); pitchT += lipKick + 0.14 * tubeEase + 0.07 * stallV + 0.035 * bogV * Math.sin(T * 7.3) + 0.12 * noseV - (0.12 + NOSEVIEW.down) * noseTip() + (standing && noseV > 0.01 ? 0.25 * noseV * Math.min(0, Math.asin(Math.max(-1, Math.min(1, pose.fwd.y)))) : 0); if (glK > 0.001) pitchT += (glP - pitchT) * glK;   // (on the nose your eyes follow the board's slope: heading down the face you look down it, so the tip stays in view)   // (up on the nose your eyes drop a little; when it starts to dig in you glance down at it, so you see the tip going under)   // (a stall: you sit back and your eyes tip up a little; sinking, they bob)   // (in the barrel your eyes lift ~8 deg, so you see the tube arching over you)   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
-  pov.pitch += (pitchT - pov.pitch) * Math.min(1, dt * (st === 'POP' ? 4 + 20 * Math.min(1, popClock() / 0.3) : st === 'RIDE' ? 5 + 19 * Math.max(0, 1 - rider.stateT / 0.4) : 5));   // (and out of it without a kink: the rates hand over gradually when you're up)   // (the pop: eyes snap down to the board between your hands)
+  pov.pitch += (pitchT - pov.pitch) * Math.min(1, dt * (st === 'POP' ? 4 + 20 * Math.min(1, popClock() / 0.3) : st === 'RIDE' ? 5 + 19 * Math.max(0, 1 - visT() / 0.4) : 5));   // (and out of it without a kink: the rates hand over gradually when you're up)   // (the pop: eyes snap down to the board between your hands)
   pov.roll += ((standing ? -rider.lean * 0.2 - 0.09 * tsV * Math.sign(rider.lean) - 0.55 * (rider.wob || 0) + 0.05 * bogV * Math.sin(T * 9.1) : 0) - pov.roll) * Math.min(1, dt * 6);   // (the wobble of a sinking tail rocks the horizon)   // you feel the lean: the horizon tips as you lay into a carve (less than the board: people hold their head nearer level)
   // three.js cameras look down -z: turn our heading (angle in x/z) into a yaw about y
   _pe.set(pov.pitch - (rider.standing ? 0.055 * pumpA : 0), -pov.yaw - Math.PI / 2, pov.roll);   // (each pump stroke: the head nods down ~3 deg as you compress, like real POV footage)
@@ -1678,7 +1684,7 @@ function povCamera(dt) {
   if (standing && st === 'RIDE') {
     const chop = ENV.weather ? ENV.weather.chop : 1, sp = Math.min(1, rider.v / 9), rattle = Math.min(1, (rider.slide || 0) * 2.5 + rider.skid);
     const t = T, n1 = Math.sin(t * 11.3) * 0.6 + Math.sin(t * 17.9 + 1.3) * 0.4, n2 = Math.sin(t * 23.7 + 0.7) * 0.5 + Math.sin(t * 31.1 + 2.1) * 0.5;
-    const amp = ((0.006 + 0.006 * chop) * sp + 0.008 * rattle) * Math.min(1, rider.stateT / 0.5);   // (faded in as you get up: switched on at full it kicked the view the moment the pop finished)
+    const amp = ((0.006 + 0.006 * chop) * sp + 0.008 * rattle) * Math.min(1, visT() / 0.5);   // (faded in as you get up: switched on at full it kicked the view the moment the pop finished)
     camera.position.y += n1 * amp; camera.rotateX(n2 * amp * 0.6); camera.rotateZ(n1 * amp * 0.4);
   }
   // inside a barrel your eyes stay under its roof (the lip's underside), never poking out through the top of the tube
@@ -2026,7 +2032,7 @@ function updateRig(dt, t) {
     const deep = Math.min(0.7, (0.14 + 0.06 * Math.min(1, rider.v / 10) + (0.31 - 0.06 * Math.min(1, rider.v / 10)) * barrelK) + 0.25 * pumpA + 0.2 * airK + 0.25 * gLoad + 0.22 * Math.min(1, Math.abs(rider.lean) / RIDE.leanMax) + 0.2 * (rider.stalling || 0));   // (the crouch clip is a full squat: trim is a light knee bend, hips well above the knees)
     if (curClip !== clips.crouch) { play('crouch', { fade: 0.3 }); clips.stand.reset().play(); }
     // rising out of the pop-up's deep squat over half a second (not snapping up: that jerks your eyes up 16 cm in a frame)
-    const up_ = Math.min(1, rider.stateT / 0.6), rise = up_ * up_ * (3 - 2 * up_);
+    const up_ = Math.min(1, visT() / 0.6), rise = up_ * up_ * (3 - 2 * up_);
     clips.crouch.weight = (0.8 + (deep - 0.8) * rise) * (1 - 0.45 * noseV); clips.stand.weight = 1 - clips.crouch.weight;   // (on the nose you stand tall)
     setStance();
     surfer.position.set(0, -0.04 * clips.crouch.weight, -0.1);       // hips drop a little as the feet spread
@@ -2644,7 +2650,7 @@ function surfStance() {
   // which side the wave is on, with a dead band: heading straight at the beach or the wave it would flip every frame
   { const d = INTO_WAVE.dot(R); if (Math.abs(d) > 0.25) waveSide = Math.sign(d); }
   const ws = waveSide, stallK = Math.min(1, (rider.stalling || 0) * 1.3);
-  const popK = st === 'POP' ? 1 : st === 'RIDE' ? Math.max(0, 1 - rider.stateT / 0.5) : 0;
+  const popK = st === 'POP' ? 1 : st === 'RIDE' ? Math.max(0, 1 - visT() / 0.5) : 0;
   // frontside or backside: which way your chest faces
   bones.upperarm_l.getWorldPosition(_ik1); bones.upperarm_r.getWorldPosition(_ik2);
   const chest = _cv.crossVectors(WORLD_UP, _ik3.subVectors(_ik2, _ik1)).dot(INTO_WAVE) > 0 ? 1 : 0;   // up x (right - left shoulder) = chest
