@@ -6,7 +6,7 @@
 //   const R = await import('./test/fsreel.js?x=1'); await R.setup(); await R.run('paddle')   (repeat run until done)
 import * as THREE from 'three';
 import { brain, carveBrain } from './sim2.js';
-import { heightAt } from '../js/surf.js?v=234';
+import { heightAt } from '../js/surf.js?v=235';
 const G = () => window.__g;
 export const OPT = { tick: true };
 const FPS = 30, W = 1080, H = 1920;

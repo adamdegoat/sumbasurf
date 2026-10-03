@@ -78,8 +78,12 @@ export const BOARDS = {
   // less grip than a finned board, and a prone rider steers with the rail, elbow and hip rather than tipping onto an edge
   // (leanMax lower). Slower down long walls (drag2) but at home in steep, hollow waves; the arm drag in the face is a strong
   // brake for the barrel (stallDrag). No snaps, tail slides or nose walking; airs come with its tricks (stage 3)
+  // (turning, 4 Oct 2026, his ask 'realistic, real bodyboarders will complain'): a short finless board pivots quickly, so it
+  // rolls onto the rail as fast as a shortboard (leanRate 9) and turns a little tighter than it did (leanMax 1.1: full thumb
+  // 90 deg in 1.4 s, was 1.55; the shortboard 1.2 s). Still carved on the rail like a ski, less drive than a shortboard,
+  // and a hard turn still lets the tail drift ~20 deg (no fins). Camera checked smooth (smooth.js), spinners and rides as before
   body: { prone: true, popTime: 0.15, paddleThrust: 3.3, paddleMax: 2.7, lieDrag: 0.22, catchK: 1.0, catchPaddle: 0.5, catchLate: 2.0, catchReach: 1.5,
-    planeV: 2.8, drag: 0.1, drag2: 0.016, leanMax: 1.0, leanRate: 7.5, leanEase: 12, yawLag: 0.1, railBite: 0.22, finGrip: 3.4, gripMax: 20, relFrom: 0.5,
+    planeV: 2.8, drag: 0.1, drag2: 0.016, leanMax: 1.1, leanRate: 9.0, leanEase: 12, yawLag: 0.1, railBite: 0.22, finGrip: 3.4, gripMax: 20, relFrom: 0.5,
     glide: 0.72, pump: 0.55, stallDrag: 3.6, snap: 0.35, tail: 0, air: true, turnMin: 0.85 },
   gun: { tail: 0.35, planeV: 3.0, snap: 0.45, paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.72, catchK: 0.75, catchPaddle: 0.5, catchLate: 2.0, catchReach: 1.8, turnMin: 0.75 },
 };
