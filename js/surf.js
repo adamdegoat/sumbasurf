@@ -520,7 +520,7 @@ export class Rider {
         this.vx *= 1 - 0.6 * h; this.vz *= 1 - 0.6 * h;   // (sliding sideways through the water scrubs speed)
         const TAU = 2 * Math.PI, rem = ((R2.dir * (vd - this.th)) % TAU + TAU) % TAU;
         this.slide = Math.min(1.3, Math.abs(Math.atan2(Math.sin(this.th - vd), Math.cos(this.th - vd))));   // (the spray fan and the hiss)
-        if (rem < 0.06 || rem > TAU - 0.06) { this.rev = null; this.move('AIR REVERSE', R2.crit, R2.peak, (R2.t < 0.55 ? 1.1 : 1) * (1 + 0.3 * smooth(0.25, 0.6, R2.grabT))); if (R2.grabT >= 0.25) this.grabbed(); }
+        if (rem < 0.06 || rem > TAU - 0.06) { this.rev = null; this.move('AIR REVERSE', R2.crit, R2.peak, 1 + 0.3 * smooth(0.25, 0.6, R2.grabT));   /* (no quick-swing bonus, his call 3 Oct 2026: with it a half spin scored the same as a full AIR 360) */ if (R2.grabT >= 0.25) this.grabbed(); }
         else if (R2.t > 1.1) { this.rev = null; return this.wipe('Spun out: the reverse never came round'); }
       }
       if (this.spin) this.slide = 0.55 * Math.abs(Math.sin(this.th - this.spin.th0));   // (a light fan: at full slide strength the spray fogged the whole view)   // (a spinner: the fins' pull back toward your line doesn't apply, or it held the spin at ~45 deg and swung it back, his catch 3 Oct 2026; just the spray)

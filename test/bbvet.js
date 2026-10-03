@@ -5,7 +5,7 @@
 //   const B = await import('./test/bbvet.js?v=' + Date.now()); await B.ride({ mode: 'kanan', seed: 5, plan: 'barrel' })
 const G = () => window.__g;
 export async function ride({ mode = 'medium', seed = 5, plan = 'carve', stance = 'goofy', board = 'body', maxS = 30, stopAt = null, stopTube = null, stall = null, trick = null, stopSpin = null, hold = false, spinH = [0.3, 0.7], spinV = [0.6, 9], gap = 2.5, cbo } = {}) {
-  const FM = await import('./film.js?v=' + Date.now()), SU = await import('../js/surf.js?v=233'), g = G(), nm = 'bb' + Math.random(), n = 30 * maxS;
+  const FM = await import('./film.js?v=' + Date.now()), SU = await import('../js/surf.js?v=234'), g = G(), nm = 'bb' + Math.random(), n = 30 * maxS;
   g.useStance(stance); FM.addPro(nm, mode, seed, n, board, plan, cbo); const t = FM.takes[nm]; t.init();
   const r = g.rider, c = g.camera, log = [], V = c.position.constructor, lc = new V();
   // stall: [from, to] s into the ride, STALL held. trick: 'spinner' (every 2.5 s on the face: one STALL press, thumb hard over),
