@@ -1,0 +1,23 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>bodyboard view</title>
+<style>html,body{margin:0;background:#cfd8dc;font:12px sans-serif}#lab{position:fixed;left:6px;top:4px}</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
+</script></head>
+<body><div id="lab"></div>
+<script type="module">
+// (test page, 3 Oct 2026: the bodyboard from every side, next to a shortboard for scale; view=top|bottom|side|tail|nose|persp)
+import * as THREE from 'three';
+const { makeBoard } = await import('../js/board.js?v=' + Date.now());
+const Q = new URLSearchParams(location.search), view = Q.get('view') || 'persp', d = +(Q.get('d') || 0);
+const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); R.setPixelRatio(2); R.setSize(innerWidth, innerHeight); R.toneMapping = THREE.ACESFilmicToneMapping; document.body.appendChild(R.domElement);
+const S = new THREE.Scene(); S.background = new THREE.Color(0xcfd8dc);
+S.add(new THREE.HemisphereLight(0xffffff, 0x667788, 1.6)); const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(2, view === 'bottom' ? -4 : 4, 3); S.add(sun);
+const boards = [makeBoard('body', false, 0), makeBoard('body', false, 1), makeBoard('body', false, 2), makeBoard('short', false, 0)];
+boards.forEach((b, i) => { b.position.x = (i - 1.5) * 0.75; S.add(b); });
+const C = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.01, 50);
+const V = { top: [0, 4.2, 0.001], bottom: [0, -4.2, 0.001], side: [4.5, 0.05, 0], tail: [0, 0.15, -4.5], nose: [0, 0.15, 4.5], persp: [2.2, 1.6, 2.6] }[view];
+C.position.set(...V); C.lookAt(0, 0, 0); if (view === 'side') { boards.forEach((b, i) => { b.position.x = 0; b.position.y = (i - 1.5) * 0.25; }); }
+document.getElementById('lab').textContent = view + ': bodyboard Classic, Reef, Halloween, then a shortboard';
+R.render(S, C); window.__done = true;
+</script></body></html>

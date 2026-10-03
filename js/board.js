@@ -19,6 +19,11 @@ const SHAPES = {
     OUT: [[-.05, .7], [0, .76], [.08, .86], [.25, .96], [.45, 1], [.62, .99], [.78, .93], [.88, .83], [.94, .7], [.975, .52], [.992, .28], [1, .0], [1.01, -.1]] },
   alaia: { L: 2.2, W: 0.46, T: 0.028, nose: 0.03, fins: 'none', pad: false,
     OUT: [[-.05, .8], [0, .84], [.08, .88], [.25, .95], [.45, 1], [.62, 1], [.78, .96], [.88, .88], [.94, .75], [.975, .56], [.992, .3], [1, .0], [1.01, -.1]] },
+  // the bodyboard (3 Oct 2026, his call; ridden lying down, see BODYBOARD_PLAN.md): a 42" board for a 1.75 m rider, 107 x 54 cm
+  // and 6 cm thick (Morey Cruiser 42.5 is 21.5" x 2.4"); a wide, blunt nose with rounded corners, widest a little toward
+  // the nose, a crescent tail (the U cut across it: crescent), almost no rocker, a flat deck and hard rails, no fins
+  body: { L: 1.07, W: 0.54, T: 0.06, nose: 0.028, kick: 0.012, fins: 'none', pad: false, flat: true, crescent: 0.035,
+    OUT: [[-.05, .6], [0, .64], [.08, .71], [.25, .85], [.45, .96], [.6, 1], [.72, .99], [.82, .96], [.9, .92], [.94, .88], [.965, .82], [.982, .73], [.993, .62], [1, .56], [1.01, .5]] },   /* (the nose stays wide to its end: see the ends' closing in makeBoard) */
 };
 // each board's paint job, by where you are on it: u along (tail 0 -> nose 1), v across (-1 rail .. 0 stringer .. 1 rail),
 // deck or bottom. Four completely different looks, so you know your board at a glance
@@ -122,7 +127,18 @@ const PAINT = {
     (u, v, deck) => { const w = PAINT0.alaia(u, v, deck), k = 0.32; const dark = [w[0] * k, w[1] * k, w[2] * k]; if (!deck) return dark;
       const zz = 0.5 + 0.025 * (2 * Math.abs(((v * 3 + 10) % 1) - 0.5) * 2 - 1); if (Math.abs(u - zz) < 0.022) return HALLO_ORANGE; return dark; }],
 };
-export const DESIGNS = { short: ['Classic', 'Night', 'Halloween'], fish: ['Classic', 'Sunset Spray', 'Halloween'], long: ['Classic', 'Red Tint', 'Halloween'], gun: ['Classic', 'Hi-Vis', 'Halloween'], alaia: ['Classic', 'Painted', 'Halloween'] };
+// the bodyboard's paint: a soft foam deck, a band of colour on the hard rails, a slick bottom with the channels (the grooves
+// at the tail, deepest there, fading out toward the nose: drawn as shading), and the leash plug near the nose
+const bbPaint = (DECK, RAIL, SLICK, CH) => (u, v, deck) => { const av = Math.abs(v);
+  if (av > 0.9 || u < 0.016 || u > 0.984) return RAIL;   // (the rail's colour runs right round, over the rounded nose and tail too)
+  if (!deck) { const k = 1 - sm(0.12, 0.55, u); for (const c of [0.22, 0.46]) { const dd = Math.abs(av - c); if (dd < 0.035 && k > 0) return mix(SLICK, CH, k * (1 - dd / 0.035)); } return SLICK; }
+  { const dd = Math.hypot((u - 0.955) * 1.07 / 0.54, v * 0.5); if (dd < 0.022) return dd < 0.012 ? [0.06, 0.06, 0.07] : [0.55, 0.56, 0.58]; }   // (the leash plug)
+  return DECK; };
+PAINT.body = [
+  bbPaint([0.08, 0.085, 0.095], [0.56, 0.86, 0.18], [0.94, 0.94, 0.92], [0.62, 0.64, 0.66]),   // Classic: black deck, lime rails, white slick (the wave logo on the deck: drawn below)
+  bbPaint([0.08, 0.6, 0.64], [0.96, 0.96, 0.94], [0.95, 0.44, 0.34], [0.7, 0.28, 0.2]),         // Reef: turquoise deck, white rails, coral slick
+  bbPaint(HALLO_ORANGE, HALLO_BLACK, [0.07, 0.06, 0.08], [0.45, 0.2, 0.05]) ];                 // Halloween: pumpkin deck, black rails and slick
+export const DESIGNS = { short: ['Classic', 'Night', 'Halloween'], fish: ['Classic', 'Sunset Spray', 'Halloween'], long: ['Classic', 'Red Tint', 'Halloween'], gun: ['Classic', 'Hi-Vis', 'Halloween'], alaia: ['Classic', 'Painted', 'Halloween'], body: ['Classic', 'Reef', 'Halloween'] };
 export const SEASON = 2;   // (which slot is the seasonal one: the board room marks it)
 // the paint job as a sharp picture, pixel by pixel (it used to be one colour per mesh point, ~2 cm apart across the
 // board, which smeared the logo, stripes and pad into blobs). One sheet per board type, made once and shared
@@ -163,6 +179,11 @@ function* sheetJob(type, S, design, key) {   // (a slice at a time: see bakeDesi
     c.fillStyle = '#f2efe8'; c.beginPath(); c.moveTo(70, 390); c.bezierCurveTo(150, 390, 190, 300, 250, 190); c.bezierCurveTo(300, 110, 420, 110, 440, 200); c.bezierCurveTo(450, 250, 420, 300, 370, 300);
     c.bezierCurveTo(400, 260, 390, 210, 350, 205); c.bezierCurveTo(300, 200, 280, 260, 290, 330); c.bezierCurveTo(296, 370, 330, 390, 380, 390); c.closePath(); c.fill();
     c.fillStyle = '#ffc978'; c.fillRect(60, 405, 392, 16); c.restore(); }
+  if (type === 'body' && !hallo) {   // the SumbaSurf wave on the bodyboard's deck, across the nose half where you see it lying on it
+    const cx = FW / 2, cy = (1 - 0.7) * (H - 1); c.save(); c.translate(cx, cy); c.scale(0.24, 0.49); c.translate(-261, -265);   /* (about 20 x 16 cm: the sheet is stretched 2:1 along this short board) */
+    c.fillStyle = design === 0 ? '#f2efe8' : '#0d2f36'; c.beginPath(); c.moveTo(70, 390); c.bezierCurveTo(150, 390, 190, 300, 250, 190); c.bezierCurveTo(300, 110, 420, 110, 440, 200); c.bezierCurveTo(450, 250, 420, 300, 370, 300);
+    c.bezierCurveTo(400, 260, 390, 210, 350, 205); c.bezierCurveTo(300, 200, 280, 260, 290, 330); c.bezierCurveTo(296, 370, 330, 390, 380, 390); c.closePath(); c.fill();
+    c.fillStyle = design === 0 ? '#8edb2e' : '#f2efe8'; c.fillRect(60, 405, 392, 16); c.restore(); }
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.generateMipmaps = true;
   return (SHEETS[key] = t);
 }
@@ -177,7 +198,7 @@ function paintSheet(type, S, design = 0) {
 let baking = false;
 export function bakeDesigns(first = []) {   // (first: [type, design] pairs to do before the rest, e.g. your own boards)
   if (baking) return; baking = true;
-  const todo = [...first]; for (const t of Object.keys(DESIGNS)) for (let d = 0; d < DESIGNS[t].length; d++) todo.push([t, d]);
+  const todo = [...first]; for (const t of Object.keys(DESIGNS)) if (t !== 'body' || globalThis.__bbTest) for (let d = 0; d < DESIGNS[t].length; d++) todo.push([t, d]);   // (the bodyboard's only once it's out: game.js BB_TEST)
   const tick = () => {
     if (document.hidden || (globalThis.__bakeBusy && globalThis.__bakeBusy())) { setTimeout(tick, 250); return; }   // (never while you're riding a wave)
     const t0 = performance.now();
@@ -207,9 +228,10 @@ function underwater(map) {
 export const BOARD_LENGTH = (type) => (SHAPES[type] || SHAPES.short).L;
 export const BOARD_WIDTH = (type) => (SHAPES[type] || SHAPES.short).W;
 
-export function makeBoard(type = 'short', water = false, design = 0) {   // (water: your own board, which meets the water: see BOARD_WATER; design: see DESIGNS)
-  const S = SHAPES[type] || SHAPES.short;
-  const L = S.L, W = S.W, T = S.T, NL = 90, NW = 24;
+// the board's shape as numbers: half width, thickness and rocker along it (u: tail 0 -> nose 1). Used to build the mesh
+// and, for the bodyboard grip (3 Oct 2026), to know where the deck is so the hands rest on it and the fingers wrap it
+function shapeFns(S) {
+  const L = S.L, W = S.W, T = S.T;
   // outline from real shortboard proportions (share of max half-width along the board, tail 0 -> nose 1):
   // squash tail ~14" wide, widest just behind the middle, ~12" a foot from the nose, then a small rounded tip.
   // Joined with one smooth (Catmull-Rom) curve so the rail line has no bumps.
@@ -221,10 +243,29 @@ export function makeBoard(type = 'short', water = false, design = 0) {   // (wat
     return W / 2 * Math.max(0, cr(a[1], b[1], c[1], d[1], Math.min(1, Math.max(0, t))));
   };
   // thickest just behind the middle, thinning toward the nose and tail
-  const thick = (u) => T * (0.32 + 0.68 * Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, u * 0.96 + 0.02))), 0.6));
-  const rocker = (u) => S.nose * Math.pow(Math.max(0, u - 0.6) / 0.4, 2.2) + 0.03 * Math.pow(Math.max(0, 0.18 - u) / 0.18, 2);
+  // (a bodyboard is nearly as thick at its ends as in the middle, and its blunt ends are closed by a rounded rail, the deck
+  //  curving down to meet the bottom over the last 3 cm: closed by width like a pointed board, its wide nose pinched into
+  //  a crease, and its tail was left open, a slot you could see into, 3 Oct 2026)
+  const ENDR = 0.028, endK = (u) => { const a = Math.min(u, 1 - u); return a >= ENDR ? 1 : Math.sqrt(Math.max(0, 1 - Math.pow(1 - a / ENDR, 2))); };
+  const thick = S.flat ? (u) => T * endK(u) * (0.72 + 0.28 * Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, u * 0.9 + 0.05))), 0.5))
+    : (u) => T * (0.32 + 0.68 * Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, u * 0.96 + 0.02))), 0.6));
+  const rocker = (u) => S.nose * Math.pow(Math.max(0, u - 0.6) / 0.4, 2.2) + (S.kick ?? 0.03) * Math.pow(Math.max(0, 0.18 - u) / 0.18, 2);   // (kick: the tail's lift; a bodyboard's is small)
+  return { halfWidth, thick, rocker };
+}
+// is a point (board-local metres) inside the board? and the deck's height there (null off the board)
+export function boardSurface(type) {
+  const S = SHAPES[type] || SHAPES.short, F = shapeFns(S), L = S.L;
+  const at = (x, z) => { const u = z / L + 0.5; if (u < 0 || u > 1) return null; const hw = F.halfWidth(u); if (Math.abs(x) >= hw) return null; const v = x / hw, e = Math.max(0, 1 - v * v), th = F.thick(u), r = F.rocker(u);
+    return S.flat ? { top: r + th * 0.5 * Math.pow(e, 0.14), bot: r - th * 0.5 * Math.pow(e, 0.07) } : { top: r + th * 0.62 * Math.pow(e, 0.55), bot: r - th * 0.38 * Math.pow(e, 0.3) }; };
+  return { at, inside: (x, y, z) => { const a = at(x, z); return !!a && y > a.bot && y < a.top; }, deck: (x, z) => { const a = at(x, z); return a ? a.top : null; } };
+}
+export function makeBoard(type = 'short', water = false, design = 0) {   // (water: your own board, which meets the water: see BOARD_WATER; design: see DESIGNS)
+  const S = SHAPES[type] || SHAPES.short;
+  const L = S.L, W = S.W, T = S.T, NL = 90, NW = 24;
+  const { halfWidth, thick, rocker } = shapeFns(S);
   // lengthwise stations bunched toward the nose (so its round tip stays smooth); across, bunched toward the rails
-  const station = (i) => { const x = i / NL; return 1 - Math.pow(1 - x, 1.7) * 0.999; };
+  const station = S.flat ? (i) => 0.5 - 0.5 * Math.cos(Math.PI * i / NL)   // (a bodyboard: bunched at both ends, for its rounded closing rails)
+    : (i) => { const x = i / NL; return 1 - Math.pow(1 - x, 1.7) * 0.999; };
   const across = (j) => Math.sin((j / NW * 2 - 1) * Math.PI / 2);
   const pos = [], col = [], idx = [];
   // deck (domed) and bottom (flatter), meeting in a rounded rail
@@ -234,8 +275,9 @@ export function makeBoard(type = 'short', water = false, design = 0) {   // (wat
       const u = station(i), hw = Math.max(0.0015, halfWidth(u)), z = (u - 0.5) * L, r = rocker(u), th = thick(u);
       for (let j = 0; j <= NW; j++) {
         const v = across(j), x = v * hw, e = Math.max(0, 1 - v * v);
-        const notch = type === 'fish' && u < 0.09 ? 0.13 * Math.max(0, 1 - Math.abs(v) / 0.55) * (1 - u / 0.09) : 0;   // the fish's swallow tail
-        const y = r + (side > 0 ? th * 0.62 * Math.pow(e, 0.55) : -th * 0.38 * Math.pow(e, 0.3));
+        const notch = type === 'fish' && u < 0.09 ? 0.13 * Math.max(0, 1 - Math.abs(v) / 0.55) * (1 - u / 0.09) : S.crescent && u < 0.07 ? S.crescent * Math.max(0, 1 - Math.pow(Math.abs(v) / 0.82, 2)) * (1 - u / 0.07) : 0;   // the fish's swallow tail; the bodyboard's crescent
+        const y = r + (S.flat ? (side > 0 ? th * 0.5 * Math.pow(e, 0.14) : -th * 0.5 * Math.pow(e, 0.07))   /* (a bodyboard: flat deck and bottom, the rails squared off) */
+          : (side > 0 ? th * 0.62 * Math.pow(e, 0.55) : -th * 0.38 * Math.pow(e, 0.3)));
         pos.push(x, y, z + notch);
         col.push((v * 0.5 + 0.5) * 0.5 + (side > 0 ? 0 : 0.5), u);   // (where on the painted sheet: deck on its left half, bottom on its right)
       }
@@ -249,7 +291,7 @@ export function makeBoard(type = 'short', water = false, design = 0) {   // (wat
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(col, 2));
   g.setIndex(idx); g.computeVertexNormals();
-  const board = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: paintSheet(type, S, design), roughness: type === 'alaia' ? 0.55 : 0.2, side: THREE.DoubleSide })   /* (oiled wood is satin, not glassy resin: at 0.2 the alaia mirrored the blue sky and read grey-green on friends, his check 1 Oct 2026) */   /* (a wet glossy deck: the sun catches it) */);
+  const board = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: paintSheet(type, S, design), roughness: type === 'alaia' ? 0.55 : type === 'body' ? 0.6 : 0.2, side: THREE.DoubleSide })   /* (oiled wood is satin, not glassy resin: at 0.2 the alaia mirrored the blue sky and read grey-green on friends, his check 1 Oct 2026) */   /* (a wet glossy deck: the sun catches it) */);
   if (water) { const sheet = board.material.map; const under = new THREE.Mesh(g, underwater(sheet)); under.renderOrder = 20; under.frustumCulled = false; board.add(under); board.userData.under = under; }   // (the part under the water, seen through it)
   // three fins under the tail
   const fin = new THREE.Shape(); fin.moveTo(0, 0); fin.quadraticCurveTo(0.02, -0.1, 0.07, -0.11); fin.lineTo(0.09, 0); fin.lineTo(0, 0);

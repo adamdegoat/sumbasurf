@@ -48,12 +48,20 @@ export const RIDE = {
 //             catches waves late and bogs when it slows; no fins, so it's the fastest glide of all and the tail lets go
 //             easily: throw it sideways and it slides down the face, then catch it again. Too far or too long and it
 //             slides right out. No airs. Slides, not spins: a spin whips your view round (his call)
-const BASE = { ...RIDE, walk: false };   // (walk: false here, or a longboard picked earlier left every board walking to the nose on PUMP, found 29 Sep 2026)
+const BASE = { ...RIDE, walk: false, prone: false };   // (prone: the bodyboard's, ridden lying down: BOARDS.body)   // (walk: false here, or a longboard picked earlier left every board walking to the nose on PUMP, found 29 Sep 2026)
 const BOG_FALL = 1.1;
 // stance switch (3 Oct 2026, his call; the longboard only): the SWITCH button swaps which foot is forward, a quick shuffle-hop
 // of SW_T s with the feet changing over half way. On a clean face it's a style move; on the drop, behind the curl, in a hard
 // turn or out on the nose the board rocks under you for a moment (the nose wobble: steer against it or fall)
 export const SW_T = 0.5;
+// the bodyboard's tricks (3 Oct 2026, BODYBOARD_PLAN.md stage 3, from how they're really done). The spinner: STALL held with the
+// thumb hard over (SPIN_HOLD s), on the open face with speed: you let go of the rail and the board spins flat right round under
+// you (SPIN_T s), sliding on along your line and scrubbing some speed, then the rail catches again. Spun the way that swings
+// the nose up toward the wave first, it's the reverse spinner, the harder one. Off the lip (the same take-off as an air), a
+// STALL in the air (pressed or held, as the shortboard grabs) rolls you right over with the board (ROLL_T s: el rollo); land before it's round and you go in.
+// Rolling and spinning together is the air roll spin (ARS), the signature move, scored highest
+export const SPIN_T = 1.2, ROLL_T = 0.55, SPIN_HOLD = 0.15;
+export const SPIN_SKILL = { v: 0.6, again: 2.0, againV: 0.15, lo: 0.22, hi: 0.8, together: 0.3, first: 0.2, carving: 0.6, hard: 0.6 };   // (first: a keyboard arrow takes ~0.1 s to count as steering, so STALL a hair before it still counts as together)   // (carving: turning faster than this, rad/s, as the two come on, it's a turn, not a spinner: at 1.0 a barrel set-up, STALL pressed in a moderate turn (0.9), spun by accident)   // (the spinner's skill: speed going in as a share of the wave's; another within 2 s needs 0.15 more; the clean band of the face, as a share of its height)   // (SPIN_T: his call 3 Oct 2026, at 0.75 s with a fast middle it whipped round 'unnaturally fast'; 1.2 s with an even pace, as a real spinner goes)
 const SW_AFTER = 0.6, SW_INST = 5.5, SW_KICK = 1.5;
 const NOSE_STEP = 0.38, NOSE_BACK = 0.24, PEARL_T = 0.8, WOB_MAX = 0.3, WOB_STEER = 3.2;   // (the rock at the nose: how far it can tip before you fall, rad; how hard your thumb pushes it back)   // (one cross-step up or down the longboard, s; how long the nose can be out of the pocket before it digs in)   // seconds a board can sit below planing speed in a stall before the tail sinks and you fall
 export const BOARDS = {
@@ -63,6 +71,16 @@ export const BOARDS = {
   alaia: { planeV: 4.2, snap: 1.1, paddleThrust: 2.2, paddleMax: 2.1, lieDrag: 0.32, lieLat: 1.6, drag: 0.055, drag2: 0.009, leanMax: 1.15, leanRate: 8.0, yawLag: 0.07, railBite: 0.26,
     finGrip: 2.3, gripMax: 11, relFrom: 0.22, tailLet: 0.18, tailBack: 0.45, skidLoss: 0.05, glide: 0.82, pump: 0.42, popTime: 0.66, catchK: 1.2, catchPaddle: 1.05, catchLate: 1.4, catchReach: 0.85,
     air: false, slipSoft: 0.55, slipHard: 1.2, slideMove: true },
+  // the bodyboard (3 Oct 2026, his call; BODYBOARD_PLAN.md, from the research): ridden lying down (prone), so no pop-up, the
+  // catch hands straight over to riding (popTime: a moment's settle, no stand). Fins on your feet and arms: it kicks into
+  // waves early and easily (paddleThrust, catchReach; catchK stays the shortboard's: lower, it got in too deep, right under the
+  // pitching lip, and the foam ball took it at Karang Hiu, the test pro 3 s into the ride 2 rides in 2, 3 Oct 2026). No fins under it: the rails and channels hold it, a little
+  // less grip than a finned board, and a prone rider steers with the rail, elbow and hip rather than tipping onto an edge
+  // (leanMax lower). Slower down long walls (drag2) but at home in steep, hollow waves; the arm drag in the face is a strong
+  // brake for the barrel (stallDrag). No snaps, tail slides or nose walking; airs come with its tricks (stage 3)
+  body: { prone: true, popTime: 0.15, paddleThrust: 3.3, paddleMax: 2.7, lieDrag: 0.22, catchK: 1.0, catchPaddle: 0.5, catchLate: 2.0, catchReach: 1.5,
+    planeV: 2.8, drag: 0.1, drag2: 0.016, leanMax: 1.0, leanRate: 7.5, leanEase: 12, yawLag: 0.1, railBite: 0.22, finGrip: 3.4, gripMax: 20, relFrom: 0.5,
+    glide: 0.72, pump: 0.55, stallDrag: 3.6, snap: 0.35, tail: 0, air: true, turnMin: 0.85 },
   gun: { tail: 0.35, planeV: 3.0, snap: 0.45, paddleThrust: 3.2, paddleMax: 3.0, lieDrag: 0.2, drag: 0.08, drag2: 0.009, leanMax: 1.0, leanRate: 5.0, leanEase: 7, yawLag: 0.25, railBite: 0.35, finGrip: 5.0, gripMax: 30, glide: 0.75, pump: 0.4, popTime: 0.72, catchK: 0.75, catchPaddle: 0.5, catchLate: 2.0, catchReach: 1.8, turnMin: 0.75 },
 };
 export function setBoard(name) { Object.assign(RIDE, BASE, BOARDS[name] || {}); }
@@ -73,9 +91,9 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 // and the back (from behind the wave up to the crest). Heights in the wave's own frame: zl = z - wave.zW.
 // what each move is worth before how well and where you did it (28 Sep 2026: turns, snaps and cutbacks raised so a
 // wave of hard, committed turns in the pocket can score like a barrel, as real judges score it)
-const LINK_TOP = new Set(['SNAP', 'CUTBACK', 'FLOATER', 'AIR', 'AIR 360', 'AIR REVERSE']);   // (the moves a bottom turn sets up)
+const LINK_TOP = new Set(['SNAP', 'CUTBACK', 'FLOATER', 'AIR', 'AIR 360', 'AIR REVERSE', 'SPINNER', 'EL ROLLO', 'ARS']);   // (the moves a bottom turn sets up)
 export const RH = { s: 0.6, v: 0.5 };   // (the roundhouse's rebound: how close to the whitewater, in wave heights, and how much of the wave's speed kept)
-export const MOVE_BASE = { 'TAIL SLIDE': 5.0, SLIDE: 4.2, TURN: 1.0, CARVE: 3.8, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0, 'HANG FIVE': 3.6, 'HANG TEN': 5.2, ROUNDHOUSE: 5.8, 'LATE DROP': 4.0, SWITCH: 1.3, 'AIR REVERSE': 6.3 };   // (airs kept above the turns: the hardest move scores most)
+export const MOVE_BASE = { 'TAIL SLIDE': 5.0, SLIDE: 4.2, TURN: 1.0, CARVE: 3.8, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0, 'HANG FIVE': 3.6, 'HANG TEN': 5.2, ROUNDHOUSE: 5.8, 'LATE DROP': 4.0, SWITCH: 1.3, 'AIR REVERSE': 6.3, SPINNER: 4.6, 'EL ROLLO': 6.0, ARS: 7.8 };   // (the bodyboard's: a spinner like a cutback, el rollo above a straight air, the ARS the hardest move in the game: IBC judging puts it at the top)   // (airs kept above the turns: the hardest move scores most)
 export const MOVE_BASE_OLD = { TURN: 0.9, SNAP: 2.2, CUTBACK: 2.4, FLOATER: 2.0, AIR: 3.0, 'AIR 360': 4.2 };
 const JUDGE_K = 6;   // (28 Sep 2026: with quality over quantity below, 3 to 5 great moves reach the 8s; was 8)   // how hard the top of the scale is (calibrated with test riders: see HANDOVER)
 
@@ -190,7 +208,8 @@ export function heightAt(waves, x, z) { return waterAt(waves, x, z, _q).y; }
 // detail = the judges' sheet: what counted, each line's share of the score (they add up to it).
 const SC = { drop: 1.5, fellK: 0.45, rep: 0.65, repTurn: 0.6, repBarrel: 0.45, W: [1, 0.8, 0.65, 0.5, 0.38, 0.28, 0.2, 0.14], Wtail: 0.1,
   varK: 0.35, varMax: 1.4, pocketK: 0.05, pocketMax: 1.2, flowK: 0.01, flowMax: 0.3, finish: 0.5, K: 9 };   // (K 6.5 -> 9, his call 30 Sep 2026: three well-done moves already scored 9.1-9.6 anywhere; now about 8, and 9.5 takes a full, heavy wave)
-const SIGNATURE = new Set(['BARREL', 'AIR', 'AIR 360', 'AIR REVERSE', 'HANG TEN']);
+const SIGNATURE = new Set(['BARREL', 'AIR', 'AIR 360', 'AIR REVERSE', 'HANG TEN', 'EL ROLLO', 'ARS']);
+const KIND = (n) => n.replace(/^(AIR .*|EL ROLLO|ARS)$/, 'AIR');   // (every move through the air is one kind for variety: a rollo and an ARS are both aerials)
 export function scoreRide(r, fell = false, detail = false) {
   const ms = fell ? r.moves.filter((m) => m.t < r.t - SC.drop) : r.moves;
   const hasBig = ms.some((m) => m.name !== 'TURN');   // (a hard carve is the wave's main move only on a wave of carves: next to barrels and snaps it's a linking turn again)
@@ -198,13 +217,13 @@ export function scoreRide(r, fell = false, detail = false) {
     return { m, n, v: pts * Math.pow(m.name === 'TURN' ? SC.repTurn : m.name === 'BARREL' ? SC.repBarrel : SC.rep, n - 1) }; }).sort((a, b) => b.v - a.v);
   items.forEach((it, i) => (it.w = it.v * (SC.W[i] ?? SC.Wtail)));
   let raw = items.reduce((a, it) => a + it.w, 0);
-  const kinds = new Set(ms.filter((m) => m.name !== 'TURN' && m.name !== 'SWITCH').map((m) => m.name.replace(/^AIR .*/, 'AIR'))).size, variety = Math.min(SC.varMax, SC.varK * Math.max(0, kinds - 1));
+  const kinds = new Set(ms.filter((m) => m.name !== 'TURN' && m.name !== 'SWITCH').map((m) => KIND(m.name))).size, variety = Math.min(SC.varMax, SC.varK * Math.max(0, kinds - 1));
   const flow = Math.min(SC.flowMax, r.speed * SC.flowK) + Math.min(SC.pocketMax, (r.pocket || 0) * SC.pocketK), finish = r.end && !fell ? SC.finish : 0;
   raw += variety + flow + finish;
   if (fell) raw *= SC.fellK;
   raw *= r.judge ?? 1;   // (the spot: see CONDITIONS judge)
   let score = 10 * (1 - Math.exp(-raw / SC.K));
-  const strong = ms.filter((m) => m.strong && m.name !== 'TURN'), strongKinds = new Set(strong.map((m) => m.name.replace(/^AIR .*/, 'AIR'))).size;
+  const strong = ms.filter((m) => m.strong && m.name !== 'TURN'), strongKinds = new Set(strong.map((m) => KIND(m.name))).size;
   const excellentOk = !fell && ms.some((m) => SIGNATURE.has(m.name)) && strongKinds >= 2 && strong.length >= 3;
   if (!excellentOk && score > 7.5) score = 7.5 + 0.4 * (1 - Math.exp(-(score - 7.5) / 0.4));   // (not the whole package: very good, never excellent)
   // a perfect 10 (his call 30 Sep 2026, "really hard"): real judges give one for a wave they can't fault. Here it takes
@@ -261,7 +280,7 @@ export class Rider {
     this.wave = null; this.s = 99; this.zl = 99; this.inBarrel = false; this.onFace = false; this.lowT = 0;
     this.air = null; this.vyS = 0; this.hitV = 0; this.vyPk = 0; this.prevY = undefined;
     this.pumpWas = false; this.pumpN = 0; this.pumpGap = 9; this.pumpT = 9; this.pumpQ = 0; this.weave = 0; this.pumping = false; this.foamT = 0; this.backT = 0; this.wwFloatT = 0; this.tubeOut = 0; this.turnHold = 0; this.recentPaddle = 0; this.slide = 0; this.slideT = 0; this.slidePk = 0; this.slideOutT = 0; this.stalling = 0;
-    this.sw = false; this.swT = -1; this.swQ = false; this.swRisk = 0; this.swFrom = false; this.rev = null; this.landV = 0; this.landT = -9; this.landImpact = 0;
+    this.sw = false; this.swT = -1; this.swQ = false; this.swRisk = 0; this.swFrom = false; this.rev = null; this.spin = null; this.spinEnd = -9; this.spHold = 0; this.spRel = true; this.stHeld = 0; this.sgHeld = 0; this.stWas2 = false; this.sgWas2 = false; this.comboTurn = 0; this.turnWas = 0;   // (the spinner's input timing, fresh each wave: carried over, the first wave and the next behaved differently) this.landV = 0; this.landT = -9; this.landImpact = 0;
     this.ride = { t: 0, top: 0, barrel: 0, pocket: 0, turns: 0, cutbacks: 0, snaps: 0, speed: 0, end: 0, score: 0, moves: [], tubeT: 0, leanPk: 0, gPk: 0, tubeDeep: 0, combo: 0, lastMoveT: -9 }; this.turnSign = 0; this.tyMin = this.tyMax = undefined; this.cbArmed = false; this.snapArm = 0; this.snapK = 0; this.snapPk = 0; this.lipPush = 0; this.lipHit = false; this.trick = null;
   }
   set(state) { this.state = state; this.stateT = 0; }
@@ -453,6 +472,40 @@ export class Rider {
       const wantTurn = Math.max(-turnCap, Math.min(turnCap, bite * railHold * P.g * Math.tan(this.lean) / Math.max(speed, 3.2) + pivot));
       this.turn += (wantTurn - this.turn) * Math.min(1, h / (P.yawLag * (1 - 0.45 * sk)));
       this.th += this.turn * h;
+      // the bodyboard's spinner (see SPIN_T): STALL held with the thumb hard over, both for a moment (SPIN_HOLD), on the open face
+      // (not in the tube, not in the flats or up in the lip), with speed and settled into the ride. (3 Oct 2026, his call: it was a
+      // tap of STALL, and nothing else in the game is a tap; now it's hold and steer like everything else. Once round, let go of
+      // either before the next one, or holding on spun you again and again)
+      if (P.prone) { const K = SPIN_SKILL, stIn = (inp.stall || 0) > 0.5, sgIn = Math.abs(inp.steer) > 0.2, hard = Math.abs(inp.steer) > K.hard, both = stIn && hard;
+        // (3 Oct 2026, his report 'now cannot even spin': the keys build a turn up over half a second, so 'hard over' came 0.5 s
+        //  after the press and the old checks, timed from there, always said 'not together' and 'already carving'. Now both
+        //  are timed from when you START to steer (past a fifth), whichever of STALL and the thumb came first)
+        if (stIn && !this.stWas2 && !(sgIn && this.sgWas2)) this.comboTurn = Math.abs(this.turn);   // (STALL first: were you riding straight?)
+        if (sgIn && !this.sgWas2 && !(stIn && this.stWas2)) this.comboTurn = Math.abs(this.turn);   // (the thumb first)
+        this.stHeld = stIn ? (this.stHeld || 0) + h : 0; this.sgHeld = sgIn ? (this.sgHeld || 0) + h : 0; this.stWas2 = stIn; this.sgWas2 = sgIn;
+        // only as one move: STALL and the thumb coming on together (K.together s), from riding along the face, not out of a
+        // carve already swinging round (K.carving rad/s) and not after braking a while with STALL (a stall turn, never a spinner)
+        if (!stIn || !sgIn) this.spRel = true;
+        else if (!this.spin && !(this.spHold > 0) && (this.stHeld - this.sgHeld > K.first || this.sgHeld - this.stHeld > K.together || (this.comboTurn || 0) > K.carving)) this.spRel = false;   // (the thumb first and STALL after within K.together s, or both at once (K.first of slack); STALL first then steering is a stall turn: a barrel set-up, holding STALL and steering to hold the line, spun by accident)
+        this.spHold = both && this.spRel && !this.spin ? (this.spHold || 0) + h : 0;
+        // (3 Oct 2026, his call: 'it needs skill, not a free move'. It starts almost anywhere on the face you're moving on, but it
+        //  only comes round with good speed going in (SPIN_SKILL.v of the wave's speed; more for a second one straight after,
+        //  each spin scrubs speed), and in the middle of the face: down in the flats a rail catches, up under the lip it takes
+        //  you. Judged half way round, where you are then)
+        if (!this.spin && this.spHold >= SPIN_HOLD && this.state === 'RIDE' && this.stateT > 1 && sl && hRel > 0.05 && hRel < 0.95 && !this.inBarrel && speed > 0.3 * C.speed && this.ride.t - (this.spinEnd ?? -9) > 0.5) {
+          this.spRel = false; this.spHold = 0;
+          const dir = Math.sign(inp.steer), need = SPIN_SKILL.v + (this.ride.t - (this.spinEnd ?? -9) < SPIN_SKILL.again ? SPIN_SKILL.againV : 0);
+          this.spin = { t: 0, dir, th0: this.th, rev: dir * Math.cos(this.th) < 0, slow: speed < need * C.speed, judged: false, crit: Math.min(1, 0.3 + 0.7 * smooth(0.15, 0.6, hRel) * smooth(2.5 * C.H, 0, Math.abs(this.s || 0))) }; }
+        if (this.spin) { const S2 = this.spin; S2.t += h; const u = Math.min(1, S2.t / SPIN_T), e = u - Math.sin(2 * Math.PI * u) / (2 * Math.PI) * 0.6;   // (eased in and out softly: at most 1.6 times its average pace, ~480 deg/s, never a burst)
+          this.th = S2.th0 + S2.dir * 2 * Math.PI * e; this.turn = 0; this.lean *= 1 - Math.min(1, h * 10);   // (turn 0: the spin isn't a carve; as one, the rail spray, which grows with how hard you turn, went to full and fogged the view)
+          this.vx *= 1 - 0.2 * h; this.vz *= 1 - 0.2 * h;   // (sliding on round: about a fifth of your speed gone by the end)
+          if (Math.hypot(rx, rz) < (P.planeV ?? 3.6)) { this.spin = null; return this.wipe('Spun out: too slow to come round'); }
+          if (!S2.judged && u >= 0.5) { S2.judged = true;
+            if (S2.slow) { this.spin = null; return this.wipe('Spun out: not enough speed going into the spinner'); }
+            if (hRel < SPIN_SKILL.lo) { this.spin = null; return this.wipe('Caught a rail spinning down in the flats'); }
+            if (hRel > SPIN_SKILL.hi) { this.spin = null; return this.wipe('The lip took you mid-spin: spin in the middle of the face'); } }
+          if (u >= 1) { this.th = S2.th0; this.spin = null; this.spinEnd = this.ride.t; this.move('SPINNER', S2.crit, 0, S2.rev ? 1.25 : 1); const m = this.ride.moves[this.ride.moves.length - 1]; if (m && S2.rev) m.notes.push('reverse'); if (S2.rev && this.trick) this.trick.name = this.trick.name.replace('SPINNER', 'REVERSE SPINNER'); } }
+      }
       // the tail can swing out, but the fins drag the nose back toward where the board is going through the water:
       // slip past ~17 deg is resisted, and it never passes ~35 deg (a drift, not a spin-out)
       this.slide = 0;
@@ -470,7 +523,8 @@ export class Rider {
         if (rem < 0.06 || rem > TAU - 0.06) { this.rev = null; this.move('AIR REVERSE', R2.crit, R2.peak, (R2.t < 0.55 ? 1.1 : 1) * (1 + 0.3 * smooth(0.25, 0.6, R2.grabT))); if (R2.grabT >= 0.25) this.grabbed(); }
         else if (R2.t > 1.1) { this.rev = null; return this.wipe('Spun out: the reverse never came round'); }
       }
-      if (!this.rev && Math.hypot(rx, rz) > 1.5) {
+      if (this.spin) this.slide = 0.55 * Math.abs(Math.sin(this.th - this.spin.th0));   // (a light fan: at full slide strength the spray fogged the whole view)   // (a spinner: the fins' pull back toward your line doesn't apply, or it held the spin at ~45 deg and swung it back, his catch 3 Oct 2026; just the spray)
+      else if (!this.rev && Math.hypot(rx, rz) > 1.5) {
         // measured against the water the board is sliding on, not the ground
         const vd = Math.atan2(rz, rx); let slip = this.th - vd; slip = Math.atan2(Math.sin(slip), Math.cos(slip));
         const a = Math.abs(slip), soft = P.slipSoft + 0.5 * sk + 0.4 * tk, hard = Math.min(tk > 0.05 ? 1.31 : 9, P.slipHard + 0.7 * sk + 0.25 * tk);   // (a tail slide never passes ~75 deg: a slide, not a spin)   // (in a snap the tail swings right out; in a tail slide, further)
@@ -502,7 +556,7 @@ export class Rider {
       // stalling: weight on the tail and the trailing hand dragged in the face, a strong brake (you let the wave catch you)
       // (his call 29 Sep 2026: more like the real thing) it bites hard the moment you sit back, then eases; and hold it
       // once you've slowed right down and the board stops planing: the tail sinks under you (a wobble first, then you fall)
-      this.stalling = inp.stall || 0;
+      this.stalling = this.spin ? 0 : inp.stall || 0;   // (still holding STALL through a spinner: it's the spin, not a brake)
       this.stallT = this.stalling ? (this.stallT || 0) + h : 0;
       if (this.spitOut > 0 && this.inBarrel) this.stalling = 0;   // (the spit blows you out: no braking against it)
       if (this.stalling) { const bite = 1 + (P.stallBite ?? 1.1) * Math.exp(-this.stallT / 0.45), sd = P.stallDrag * bite * this.stalling * Math.min(1, Math.abs(along) / 2) * Math.sign(along) * (1 - 0.7 * (this.tailK || 0) * (P.slideMove ? 0 : (P.tail ?? 1))); ax -= sd * dx; az -= sd * dz; }   // (in a tail slide STALL lets the fins go rather than braking: the slide itself scrubs the speed)
@@ -535,8 +589,8 @@ export class Rider {
       let gx = -P.finGrip * lx * sc, gz = -P.finGrip * lz * sc;
       const rs = Math.hypot(rx, rz);
       if (rs > 0.5) { const ux = rx / rs, uz_ = rz / rs, gt = gx * ux + gz * uz_; if (gt < 0) { gx -= gt * P.glide * ux; gz -= gt * P.glide * uz_; } }
-      ax += gx; az += gz;
-      if (this.skid) { const loss = P.skidLoss * (1 - 0.5 * P.glide) * (latA - lim) * Math.sign(along); ax += -loss * dx; az += -loss * dz; }
+      if (!this.spin) { ax += gx; az += gz; }   // (a spinner: the rail's let go, the board slides round on its own)
+      if (this.skid && !this.spin) { const loss = P.skidLoss * (1 - 0.5 * P.glide) * (latA - lim) * Math.sign(along); ax += -loss * dx; az += -loss * dz; }
       // pumping, like a real surfer: a rhythm of strokes (compress onto the board, spring up light), one flowing into the next, about 1.3 a second (real surfers pump ~1-1.5 a second). Hold
       // PUMP and the surfer keeps the rhythm himself (a stroke every PUMP_PERIOD); a press starts one at once, and mashing
       // faster than your legs can go gives weak strokes. Strongest weaving up and down the face and
@@ -576,7 +630,7 @@ export class Rider {
     this.onFace = onFront && slope > 0.22 && this.hz < -0.1;          // downhill is toward the beach
     // the lip lands on anyone under it
     const fgL = C.forgive || 1;   // (a forgiving wave: the lip's landing zone is narrower and it throws you a little later)
-    if (lipDown && s < -0.3 * H && s > -4.5 * H && zl > sl.lipZ - 0.3 && zl - sl.lipZ < (0.45 + 0.1 * H) * fgL && y < 0.55 * H) return this.wipe(this.standing && this.ride.t < 3 ? 'The lip landed on you: angle along the wave as you stand up, not straight down' : 'The lip landed on you');   // (only where it lands and just outside: tucked inside under it you're in the barrel, not under the hammer)
+    if (lipDown && s < -0.3 * H && s > -4.5 * H && zl > sl.lipZ - 0.3 && zl - sl.lipZ < (0.45 + 0.1 * H) * fgL && y < 0.55 * H) return this.wipe(this.standing && this.ride.t < 3 ? (P.prone ? 'The lip landed on you: angle along the wave as you take off, not straight down' : 'The lip landed on you: angle along the wave as you stand up, not straight down') : 'The lip landed on you');   // (only where it lands and just outside: tucked inside under it you're in the barrel, not under the hammer)
     if (!this.standing) {
       // caught inside: the whitewater rolls you toward the beach (you hang on to the board)
       if (sl.broken > 0.35 && onFront && y > 0.1 * H) this.washed = true;
@@ -668,7 +722,8 @@ export class Rider {
       // (and only a real carve: the last one held for at least 0.35 s, so thumb wiggles don't count)
       this.ride.gPk = Math.max(this.ride.gPk, Math.abs(this.turn) * this.v / P.g);   // (the hardest the rail has loaded since the last turn)
       const hFace = y / Math.max(sl.top, 0.3); this.tyMin = Math.min(this.tyMin ?? hFace, hFace); this.tyMax = Math.max(this.tyMax ?? hFace, hFace);   // how far up and down the face you've been since the last turn
-      if (Math.abs(this.turn) > 0.9 * P.turnMin && this.v > C.peel * 0.8) {   // (a longboard's flowing turns count at its own, gentler rate)
+      const spinning = !!this.spin;   // (a bodyboard spinner swings the board right round: it's its own move, never a turn, cutback or snap as well)
+      if (!spinning && Math.abs(this.turn) > 0.9 * P.turnMin && this.v > C.peel * 0.8) {   // (a longboard's flowing turns count at its own, gentler rate)
         const sg = Math.sign(this.turn);
         if (sg !== this.turnSign) { if (this.turnSign !== 0 && this.turnHold > 0.35 && this.ride.gPk > 0.9 && onFront && hFace > 0.15 && s < 4 * H) { this.ride.turns++; if (this.tyMin < 0.4) this.ride.botT = this.ride.t;   // (a turn that came through the bottom 40% of the face: a bottom turn)
           this.move('TURN', crit, 0, 0.35 + 0.65 * smooth(0.15, 0.45, this.tyMax - this.tyMin)); }   // (a real carve on the face near the wave's power: a wiggle out on the flats isn't a turn)
@@ -693,7 +748,8 @@ export class Rider {
       }
       // a cutback: from running down the line, turn right round to face the breaking part, still with speed
       const hd = Math.cos(this.th);
-      if (hd > 0.5) this.cbArmed = true;
+      if (spinning) this.cbArmed = false;
+      else if (hd > 0.5) this.cbArmed = true;
       else if (this.cbArmed && hd < -0.4 && this.v > 0.45 * C.speed) { this.cbArmed = false; this.ride.cutbacks++; this.move('CUTBACK', crit); }
       // a roundhouse: the cutback carried right round into a figure eight, rebounding off the breaking part and back down
       // the line with speed. The cutback you just did becomes the roundhouse (one move, scored as the bigger one)
@@ -704,7 +760,7 @@ export class Rider {
       if (this.rhT != null && hd > 0.5 && s / H < RH.s && this.v > RH.v * C.speed) { this.rhT = null; this.roundhouse(crit); }
       // a snap (top turn): climb hard up to the lip, then whip the board back down the face from up there
       const relVz = this.vz - C.speed, hTop = y / Math.max(sl.top, 0.3);
-      if (relVz < -1.2 && hTop > 0.6) this.snapArm = 1.2; else this.snapArm = Math.max(0, this.snapArm - h);
+      if (spinning) this.snapArm = 0; else if (relVz < -1.2 && hTop > 0.6) this.snapArm = 1.2; else this.snapArm = Math.max(0, this.snapArm - h);
       if (!(this.snapArm > 0) && !(this.snapK > 0)) { this.snapPk = 0; this.lipHit = false; }   // (a snap that never came round to a scored one leaves nothing behind)
       if (this.snapArm > 0 && relVz > 0.8 && hTop > 0.5 && Math.abs(this.turn) > 1.3 && !(this.trick && this.trick.name.endsWith('SNAP')) && !(this.ride.t - (this.tsAteT ?? -9) < 1.5 && this.ride.t >= this.tsAteT)) {   // (not the same turn again straight after a tail slide that already scored it)
         this.snapArm = 0; this.ride.snaps++; this.move('SNAP', crit, 0, 1, { pivot: this.snapPk || 0, lip: !!this.lipHit }); this.snapPk = 0; this.lipHit = false;
@@ -742,7 +798,12 @@ export class Rider {
     const travel = Math.atan2(this.vz, this.vx), off = Math.atan2(Math.sin(travel - this.th), Math.cos(travel - this.th));
     const mine = A.t > 0.3 && Math.abs(inp.steer) > 0.5;   // (the thumb you were carving with doesn't spin you as you take off: a spin is a fresh push)
     // the grab (his call 3 Oct 2026): hold STALL in the air and your hand takes the rail; a held grab spins a little slower
-    A.grabbing = (inp.stall || 0) > 0.5 && A.t > 0.06; if (A.grabbing) A.grabT = (A.grabT || 0) + h;
+    A.grabbing = !P.prone && (inp.stall || 0) > 0.5 && A.t > 0.06; if (A.grabbing) A.grabT = (A.grabT || 0) + h;
+    // the bodyboard rolls instead (see ROLL_T): STALL (pressed or held) starts one roll right over, which runs on by itself; toward the open
+    // face, the way the lip throws you
+    if (P.prone) { const sIn = (inp.stall || 0) > 0.5;
+      if (sIn && !A.roll && A.t > 0.04) A.roll = { t: 0, dir: Math.cos(this.th) < 0 ? 1 : -1, done: false };   // (held through the take-off counts too, as the shortboard's grab: one roll an air)
+      if (A.roll) { const R2 = A.roll; R2.t += h; const u = Math.min(1, R2.t / ROLL_T); A.rollA = R2.dir * 2 * Math.PI * u * u * (3 - 2 * u); if (u >= 1) { R2.done = true; A.rollA = 0; } } }
     // (and once you've spun past half way on purpose, the instinct settles you the rest of the way round backwards, ready to
     //  land the air reverse, instead of fighting back toward forwards and landing you sideways: vet 3 Oct 2026)
     const settle = Math.abs(A.spin) > 2.0 && Math.abs(off) > Math.PI / 2 ? Math.atan2(Math.sin(off + Math.PI), Math.cos(off + Math.PI)) : off;
@@ -766,7 +827,8 @@ export class Rider {
     const off = Math.abs(Math.atan2(Math.sin(this.th - travel), Math.cos(this.th - travel))), rot = Math.abs(A.spin);
     { const cwL = (q.w || this.wave) ? (q.w || this.wave).cond.speed : 0, nl = Math.sqrt(1 + hx * hx + hz * hz); this.landImpact = (hx * this.vx - A.vy + hz * (this.vz - cwL)) / nl; }   // (how hard you meet the water: your speed into its surface, the face moving in at the wave's speed)
     this.landV = -A.vy; this.landT = this.ride.t;   // (how hard you came down: the landing's slap and kick, game.js; and when: no new air in the next 0.6 s, you land and ride first)
-    if (this.landImpact > 10.5) return this.wipe('Too high: the landing buckled your legs');   // (the hit across the water's surface, his call 3 Oct 2026: back on the steep face it's soft, as real surfers land big airs; flat in the trough from up high it buckles you. Falling speed alone made every big-wave air a fall)
+    if (this.landImpact > 10.5) return this.wipe('Too high: the landing buckled your legs');
+    if (A.roll && !A.roll.done) return this.wipe('Landed mid-roll: not round in time');   // (the bodyboard's rollo: start it early, off a good lip)   // (the hit across the water's surface, his call 3 Oct 2026: back on the steep face it's soft, as real surfers land big airs; flat in the trough from up high it buckles you. Falling speed alone made every big-wave air a fall)
     const crit = Math.min(1, 0.35 + 0.5 * Math.min(1, A.peak / (0.5 * H)) + 0.3 * Math.min(1, rot / (2 * Math.PI))), grabT = A.grabT || 0;
     // the air reverse (his call 3 Oct 2026): spun about half round, you land tail first, going backwards; the board slides and
     // you swing the nose back round (see rev in the ride). Landed anywhere in between it's sideways, and that's a fall
@@ -774,7 +836,8 @@ export class Rider {
     //  the ground some landings already lined up with the water counted as a reverse and came round instantly, for free)
     if (off > 0.65 && rot > 2.0) { this.rev = { t: 0, dir: Math.sign(A.spin) || 1, crit, peak: A.peak, grabT, pend: true }; this.vx *= 0.8; this.vz *= 0.8; this.v = Math.hypot(this.vx, this.vz); return; }
     if (off > 0.65) return this.wipe(rot > 2 ? 'Over-rotated: you landed sideways' : 'Landed sideways off the air');
-    this.move(rot > 5.5 ? 'AIR 360' : 'AIR', crit, A.peak, 1 + 0.3 * smooth(0.25, 0.6, grabT)); if (grabT >= 0.25) this.grabbed();
+    const rolled = !!(A.roll && A.roll.done);
+    this.move(rolled ? (rot > 5.5 ? 'ARS' : 'EL ROLLO') : rot > 5.5 ? 'AIR 360' : 'AIR', crit, A.peak, 1 + 0.3 * smooth(0.25, 0.6, grabT)); if (grabT >= 0.25) this.grabbed();
     const sl = q.w ? q.w.prof.slice(q.s) : null;
     if (!sl || q.zl < sl.topZ - 0.3) return this.out('Landed the air out the back');   // (the air still counts)
     this.vx *= 0.85; this.vz *= 0.85; this.v = Math.hypot(this.vx, this.vz);   // your legs soak up the landing

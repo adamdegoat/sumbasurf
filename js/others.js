@@ -13,7 +13,9 @@
 // Every target is eased so a change of pose is a movement, never a snap.
 import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
-import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=23';
+import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, boardSurface } from './board.js?v=25';
+import { gripHand, gripTarget } from './grip.js?v=14';
+const BODYSURF = boardSurface('body');
 
 const UP = new THREE.Vector3(0, 1, 0), INTO_WAVE = new THREE.Vector3(0, 0, -1);
 const V = () => new THREE.Vector3(), Q = () => new THREE.Quaternion();
@@ -62,6 +64,10 @@ const BOARDS = new Map(), MATS = new Map();
 // its mesh by the mesh's own counts and checked point by point; anything that doesn't match, or a file that doesn't
 // load, simply leaves the full body in place
 export const LOD = { far: 14, near: 12 };   // (metres: the lighter body from LOD.far out, back to the full one inside LOD.near. 3 Oct 2026, heat check: was 27/23; side by side, frozen, 3x up, the two bodies can't be told apart from 12 m out, where a friend is ~40 px tall)
+export { GRIP } from './grip.js?v=14';   // (the bodyboard grip: grip.js, the same as yours)
+const PR_BONES = ['spine_01', 'spine_02', 'spine_03', 'neck_01', 'head', 'upperarm_l', 'lowerarm_l', 'hand_l', 'upperarm_r', 'lowerarm_r', 'hand_r', 'thigh_l', 'calf_l', 'thigh_r', 'calf_r'];
+const FIN = { pocket: new THREE.BoxGeometry(0.11, 0.18, 0.08), blade: new THREE.BoxGeometry(0.15, 0.26, 0.012),   // (the foot pocket over the foot, then the blade out past the toes: ~26 cm, a short bodyboard fin)
+  black: new THREE.MeshStandardMaterial({ color: 0x141518, roughness: 0.7 }), blue: new THREE.MeshStandardMaterial({ color: 0x1f3f9a, roughness: 0.55 }) };
 let FAR = null, farLoading = false; const FARGEO = new Map();
 function farLoad() { if (FAR || farLoading) return; farLoading = true; fetch(new URL('../surfer_far.json?v=1', import.meta.url)).then((r) => r.json()).then((j) => { FAR = (j && j.v === 1 && j.m) || {}; }).catch(() => { FAR = {}; }); }
 function farGeo(g) {
@@ -129,6 +135,7 @@ export class OtherSurfer {
     // eased state
     this.crouch = 0.4; this.lean = 0; this.twist = 0; this.barrel = 0; this.load = 0; this.pumpA = 0; this.stall = 0; this.t = 0;
     this.hand = { l: { p: V(), ok: false }, r: { p: V(), ok: false } };
+    if (board === 'body') this.addFins();
     this.bodyUp = V(); this.bodyFwd = V(); this.bodyX = V(); this.bodyQ = Q(); this.inv = Q();
   }
   // S: { pos, q (the board's world pose), state, stateT, v, lean (-1..1 of full lean), turn, inBarrel, pumping, pumpT,
@@ -175,8 +182,9 @@ export class OtherSurfer {
     this.group.position.copy(S.pos).addScaledVector(_c.set(0, 1, 0).applyQuaternion(S.q), this.lift ?? 0.1); this.group.quaternion.copy(S.q); this.group.updateMatrixWorld(true);
     const st = S.state; this.body.visible = this.board.visible = true;
     if (st !== 'LIE') { this.board.rotation.x = 0; this.board.position.y = 0; this.sitW = 0; }   // (the sitting tilt only while in the water)
-    if (st === 'DECK') return this.deck(dt, S);
+    if (st === 'DECK') { this.placeFins(false); return this.deck(dt, S); }
     if (st === 'WIPE') return this.wipe(dt, S);
+    if (this.boardType === 'body' && (st === 'RIDE' || st === 'POP' || st === 'OUT' || (st === 'LIE' && !S.paddling))) return this.prone(dt, S);   // (the bodyboard: lying on it, riding or waiting)
     if (st !== 'RIDE' && st !== 'POP') return this.water(dt, S);
     const fwd = _a.set(0, 0, 1).applyQuaternion(S.q), bup = _b.set(0, 1, 0).applyQuaternion(S.q);
     // ---- eased drivers
@@ -327,6 +335,49 @@ export class OtherSurfer {
   }
   // in the water: paddling (a crawl, alternate arms) or sitting astride the board waiting for a set, legs hanging in
   // the water either side and hands on the deck; the body glides between the two
+  // lying on a bodyboard (3 Oct 2026, BODYBOARD_PLAN.md stage 4), riding or waiting: as you see yourself (game.js pronePose),
+  // hips on the tail, chest up with the back arched, hands on the nose's corners; STALL drags the hand on the wave's side in
+  // the face; the legs trail behind, the fins (see addFins) lifted a little off the water while gliding
+  prone(dt, S) {
+    const B = this.B, g = this.group, riding = S.state === 'RIDE' || S.state === 'POP';
+    this.weights(dt, { paddle: 1 }, 8); const pa = this.clips.paddle; if (pa) { pa.timeScale = 0; if (Math.abs(pa.time - 0.5) > 0.05) pa.time = 0.5; }   // (held with the body straight, as yours is)
+    this.pos0.lerp(_d.set(0, -0.76, -0.4), 1 - Math.exp(-8 * dt)); this.body.position.copy(this.pos0);   // (8 cm up the board from the paddling spot, as yours: close enough to grip the nose)
+    this.q0.slerp(_q2.identity(), 1 - Math.exp(-10 * dt)); this.body.quaternion.copy(this.q0);
+    this.board.rotation.x = 0; this.board.position.y = 0; this.sitW = 0; this.paddleW = 0;
+    this.mixer.update(dt);
+    // (a held clip doesn't write its bones again: each bone turned here goes back to the clip's own pose first, or the turns pile up)
+    const keep = this.prKeep || (this.prKeep = new Map()), list = PR_BONES.map((n) => B[n]).filter(Boolean);
+    for (const b of list) { let r = keep.get(b); if (!r) { r = { base: b.quaternion.clone(), out: Q().set(NaN, 0, 0, 0) }; keep.set(b, r); } if (b.quaternion.equals(r.out)) b.quaternion.copy(r.base); else r.base.copy(b.quaternion); }
+    this.body.updateMatrixWorld(true);
+    this.archK = ease(this.archK || 0, riding ? 1 : 0.55, dt, 4); const k = this.archK, ax = V().set(1, 0, 0).applyQuaternion(g.quaternion);
+    turnBone(B.spine_01, ax, -0.16 * k); turnBone(B.spine_02, ax, -0.2 * k); turnBone(B.spine_03, ax, -0.22 * k); turnBone(B.neck_01, ax, -0.32 * k); turnBone(B.head, ax, -0.12 * k);
+    const waveSide = Math.sign(ax.dot(INTO_WAVE)) || 1; this.dragK = ease(this.dragK || 0, riding && (S.stalling || 0) > 0.3 ? 1 : 0, dt, 8);
+    for (const sd of ['l', 'r']) {
+      const ua = B['upperarm_' + sd], la = B['lowerarm_' + sd], hd = B['hand_' + sd]; if (!ua || !la || !hd) continue;
+      const lp = g.worldToLocal(ua.getWorldPosition(V())), side = Math.sign(lp.x) || (sd === 'l' ? 1 : -1), dr = side === waveSide ? this.dragK : 0;
+      const bs = side * Math.sign(this.board.scale.x), T = this.board.localToWorld(gripTarget(bs, dr, BODYSURF, V())), pole = V().set(side, -0.7, -0.25).applyQuaternion(g.quaternion);
+      reachArm(ua, la, hd, T, pole, 1);   // (all the way: see game.js pronePose)
+      gripHand(hd, bs, 1 - dr, this.board, this.body, BODYSURF);   // (the hand dragging in the water lets go)
+    }
+    const F = V().set(0, 0, 1).applyQuaternion(g.quaternion), back = V().copy(F).negate().addScaledVector(V().set(0, 1, 0).applyQuaternion(g.quaternion), riding ? 0.12 : -0.08).normalize();   // (riding, the fins up out of the water; waiting, dangling in it)
+    for (const sd of ['l', 'r']) { aimBone(B['thigh_' + sd], B['calf_' + sd], back, 0.8); aimBone(B['calf_' + sd], B['foot_' + sd], back, 0.8); }
+    for (const b of list) keep.get(b).out.copy(b.quaternion);
+    this.body.updateMatrixWorld(true); this.placeFins(true);
+    this.hand.l.ok = this.hand.r.ok = false; this.crouch = 0.8; this.lean = 0; this.twist = 0;
+  }
+  // swim fins on the feet (bodyboarders ride in them: short rubber fins, the classic blue and black), only on the bodyboard
+  // (placed each frame along the line of the leg, flat to the board: hung on the toe bone, whose own axis points down the
+  //  foot, one blade stood straight up, his kind of catch, found in a close-up 3 Oct 2026)
+  addFins() {
+    this.fins = ['l', 'r'].map(() => { const f = new THREE.Group(), pocket = new THREE.Mesh(FIN.pocket, FIN.black), blade = new THREE.Mesh(FIN.blade, FIN.blue);
+      pocket.position.set(0, 0.02, 0); blade.position.set(0, 0.2, 0); f.add(pocket, blade); this.group.add(f); return f; });
+  }
+  placeFins(show) {
+    if (!this.fins) return; const g = this.group, up = V().set(0, 1, 0).applyQuaternion(g.quaternion);
+    ['l', 'r'].forEach((sd, i) => { const f = this.fins[i], ca = this.B['calf_' + sd], ft = this.B['foot_' + sd]; f.visible = !!(show && ca && ft); if (!f.visible) return;
+      const a = ca.getWorldPosition(V()), b = ft.getWorldPosition(V()), dir = V().subVectors(b, a).normalize(), z = V().copy(up).addScaledVector(dir, -up.dot(dir)).normalize(), x = V().crossVectors(dir, z);
+      const wq = Q().setFromRotationMatrix(_m.makeBasis(x, dir, z)); f.position.copy(g.worldToLocal(b.clone())); f.quaternion.copy(Q().copy(g.quaternion).invert().multiply(wq)); });   // (its length down the line from knee to ankle, its face to the sky)
+  }
   water(dt, S) {
     const B = this.B, paddling = S.state === 'LIE' && S.paddling;
     this.weights(dt, paddling ? { paddle: 1 } : { sit: 1 }, 8);
@@ -343,6 +394,7 @@ export class OtherSurfer {
     this.board.rotation.x = -0.16 * this.sitW; this.board.position.y = -0.06 * this.sitW; this.body.position.y += -0.06 * this.sitW; this.body.updateMatrixWorld(true);
     if (this.sitW > 0.05) this.straddle(this.sitW);
     if (this.paddleW > 0.05) this.crawl(dt, S, this.paddleW);
+    this.body.updateMatrixWorld(true); this.placeFins(true);
   }
   crawl(dt, S, w) {   // the hand's path of a real crawl stroke: in ahead of the shoulder outside the rail, a bent-arm pull back to the hip under the surface, out and forward low over the water
     const B = this.B, g = this.group; this.paddlePh += dt * Math.PI * 2 * 0.75;

@@ -1024,13 +1024,20 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261003-1558</small>
+    <small id="build">build 261003-2027</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-03-bodyboard', date: '3 Oct 2026', time: '8:27 pm', title: 'New board: the bodyboard', items: [
+      'Ride lying down on a 42" bodyboard with swim fins. Kick into the wave and you are riding: no standing up.',
+      'Made for steep, hollow waves and deep barrels. Hold STALL to drag your hand in the face and sit deep in the tube.',
+      'Spinner: hold STALL and push your thumb hard over, and the board spins right round under you. Spin toward the wave for a reverse spinner.',
+      'El rollo: hit the lip, then hold STALL in the air to roll right over. Steer as well for an air roll spin, the top move.',
+      'Three designs, its own spot on the villa rack, and your friends see you on it, fins and all.',
+    ] },
     { id: '2026-10-03-rooms', wd: true, date: '3 Oct 2026', time: '3:50 pm', title: 'Free surf beaches you can trust', items: [
       'The beach list and the player list only show surfers who are really there. Someone whose phone went to sleep drops off, and comes back as soon as they return.',
       'Beaches where nobody is surfing are no longer listed, so you never join an empty sea.',
@@ -1608,6 +1615,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1243"></script>
+<script type="module" src="js/game.js?v=1307"></script>
 </body>
 </html>
