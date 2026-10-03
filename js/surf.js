@@ -73,9 +73,9 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 // and the back (from behind the wave up to the crest). Heights in the wave's own frame: zl = z - wave.zW.
 // what each move is worth before how well and where you did it (28 Sep 2026: turns, snaps and cutbacks raised so a
 // wave of hard, committed turns in the pocket can score like a barrel, as real judges score it)
-const LINK_TOP = new Set(['SNAP', 'CUTBACK', 'FLOATER', 'AIR', 'AIR 360']);   // (the moves a bottom turn sets up)
+const LINK_TOP = new Set(['SNAP', 'CUTBACK', 'FLOATER', 'AIR', 'AIR 360', 'AIR REVERSE']);   // (the moves a bottom turn sets up)
 export const RH = { s: 0.6, v: 0.5 };   // (the roundhouse's rebound: how close to the whitewater, in wave heights, and how much of the wave's speed kept)
-export const MOVE_BASE = { 'TAIL SLIDE': 5.0, SLIDE: 4.2, TURN: 1.0, CARVE: 3.8, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0, 'HANG FIVE': 3.6, 'HANG TEN': 5.2, ROUNDHOUSE: 5.8, 'LATE DROP': 4.0, SWITCH: 1.3 };   // (airs kept above the turns: the hardest move scores most)
+export const MOVE_BASE = { 'TAIL SLIDE': 5.0, SLIDE: 4.2, TURN: 1.0, CARVE: 3.8, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0, 'HANG FIVE': 3.6, 'HANG TEN': 5.2, ROUNDHOUSE: 5.8, 'LATE DROP': 4.0, SWITCH: 1.3, 'AIR REVERSE': 6.3 };   // (airs kept above the turns: the hardest move scores most)
 export const MOVE_BASE_OLD = { TURN: 0.9, SNAP: 2.2, CUTBACK: 2.4, FLOATER: 2.0, AIR: 3.0, 'AIR 360': 4.2 };
 const JUDGE_K = 6;   // (28 Sep 2026: with quality over quantity below, 3 to 5 great moves reach the 8s; was 8)   // how hard the top of the scale is (calibrated with test riders: see HANDOVER)
 
@@ -190,7 +190,7 @@ export function heightAt(waves, x, z) { return waterAt(waves, x, z, _q).y; }
 // detail = the judges' sheet: what counted, each line's share of the score (they add up to it).
 const SC = { drop: 1.5, fellK: 0.45, rep: 0.65, repTurn: 0.6, repBarrel: 0.45, W: [1, 0.8, 0.65, 0.5, 0.38, 0.28, 0.2, 0.14], Wtail: 0.1,
   varK: 0.35, varMax: 1.4, pocketK: 0.05, pocketMax: 1.2, flowK: 0.01, flowMax: 0.3, finish: 0.5, K: 9 };   // (K 6.5 -> 9, his call 30 Sep 2026: three well-done moves already scored 9.1-9.6 anywhere; now about 8, and 9.5 takes a full, heavy wave)
-const SIGNATURE = new Set(['BARREL', 'AIR', 'AIR 360', 'HANG TEN']);
+const SIGNATURE = new Set(['BARREL', 'AIR', 'AIR 360', 'AIR REVERSE', 'HANG TEN']);
 export function scoreRide(r, fell = false, detail = false) {
   const ms = fell ? r.moves.filter((m) => m.t < r.t - SC.drop) : r.moves;
   const hasBig = ms.some((m) => m.name !== 'TURN');   // (a hard carve is the wave's main move only on a wave of carves: next to barrels and snaps it's a linking turn again)
@@ -198,13 +198,13 @@ export function scoreRide(r, fell = false, detail = false) {
     return { m, n, v: pts * Math.pow(m.name === 'TURN' ? SC.repTurn : m.name === 'BARREL' ? SC.repBarrel : SC.rep, n - 1) }; }).sort((a, b) => b.v - a.v);
   items.forEach((it, i) => (it.w = it.v * (SC.W[i] ?? SC.Wtail)));
   let raw = items.reduce((a, it) => a + it.w, 0);
-  const kinds = new Set(ms.filter((m) => m.name !== 'TURN' && m.name !== 'SWITCH').map((m) => m.name.replace('AIR 360', 'AIR'))).size, variety = Math.min(SC.varMax, SC.varK * Math.max(0, kinds - 1));
+  const kinds = new Set(ms.filter((m) => m.name !== 'TURN' && m.name !== 'SWITCH').map((m) => m.name.replace(/^AIR .*/, 'AIR'))).size, variety = Math.min(SC.varMax, SC.varK * Math.max(0, kinds - 1));
   const flow = Math.min(SC.flowMax, r.speed * SC.flowK) + Math.min(SC.pocketMax, (r.pocket || 0) * SC.pocketK), finish = r.end && !fell ? SC.finish : 0;
   raw += variety + flow + finish;
   if (fell) raw *= SC.fellK;
   raw *= r.judge ?? 1;   // (the spot: see CONDITIONS judge)
   let score = 10 * (1 - Math.exp(-raw / SC.K));
-  const strong = ms.filter((m) => m.strong && m.name !== 'TURN'), strongKinds = new Set(strong.map((m) => m.name.replace('AIR 360', 'AIR'))).size;
+  const strong = ms.filter((m) => m.strong && m.name !== 'TURN'), strongKinds = new Set(strong.map((m) => m.name.replace(/^AIR .*/, 'AIR'))).size;
   const excellentOk = !fell && ms.some((m) => SIGNATURE.has(m.name)) && strongKinds >= 2 && strong.length >= 3;
   if (!excellentOk && score > 7.5) score = 7.5 + 0.4 * (1 - Math.exp(-(score - 7.5) / 0.4));   // (not the whole package: very good, never excellent)
   // a perfect 10 (his call 30 Sep 2026, "really hard"): real judges give one for a wave they can't fault. Here it takes
@@ -261,7 +261,7 @@ export class Rider {
     this.wave = null; this.s = 99; this.zl = 99; this.inBarrel = false; this.onFace = false; this.lowT = 0;
     this.air = null; this.vyS = 0; this.hitV = 0; this.vyPk = 0; this.prevY = undefined;
     this.pumpWas = false; this.pumpN = 0; this.pumpGap = 9; this.pumpT = 9; this.pumpQ = 0; this.weave = 0; this.pumping = false; this.foamT = 0; this.backT = 0; this.wwFloatT = 0; this.tubeOut = 0; this.turnHold = 0; this.recentPaddle = 0; this.slide = 0; this.slideT = 0; this.slidePk = 0; this.slideOutT = 0; this.stalling = 0;
-    this.sw = false; this.swT = -1; this.swQ = false; this.swRisk = 0; this.swFrom = false;
+    this.sw = false; this.swT = -1; this.swQ = false; this.swRisk = 0; this.swFrom = false; this.rev = null; this.landV = 0; this.landT = -9; this.landImpact = 0;
     this.ride = { t: 0, top: 0, barrel: 0, pocket: 0, turns: 0, cutbacks: 0, snaps: 0, speed: 0, end: 0, score: 0, moves: [], tubeT: 0, leanPk: 0, gPk: 0, tubeDeep: 0, combo: 0, lastMoveT: -9 }; this.turnSign = 0; this.tyMin = this.tyMax = undefined; this.cbArmed = false; this.snapArm = 0; this.snapK = 0; this.snapPk = 0; this.lipPush = 0; this.lipHit = false; this.trick = null;
   }
   set(state) { this.state = state; this.stateT = 0; }
@@ -456,7 +456,21 @@ export class Rider {
       // the tail can swing out, but the fins drag the nose back toward where the board is going through the water:
       // slip past ~17 deg is resisted, and it never passes ~35 deg (a drift, not a spin-out)
       this.slide = 0;
-      if (Math.hypot(rx, rz) > 1.5) {
+      // the air reverse's ride-out: tail first after the landing, the board keeps turning the way you spun it, round to face
+      // where you're going. Thumb the same way and it comes round quickly; nothing and it comes round slowly; the other way and
+      // it stalls. Not round within about a second and it spins out from under you
+      if (this.rev) {
+        const R2 = this.rev, vd = Math.atan2(rz, rx), help = (inp.steer || 0) * R2.dir; R2.t += h;
+        if (R2.pend) { R2.pend = false; if (Math.abs(Math.atan2(Math.sin(this.th - vd), Math.cos(this.th - vd))) < 2.2) { this.rev = null; return this.wipe('Over-rotated: you landed sideways'); } }
+        const w = Math.max(0.6, 2.3 + 4.8 * Math.max(0, help) - 3.5 * Math.max(0, -help));   // (left alone it doesn't come round in time: vet 3 Oct 2026, it must take your thumb)
+        this.th += R2.dir * w * h; this.turn = 0; this.lean *= 1 - Math.min(1, h * 8);
+        this.vx *= 1 - 0.6 * h; this.vz *= 1 - 0.6 * h;   // (sliding sideways through the water scrubs speed)
+        const TAU = 2 * Math.PI, rem = ((R2.dir * (vd - this.th)) % TAU + TAU) % TAU;
+        this.slide = Math.min(1.3, Math.abs(Math.atan2(Math.sin(this.th - vd), Math.cos(this.th - vd))));   // (the spray fan and the hiss)
+        if (rem < 0.06 || rem > TAU - 0.06) { this.rev = null; this.move('AIR REVERSE', R2.crit, R2.peak, (R2.t < 0.55 ? 1.1 : 1) * (1 + 0.3 * smooth(0.25, 0.6, R2.grabT))); if (R2.grabT >= 0.25) this.grabbed(); }
+        else if (R2.t > 1.1) { this.rev = null; return this.wipe('Spun out: the reverse never came round'); }
+      }
+      if (!this.rev && Math.hypot(rx, rz) > 1.5) {
         // measured against the water the board is sliding on, not the ground
         const vd = Math.atan2(rz, rx); let slip = this.th - vd; slip = Math.atan2(Math.sin(slip), Math.cos(slip));
         const a = Math.abs(slip), soft = P.slipSoft + 0.5 * sk + 0.4 * tk, hard = Math.min(tk > 0.05 ? 1.31 : 9, P.slipHard + 0.7 * sk + 0.25 * tk);   // (a tail slide never passes ~75 deg: a slide, not a spin)   // (in a snap the tail swings right out; in a tail slide, further)
@@ -608,7 +622,7 @@ export class Rider {
     else if (this.wwFloatT > 0) { if (this.wwFloatT > 0.35) this.move('FLOATER', Math.min(1, this.wwFloatT / 1.2)); this.wwFloatT = 0; }   // made it back onto the clean face
     // an air: come up the face fast and hit the lip, and it throws you into the sky with it (going up slowly, it just
     // takes you over the falls, below). Needs speed and a steep, rising face; not from inside the tube
-    if (P.air && this.state === 'RIDE' && this.stateT > 0.8 && onFront && s > -0.25 * H && y > 0.78 * sl.top && this.vyPk > Math.max(2.6, 0.42 * Math.sqrt(9.8 * H)) && this.hitV > 0.8 * C.speed && this.upT > 0.12) {   // (a deliberate hit: fast, and pointing up at the lip, not a top turn that happens to rise)
+    if (P.air && this.state === 'RIDE' && this.stateT > 0.8 && !this.rev && this.ride.t - (this.landT ?? -9) > 0.6 && onFront && s > -0.25 * H && y > 0.78 * sl.top && this.vyPk > Math.max(2.6, 0.42 * Math.sqrt(9.8 * H)) && this.hitV > 0.8 * C.speed && this.upT > 0.12) {   // (a deliberate hit: fast, and pointing up at the lip, not a top turn that happens to rise)
       this.air = { t: 0, vy: Math.min(0.9 * Math.sqrt(9.8 * H), this.vyPk * 1.1 + 1.2), spin: 0, peak: 0 };   // (capped: you fly about as high as the wave is steep, not further)
       this.vz = Math.max(this.vz, C.speed * 1.02);   // the throwing lip carries you forward with it
       this.inBarrel = false; this.onFace = false; return;
@@ -727,8 +741,13 @@ export class Rider {
     // face where you're flying, ready to land. Push the thumb over and you spin it yourself (a 360 needs a full turn)
     const travel = Math.atan2(this.vz, this.vx), off = Math.atan2(Math.sin(travel - this.th), Math.cos(travel - this.th));
     const mine = A.t > 0.3 && Math.abs(inp.steer) > 0.5;   // (the thumb you were carving with doesn't spin you as you take off: a spin is a fresh push)
-    const spin = mine ? inp.steer * 5.2 : Math.max(-2.8, Math.min(2.8, off * 5));
-    this.th += spin * h; A.spin += mine ? spin * h : 0; this.turn = spin * 0.5;
+    // the grab (his call 3 Oct 2026): hold STALL in the air and your hand takes the rail; a held grab spins a little slower
+    A.grabbing = (inp.stall || 0) > 0.5 && A.t > 0.06; if (A.grabbing) A.grabT = (A.grabT || 0) + h;
+    // (and once you've spun past half way on purpose, the instinct settles you the rest of the way round backwards, ready to
+    //  land the air reverse, instead of fighting back toward forwards and landing you sideways: vet 3 Oct 2026)
+    const settle = Math.abs(A.spin) > 2.0 && Math.abs(off) > Math.PI / 2 ? Math.atan2(Math.sin(off + Math.PI), Math.cos(off + Math.PI)) : off;
+    const spin = mine ? inp.steer * 5.2 * (A.grabbing ? 0.85 : 1) : Math.max(-2.8, Math.min(2.8, settle * 5));
+    this.th += spin * h; A.spin += mine ? spin * h : 0; this.turn = spin * 0.5; A.spinning = mine;   // (spinning: the view keeps your arms out of it, game.js)
     this.lean += (inp.steer * 0.3 - this.lean) * Math.min(1, h * 6);
     this.skid = 0; this.slide = 0; this.tailOn = false; this.tailK = 0; this.tsT = 0; this.tsPk = 0; this.tailOutT = 0; this.stallInT = 0; this.tsAteT = -9; this.stalling = 0; this.stallT = 0; this.bogT = 0; this.bogK = 0; this.nose = 0; this.noseStep = 0; this.stepDir = 0; this.stepU = 0; this.pearlT = 0; this.pearlK = 0; this.shoulderK = 0; this.wob = 0; this.wobV = 0; this.wobK = 0; this.rhT = null; this.lateK = 0; this.lateDone = true; this.grabbing = false; this.hangT = 0; this.hang10T = 0; this.hangPocket = 0; this.pumping = false; this.inBarrel = false; this.onFace = false;
     this.ride.t += h;
@@ -745,10 +764,17 @@ export class Rider {
     const A = this.air; this.air = null; this.y = q.y; this.prevY = q.y; this.hx = hx; this.hz = hz;
     const w = q.w || this.wave, C = w.cond, H = C.H, travel = Math.atan2(this.vz, this.vx);
     const off = Math.abs(Math.atan2(Math.sin(this.th - travel), Math.cos(this.th - travel))), rot = Math.abs(A.spin);
+    { const cwL = (q.w || this.wave) ? (q.w || this.wave).cond.speed : 0, nl = Math.sqrt(1 + hx * hx + hz * hz); this.landImpact = (hx * this.vx - A.vy + hz * (this.vz - cwL)) / nl; }   // (how hard you meet the water: your speed into its surface, the face moving in at the wave's speed)
+    this.landV = -A.vy; this.landT = this.ride.t;   // (how hard you came down: the landing's slap and kick, game.js; and when: no new air in the next 0.6 s, you land and ride first)
+    if (this.landImpact > 10.5) return this.wipe('Too high: the landing buckled your legs');   // (the hit across the water's surface, his call 3 Oct 2026: back on the steep face it's soft, as real surfers land big airs; flat in the trough from up high it buckles you. Falling speed alone made every big-wave air a fall)
+    const crit = Math.min(1, 0.35 + 0.5 * Math.min(1, A.peak / (0.5 * H)) + 0.3 * Math.min(1, rot / (2 * Math.PI))), grabT = A.grabT || 0;
+    // the air reverse (his call 3 Oct 2026): spun about half round, you land tail first, going backwards; the board slides and
+    // you swing the nose back round (see rev in the ride). Landed anywhere in between it's sideways, and that's a fall
+    // (backwards is judged through the water, on the first moment of the ride, as the fins feel it: vet 3 Oct 2026, judged over
+    //  the ground some landings already lined up with the water counted as a reverse and came round instantly, for free)
+    if (off > 0.65 && rot > 2.0) { this.rev = { t: 0, dir: Math.sign(A.spin) || 1, crit, peak: A.peak, grabT, pend: true }; this.vx *= 0.8; this.vz *= 0.8; this.v = Math.hypot(this.vx, this.vz); return; }
     if (off > 0.65) return this.wipe(rot > 2 ? 'Over-rotated: you landed sideways' : 'Landed sideways off the air');
-    if (-A.vy > 11) return this.wipe('Too high: the landing buckled your legs');
-    const crit = Math.min(1, 0.35 + 0.5 * Math.min(1, A.peak / (0.5 * H)) + 0.3 * Math.min(1, rot / (2 * Math.PI)));
-    this.move(rot > 5.5 ? 'AIR 360' : 'AIR', crit, A.peak);
+    this.move(rot > 5.5 ? 'AIR 360' : 'AIR', crit, A.peak, 1 + 0.3 * smooth(0.25, 0.6, grabT)); if (grabT >= 0.25) this.grabbed();
     const sl = q.w ? q.w.prof.slice(q.s) : null;
     if (!sl || q.zl < sl.topZ - 0.3) return this.out('Landed the air out the back');   // (the air still counts)
     this.vx *= 0.85; this.vz *= 0.85; this.v = Math.hypot(this.vx, this.vz);   // your legs soak up the landing
@@ -761,6 +787,10 @@ export class Rider {
     const t = this.hangT || 0, t10 = this.hang10T || 0, inPocket = t > 0 ? (this.hangPocket || 0) / t : 0;
     if (this.wave && (t10 >= 0.8 || t >= 0.6)) this.move(t10 >= 0.8 ? 'HANG TEN' : 'HANG FIVE', 0.4 + 0.6 * inPocket, t10 >= 0.8 ? t10 : t, 1 + 0.25 * Math.min(2, t - 0.6));
     this.hangT = 0; this.hang10T = 0; this.hangPocket = 0;
+  }
+  grabbed() {   // the last move was a grabbed air: say so (a held grab is worth up to 30% more, see land)
+    const m = this.ride.moves[this.ride.moves.length - 1]; if (m) m.notes.push('grab');
+    if (this.trick) this.trick.name = this.trick.name.replace(/(AIR( 360| REVERSE)?)/, 'GRAB $1').replace('GRAB AIR 360', 'GRAB 360').replace('GRAB AIR REVERSE', 'GRAB REVERSE');
   }
   tailSlide(crit, dur, pk) {
     const R = this.ride, k = (0.8 + 0.4 * smooth(0.72, 1.1, pk)) * (0.6 + 0.4 * smooth(0.25, 0.6, dur)), m = [...R.moves].reverse().find((x) => x.name === 'SNAP' && R.t - x.t < 1.8);
@@ -818,13 +848,13 @@ export class Rider {
   // sheet: what counted, each line's share of the score (they add up to it).
   liveScore(fell = false, detail = false) { if (this.wave && this.ride.judge === undefined) this.ride.judge = this.wave.cond.judge ?? 1; return scoreRide(this.ride, fell, detail); }
   wipe(why) {
-    this.hangT = 0; this.hang10T = 0; this.hangPocket = 0;   // (a hang you fall off doesn't count, and never carries into the next ride)
+    this.rev = null; this.hangT = 0; this.hang10T = 0; this.hangPocket = 0;   // (a hang you fall off doesn't count, and never carries into the next ride)
     // taken by the closeout at the very end, still on your feet: that's riding the wave to its end, not a fall
     if (this.state === 'RIDE' && this.wave && this.wave.closing && /whitewater|foam ball|lip|tube/.test(why)) { this.ride.end = 1; return this.out('Closed out: you rode it right to the end'); }   // (once it closes out the whole section throws at once: whatever it does to you then is the wave ending, not a mistake)
     this.why = why; this.set('WIPE'); this.ride.score = this.ride.t > 0 ? this.liveScore(true) : 0;
   }
   out(why) {
-    this.why = why; if (this.hangT > 0 && this.state === 'RIDE') this.scoreHang();
+    this.rev = null; this.why = why; if (this.hangT > 0 && this.state === 'RIDE') this.scoreHang();
     if (this.ride.tubeT > 0.5 && this.wave) this.move('BARREL', 0.8, this.ride.tubeT);   // the ride ended cleanly with you in (or just out of) the barrel, riding it into the sand included: that counts
     this.ride.tubeT = 0; this.set('OUT'); this.ride.score = this.ride.t > 0 ? this.liveScore() : 0;
   }

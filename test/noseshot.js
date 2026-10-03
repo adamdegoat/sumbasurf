@@ -39,6 +39,7 @@ export function where(g) {
 }
 // the game's own two passes: the world, then your body through its own lens (as the frame loop does)
 export function draw(g) {
+  g.surfer.traverse((o) => { if (o.isMesh && o.material && o.material.name === 'hair') o.visible = g.camera.layers.isEnabled(1); });   // (as the game's frame loop does: your own hair only seen from outside)
   const R = g.renderer, c = g.camera, a = g.armCam; g.ARMCUT.value = g.rider && g.rider.standing ? g.armCutNow() : 0; a.position.copy(c.position); a.quaternion.copy(c.quaternion); a.aspect = c.aspect;
   a.fov = c.fov + (62 - c.fov) * (g.rider && g.rider.standing ? 1 : 0); a.updateProjectionMatrix();
   R.autoClear = false; R.clear(); R.render(g.scene, c); R.clearDepth(); R.render(g.scene, a); R.autoClear = true;

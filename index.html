@@ -1024,13 +1024,22 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261003-1053</small>
+    <small id="build">build 261003-1404</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-03-airs', date: '3 Oct 2026', time: '2:04 pm', title: 'New in the air: grab and air reverse', items: [
+      'Grab: hold STALL in the air. You tuck and take the rail, and GRAB counts up while you hold it. A held grab scores more.',
+      'Air reverse: spin about half way and land tail first, then steer the way you spun to swing the board back round. Get it wrong and you spin out.',
+      'While you spin, the count shows 90, 180, 270, 360, so you know when to stop.',
+      'Landings now hit back: a kick of the view, drops on the lens and a buzz on Android phones.',
+      'Big wave airs can be landed: come down on the steep face and you ride away. Landing flat from way up high still buckles your legs.',
+      'Fix: spinning in the air no longer shows your own back and legs.',
+      'Fix: dark shapes could flash in front of you in sharp snaps and carves.',
+    ] },
     { id: '2026-10-03-partyscore', wd: true, date: '3 Oct 2026', time: '10:53 am', title: 'Party wave score', items: [
       'Party Point: ride a wave together and everyone on it adds up to one party wave score, shown to the whole beach when the last surfer finishes.',
       'The best party wave on your beach stays under its name for everyone to chase.',
@@ -1586,6 +1595,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1218"></script>
+<script type="module" src="js/game.js?v=1232"></script>
 </body>
 </html>

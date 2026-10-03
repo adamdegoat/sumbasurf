@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=218';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD, SW_T } from './surf.js?v=210';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD, SW_T } from './surf.js?v=214';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER, DESIGNS, SEASON, bakeDesigns } from './board.js?v=23';
 import { SurfAudio } from './audio.js?v=30';
 import { ranch, POOL } from './ranch.js?v=9';
@@ -13,8 +13,8 @@ import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=30';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=77';
-import { wildlife } from './wildlife.js?v=81';
+import { crew } from './crew.js?v=81';
+import { wildlife } from './wildlife.js?v=85';
 import { droneShow } from './show.js?v=17';
 import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=5';
 
@@ -255,10 +255,11 @@ const CUT = { value: 0.21 };   // just the neck and head (at 42 cm it cut your a
 // which skeleton bones are "arm" (upper arm down to the fingertips): the cutaway never removes those, so you always see
 // whole arms, while your chest, shoulders and neck near the camera are hidden (they were showing as a stretched skin fin)
 const FADE = { value: new THREE.Vector3(0.32, 0.64, 0.25) };   // your own body right at the lens fades out between x and y metres (not a hard cut); inside faces nearer than z aren't drawn
-const ARMBONE = { value: new Float32Array(96) }, LEGBONE = { value: new Float32Array(96) }, HIDELEGS = { value: 0 }, ARMTH = { value: 0.12 }, ARMCUT = { value: 0 }, ARMHIDE = { value: 0 }, WATERY = { value: -99 }, NOCAP = { value: 0 };   /* (NOCAP: no inside faces drawn, see the cutaway) */
+const ARMBONE = { value: new Float32Array(96) }, LEGBONE = { value: new Float32Array(96) }, HIDELEGS = { value: 0 }, ARMTH = { value: 0.12 }, ARMCUT = { value: 0 }, ARMHIDE = { value: 0 }, WATERY = { value: -99 }, NOCAP = { value: 0 }, BODYHIDE = { value: 0 };   /* (NOCAP: no inside faces drawn; BODYHIDE: none of your own body in your view: see the cutaway) */
+let grabV = 0, tuckV = 0;   /* (an air grab, eased 0..1: the arm pose and NOCAP) */
 function cutaway(m) {
   m.onBeforeCompile = (sh) => {
-    sh.uniforms.uCut = CUT; sh.uniforms.uFade = FADE; sh.uniforms.uArmBone = ARMBONE; sh.uniforms.uNear = { value: m.userData.near || 0 }; sh.uniforms.uArmCut = ARMCUT; sh.uniforms.uArmHide = ARMHIDE; sh.uniforms.uNoCap = NOCAP; sh.uniforms.uWaterY = WATERY; sh.uniforms.uLegBone = LEGBONE; sh.uniforms.uHideLegs = HIDELEGS; sh.uniforms.uArmTh = ARMTH;
+    sh.uniforms.uCut = CUT; sh.uniforms.uFade = FADE; sh.uniforms.uArmBone = ARMBONE; sh.uniforms.uNear = { value: m.userData.near || 0 }; sh.uniforms.uArmCut = ARMCUT; sh.uniforms.uArmHide = ARMHIDE; sh.uniforms.uNoCap = NOCAP; sh.uniforms.uBodyHide = BODYHIDE; sh.uniforms.uWaterY = WATERY; sh.uniforms.uLegBone = LEGBONE; sh.uniforms.uHideLegs = HIDELEGS; sh.uniforms.uArmTh = ARMTH;
     sh.uniforms.uCap = { value: new THREE.Color(m.userData.cap || 0x7a4e36).convertSRGBToLinear() };
     sh.vertexShader = 'varying vec3 vCutW; varying float vArm; varying float vLeg; uniform float uArmBone[96]; uniform float uLegBone[96];\n' + sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
 vCutW = (modelMatrix * vec4(transformed, 1.0)).xyz;
@@ -268,7 +269,7 @@ vLeg = skinWeight.x * uLegBone[int(skinIndex.x)] + skinWeight.y * uLegBone[int(s
 #else
 vArm = 0.; vLeg = 0.;
 #endif`);
-    sh.fragmentShader = 'uniform float uCut, uNear, uArmCut, uWaterY, uHideLegs, uArmTh, uArmHide, uNoCap; uniform vec3 uCap, uFade;\nvarying vec3 vCutW; varying float vArm; varying float vLeg;\n' + sh.fragmentShader.replace('void main() {', `void main() {
+    sh.fragmentShader = 'uniform float uCut, uNear, uArmCut, uWaterY, uHideLegs, uArmTh, uArmHide, uNoCap, uBodyHide; uniform vec3 uCap, uFade;\nvarying vec3 vCutW; varying float vArm; varying float vLeg;\n' + sh.fragmentShader.replace('void main() {', `void main() {
   vec3 cq = vCutW - cameraPosition; float cy = clamp(cq.y, -0.75, 0.);
   float armK = smoothstep(.3, .6, vArm), nearA = mix(smoothstep(mix(uFade.x, uFade.x * .5, armK) + uNear, mix(uFade.y, uFade.y * .55, armK) + uNear, length(cq)), 1., smoothstep(.7, .95, vArm));   // (forearm and hand always solid, the upper arm only fades right at the lens, the shoulder further out)   // (forearm and hand always solid: faded, the arm showed the sea through it as a band at the elbow)   // (the shorts fade further out: seen through a fading arm they showed as a teal ring)
   float armA = 1. - uArmHide * smoothstep(.1, .3, vArm); if (armA < .02) discard;   // (walking up to the nose your arms fade out together, hand and forearm at once: see NOSEVIEW)
@@ -276,6 +277,8 @@ vArm = 0.; vLeg = 0.;
   if (uHideLegs > .5 && (vLeg > .35 || uNear > 0.)) discard;   // (and the shorts with them: seen through the crease of a bent elbow they showed as a teal band)   // your own legs aren't drawn in your view (knees coming up at the lens read as a glitch): arms and board only
   if (vCutW.y < uWaterY) discard;   // lying or sitting on the board: hands and legs under the surface are hidden by the water (the body is drawn after the world, so it would show on top)
   if (vArm >= 0.12 && length(cq) < uArmCut) discard;   // (>= 0.12: the shoulder skin is only part arm-weighted)   // the upper arm is right at the lens: only forearms and hands show, like helmet-cam footage
+  if (uBodyHide > .5) discard;
+  if (!gl_FrontFacing && (length(cq) < .8 || (vArm >= .12 && uArmCut > .05))) discard;   // (an arm cut by the lens, or right by it: its inside isn't drawn; seen through the cut as a dark cap it was a black blob or flap in snaps and carves, his report 3 Oct 2026)   // (spinning in the air and an air reverse's ride-out: none of your own body in your own view, vet 3 Oct 2026)
   if (!gl_FrontFacing && uNoCap > .5) discard;   // (up on the longboard's nose, and through a switch as your body turns past your eyes, they sit by your shoulders: their inside faces showed as black shapes, his reports 3 Oct 2026. Then no inside face is drawn)
   if (!gl_FrontFacing && length(cq) < uFade.z) discard;   // (right at the lens a cut arm's inside is never capped: seen from inside, the cap filled the view as a black blob)
   if (!gl_FrontFacing) { gl_FragColor = vec4(uCap, smoothstep(uFade.z, uFade.z + .2, length(cq))); gl_FragDepth = gl_FragColor.a < .98 ? .99999 : gl_FragCoord.z; return; }   // (fading in away from the lens: up close a solid cap filled the view as a dark blob)   // a cut shows solid skin/cloth, never the hollow inside (that was the 'fin')
@@ -285,13 +288,15 @@ vArm = 0.; vLeg = 0.;
   m.side = THREE.DoubleSide;   // (inside faces are drawn as a solid cap colour, so a cut looks closed)
   m.transparent = true;   // (for the fade at the lens; everything else is drawn solid, alpha 1)
   m.forceSinglePass = true;   // (2 Oct 2026, heat check: see-through and two-sided, three drew it in two passes and flipped its side between them, which re-did its whole shader setup twice a frame; both sides in one pass, back faces still capped via gl_FrontFacing)
-  m.customProgramCacheKey = () => 'cutaway32' + (m.userData.near || 0);   /* (31: 3 Oct 2026, no inside faces on the nose) */
+  m.customProgramCacheKey = () => 'cutaway37' + (m.userData.near || 0);   /* (31: 3 Oct 2026, no inside faces on the nose) */
   m.needsUpdate = true;
 }
+const SKINLIFT = 0x3a2618;   /* (light off the water on the shadow side of skin: never pitch black) */
 const hairMeshes = [];   // your own hair: with your head shrunk away for your own eyes it collapsed into a dark sheet from your neck to the lens, which filled the screen in hard turns. Only drawn when you're seen from outside
 const ready = new Promise((res, rej) => new GLTFLoader().load('surfer.glb?v=3', (g) => {
   surferGltf = g; surfer = g.scene; rig.add(surfer);
   surfer.traverse((o) => o.layers.set(1));
+  surfer.traverse((o) => { if (o.isMesh && o.material.name === 'skin') o.material.emissive.setHex(SKINLIFT); });   // (his report 3 Oct 2026: your own shoulder on its shadow side, swung up by the lens in a snap, was a black blob; real skin in daylight picks up light off the water)
   surfer.traverse((o) => { if (o.isMesh) { o.frustumCulled = false; if (o.material.name === 'hair') { o.material.side = THREE.DoubleSide; hairMeshes.push(o); } else { if (/short/i.test(o.material.name + o.name)) { o.material.userData.near = 0.45; o.material.userData.cap = 0x0f3b3f; } cutaway(o.material); } } });
   surfer.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.bones.forEach((b, i) => { if (i < 96 && /^(lowerarm|hand|thumb|index|middle|ring|pinky)/.test(b.name)) ARMBONE.value[i] = 1; if (i < 96 && /^upperarm/.test(b.name)) ARMBONE.value[i] = 0.6; if (i < 96 && /^clavicle/.test(b.name)) ARMBONE.value[i] = 0.1; }); });
   surfer.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.bones.forEach((b, i) => { if (i < 96 && /^(thigh|calf|foot|ball)/.test(b.name)) LEGBONE.value[i] = 1; }); });
@@ -1626,7 +1631,14 @@ function povCamera(dt) {
   const dh = Math.atan2(Math.sin(rider.th - travel), Math.cos(rider.th - travel));
   const popIn = st === 'POP' ? smooth01(popClock() / 0.2) : 1;   // (the catch: the view eases into the pop over 0.2 s; it used to lurch and tip in the first frame)
   tsV += ((st === 'RIDE' && rider.tsT > 0 ? 1 : 0) - tsV) * Math.min(1, dt * 12);   // (a tail slide: the horizon tips and you drift out with the tail; the eyes still follow the board, so it stays in view sliding)
+  revV += ((rider.rev ? 1 : 0) - revV) * Math.min(1, dt * 6);
   let yawT = travel + dh * (standing ? 0.8 - 0.4 * popIn : 0.8);
+  // an air reverse riding out (vet 3 Oct 2026): you look over your leading shoulder toward where you're going, never more
+  // than ~50 deg off the way your chest faces (looking down the line from a body facing backwards, in regular stance, your
+  // eyes were behind your own head and you saw your own body and the back of the board)
+  if (revV > 0.001) {
+    const chest = rider.th - swAng(), tg = chest + Math.max(-0.9, Math.min(0.9, Math.atan2(Math.sin(travel - chest), Math.cos(travel - chest))));
+    yawT += Math.atan2(Math.sin(tg - yawT), Math.cos(tg - yawT)) * revV; }
   if (noseV > 0.001) yawT += Math.atan2(Math.sin(rider.th - yawT), Math.cos(rider.th - yawT)) * 0.35 * noseV;
   { const u = standing && rider.swT >= 0 && rider.swT < SW_T ? rider.swT / SW_T : 0; swHopK = u > 0 ? Math.sin(Math.PI * u) : 0; if (swHopK > 0.001) yawT += Math.atan2(Math.sin(rider.th - yawT), Math.cos(rider.th - yawT)) * SWVIEW.turn * swHopK * swHopK; }   // (the switch: the shoulders come round square to the nose and the head goes a little with them, eyes still mostly down the line)   // (on the nose, head up and looking ahead down the wave, as real longboarders do: only partly round to the board, his call 29 Sep 2026)   // (up the longboard you look along the board, down at its nose)   // (a little toward where the board points: you see the nose swing in a turn)
   // in the barrel look down the tube toward the exit (along the line), not out through the open side at the beach
@@ -1676,8 +1688,19 @@ function povCamera(dt) {
     // spring was so over-damped it closed only ~2% of the gap a frame and left the camera inside your chest)
     const k = st === 'POP' ? 8 + 50 * Math.min(1, popClock() / 0.35) : st === 'RIDE' && visT() < 0.5 ? 16 + 42 * (1 - visT() / 0.5) : 16;   // (eases into the pop instead of snapping to the new eye height in one frame)
     pov.pos.lerp(_eye, 1 - Math.exp(-k * dt));
-    const dy = Math.atan2(Math.sin(yawT - pov.yaw), Math.cos(yawT - pov.yaw)), maxY = 3.2 * dt;
+    const yaw0 = pov.yaw, dy = Math.atan2(Math.sin(yawT - pov.yaw), Math.cos(yawT - pov.yaw)), maxY = 3.2 * dt;
     pov.yaw += Math.max(-maxY, Math.min(maxY, dy * Math.min(1, dt * 7)));
+    // spinning in the air or riding out an air reverse (vet 3 Oct 2026): the view lagged behind a fast spin, and spun one way
+    // (regular one way, goofy the other) your eyes ended up behind your own head, looking at your back and the board under
+    // you. Your head turns with your chest: never more than ~55 deg off the way it faces
+    // (the way your chest faces from the board and your stance, steady: worked out from the shoulders it jittered with your
+    //  arms, most of all reaching for a grab, and dragged the view with it, his report 3 Oct 2026: 'glitch glitch in the air')
+    //  Only while spinning or riding out a reverse (a plain air or a grab doesn't need it), eased, not snapped
+    { const ch = rider.th - swAng(); if (!spinChest.ok) { spinChest.a = ch; spinChest.ok = true; } spinChest.a += Math.atan2(Math.sin(ch - spinChest.a), Math.cos(ch - spinChest.a)) * Math.min(1, dt * 10); }
+    if ((rider.air && Math.abs(rider.air.spin) > 1.2) || rider.rev || (spinEndT < 0.7 && spinArmK > 0.05)) {
+      const chest = spinChest.a, d = Math.atan2(Math.sin(pov.yaw - chest), Math.cos(pov.yaw - chest));
+      if (Math.abs(d) > SPINVIEW.max) pov.yaw -= Math.sign(d) * Math.min((Math.abs(d) - SPINVIEW.max) * Math.min(1, dt * 8), SPINVIEW.rate * dt);   // (never faster than SPINVIEW.rate: a pull that snapped whipped the view 14 deg in a frame)
+      const tot = Math.atan2(Math.sin(pov.yaw - yaw0), Math.cos(pov.yaw - yaw0)), cap = SPINVIEW.rate * dt; if (Math.abs(tot) > cap) pov.yaw = yaw0 + Math.sign(tot) * cap; }   // (and the two together never more than that a frame: they added up to 8 deg jerks in a reverse)
   }
   snapCam = false;
   // head pitch: riding, look down the line and at the nose; lying, look ahead over the nose; at the drop, look down the face
@@ -1686,7 +1709,7 @@ function povCamera(dt) {
   // they used to lift to when a wave came, so you watch the sets coming yourself and nothing shifts on its own
   let pitchT = standing ? POVCAM.pitch - POVCAM.drop * dropK : -0.22;
   if (!standing && isRanch()) pitchT = Math.max(pitchT, -0.2);   // at the Sumba Ranch, eyes up on the machine wall where your wave comes from
-  lipKick *= Math.exp(-dt * 9); pitchT += lipKick + 0.14 * tubeEase + 0.07 * stallV + 0.035 * bogV * Math.sin(T * 7.3) + 0.12 * noseV - (0.12 + NOSEVIEW.down) * noseTip() + (standing && noseV > 0.01 ? 0.25 * noseV * Math.min(0, Math.asin(Math.max(-1, Math.min(1, pose.fwd.y)))) : 0); if (glK > 0.001) pitchT += (glP - pitchT) * glK;   // (on the nose your eyes follow the board's slope: heading down the face you look down it, so the tip stays in view)   // (up on the nose your eyes drop a little; when it starts to dig in you glance down at it, so you see the tip going under)   // (a stall: you sit back and your eyes tip up a little; sinking, they bob)   // (in the barrel your eyes lift ~8 deg, so you see the tube arching over you)   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
+  lipKick *= Math.exp(-dt * 9); pitchT += GRABVIEW.down * tuckV + lipKick + 0.14 * tubeEase + 0.07 * stallV + 0.035 * bogV * Math.sin(T * 7.3) + 0.12 * noseV - (0.12 + NOSEVIEW.down) * noseTip() + (standing && noseV > 0.01 ? 0.25 * noseV * Math.min(0, Math.asin(Math.max(-1, Math.min(1, pose.fwd.y)))) : 0); if (glK > 0.001) pitchT += (glP - pitchT) * glK;   // (on the nose your eyes follow the board's slope: heading down the face you look down it, so the tip stays in view)   // (up on the nose your eyes drop a little; when it starts to dig in you glance down at it, so you see the tip going under)   // (a stall: you sit back and your eyes tip up a little; sinking, they bob)   // (in the barrel your eyes lift ~8 deg, so you see the tube arching over you)   // (a slight, slow lift of the eyes toward the lip overhead)   // and up a little: the lip over your head
   pov.pitch += (pitchT - pov.pitch) * Math.min(1, dt * (st === 'POP' ? 4 + 20 * Math.min(1, popClock() / 0.3) : st === 'RIDE' ? 5 + 19 * Math.max(0, 1 - visT() / 0.4) : 5));   // (and out of it without a kink: the rates hand over gradually when you're up)   // (the pop: eyes snap down to the board between your hands)
   pov.roll += ((standing ? -rider.lean * 0.2 - 0.09 * tsV * Math.sign(rider.lean) - 0.55 * (rider.wob || 0) + 0.05 * bogV * Math.sin(T * 9.1) : 0) - pov.roll) * Math.min(1, dt * 6);   // (the wobble of a sinking tail rocks the horizon)   // you feel the lean: the horizon tips as you lay into a carve (less than the board: people hold their head nearer level)
   // three.js cameras look down -z: turn our heading (angle in x/z) into a yaw about y
@@ -1878,9 +1901,10 @@ function updateCamera(dt) {
   const p = pose.pos, st = rider.state;
   if (bones.head) bones.head.scale.setScalar(0.001);   // hide your own head from your own eyes
   setHfov(55 + 7 * Math.max(smooth01(tubeLook), NOSEVIEW.lens * noseTip()));   // (and the lens opens up a little in there, like a GoPro: more of the roof and the lip; on the nose too: see NOSEVIEW)
-  CUT.value = 0.21 + NOSEVIEW.cut * noseTip();
-  ARMHIDE.value = rider.standing ? Math.max(smooth01((noseV - ARMPOSE.hideAt) / 0.15), rider.swT >= 0 ? Math.min(smooth01((rider.swT - ARMPOSE.swHide[0]) / 0.06), 1 - smooth01((rider.swT - ARMPOSE.swHide[1]) / 0.06)) : 0) : 0;   /* (and through a switch: out of the picture first, see swArmK) */   /* (his call 3 Oct 2026, arms vanishing in the air isn't natural: walking up, your arms first spread wide out of the picture, ARMPOSE, and only once they're out of it does the view leave them out, so you never see them go) */
-  NOCAP.value = rider.standing && (noseV > 0.04 || (rider.swT >= 0 && rider.swT < SW_T + 0.5)) ? 1 : 0;
+  CUT.value = 0.21 + NOSEVIEW.cut * noseTip() + ARMNEAR.torso * armCutK;   /* (an arm or shoulder swung up by the lens: the body right by it is left out a little wider too; the back of your own shoulder, in shadow, was a black blob in snaps, his report 3 Oct 2026) */
+  { const sh = rider.standing && spinArmK > 0.85 && spinEndT < 0.12 ? smooth01((spinArmK - 0.85) / 0.1) : 0; BODYHIDE.value = sh > 0.5 || (rider.standing && spinEndT < 0.45) ? 1 : 0; }   /* (the body stays out of your view a little after a spin or reverse, till the view has come back round: vet 3 Oct 2026, it showed torn for a moment as the view swung back) */
+  ARMHIDE.value = rider.standing ? Math.max(spinArmK > 0.85 && spinEndT < 0.12 ? smooth01((spinArmK - 0.85) / 0.1) : 0, smooth01((noseV - ARMPOSE.hideAt) / 0.15), rider.swT >= 0 ? Math.min(smooth01((rider.swT - ARMPOSE.swHide[0]) / 0.06), 1 - smooth01((rider.swT - ARMPOSE.swHide[1]) / 0.06)) : 0) : 0;   /* (and through a switch: out of the picture first, see swArmK) */   /* (his call 3 Oct 2026, arms vanishing in the air isn't natural: walking up, your arms first spread wide out of the picture, ARMPOSE, and only once they're out of it does the view leave them out, so you never see them go) */
+  NOCAP.value = rider.standing && (noseV > 0.04 || (rider.swT >= 0 && rider.swT < SW_T + 0.5) || grabV > 0.03 || rider.air || rider.rev || spinEndT < 0.7) ? 1 : 0;   /* (and in the air and an air reverse's ride-out: spinning, your shoulder swings by your eyes; reaching for a grab too) */
   tubeK = 0;
   if (st === 'WIPE' && W.on && surfer) { glareTick(false); povWipe(dt); return; }
   setUnder(0, dt);
@@ -1897,7 +1921,10 @@ function updateCamera(dt) {
   // shoulder swings right up to the lens (you saw the inside of your own upper arm as a brown blob): the upper arm near
   // the lens is left out then, only forearm and hand show, as they already do lying on the board
   { const slip = Math.abs(Math.atan2(Math.sin(rider.th - Math.atan2(rider.vz, rider.vx)), Math.cos(rider.th - Math.atan2(rider.vz, rider.vx))));
-    const want = (rider.standing && (rider.air || (rider.v > 3 && slip > 0.35))) || finishing() ? 1 : 0;   // (and while you kick out at the end: the board turns under you)
+    // (and whenever an upper arm swings close to the lens, whatever the move: his report 3 Oct 2026, in snaps and hard carves
+    //  the shoulder came up to the lens and its twisted skin showed as a black blob)
+    let nearArm = false; if (rider.standing && bones.upperarm_l && bones.lowerarm_l) for (const sd of ['l', 'r']) { bones['upperarm_' + sd].getWorldPosition(_na1); bones['lowerarm_' + sd].getWorldPosition(_na2); _na1.lerp(_na2, 0.5); if (_na1.distanceTo(camera.position) < ARMNEAR.d) nearArm = true; }
+    const want = (rider.standing && (rider.air || (rider.v > 3 && slip > 0.35) || nearArm)) || finishing() ? 1 : 0;   // (and while you kick out at the end: the board turns under you)
     armCutK += (want - armCutK) * Math.min(1, dt * (want ? 12 : 3));
     // the pop-up: your eyes are down between your shoulders and the arms fold up past the lens (a big blurry arm flashed
     // across the view, and cutting only the upper arm left stumps): the arms go out of view while you push up, the
@@ -1905,7 +1932,7 @@ function updateCamera(dt) {
     popCutK += ((rider.state === 'POP' ? 1 : 0) - popCutK) * Math.min(1, dt * (rider.state === 'POP' ? 40 : 20));
     ARMCUT.value = armCutNow(); }
 }
-let armCutK = 0, popCutK = 0;
+let armCutK = 0, popCutK = 0; const _na1 = new THREE.Vector3(), _na2 = new THREE.Vector3(), ARMNEAR = { d: 0.42, torso: 0.09 };   /* (ARMNEAR.d: an upper arm's middle this close to your eyes, m: the part by the lens is left out) */
 const armCutNow = () => Math.max(0.34 * armCutK, 0.9 * popCutK);
 
 // ---------- surfer pose on the board
@@ -2050,7 +2077,7 @@ function updateRig(dt, t) {
     // the switch hop: knees bend, a small spring as the feet change over, then they soak up the landing (all in SW_T)
     const swU = rider.swT >= 0 && rider.swT < SW_T ? rider.swT / SW_T : -1, bump = (a, b) => swU > a && swU < b ? Math.sin(Math.PI * (swU - a) / (b - a)) : 0;
     const swDip = 0.32 * bump(0, 0.42) + 0.16 * bump(0.68, 1), swLift = 0.045 * bump(0.3, 0.72);
-    const deep = Math.min(0.7, swDip + (0.14 + 0.06 * Math.min(1, rider.v / 10) + (0.31 - 0.06 * Math.min(1, rider.v / 10)) * barrelK) + 0.25 * pumpA + 0.2 * airK + 0.25 * gLoad + 0.22 * Math.min(1, Math.abs(rider.lean) / RIDE.leanMax) + 0.2 * (rider.stalling || 0));   // (the crouch clip is a full squat: trim is a light knee bend, hips well above the knees)
+    const deep = Math.min(0.95, GRABVIEW.tuck * tuckV + swDip + (0.14 + 0.06 * Math.min(1, rider.v / 10) + (0.31 - 0.06 * Math.min(1, rider.v / 10)) * barrelK) + 0.25 * pumpA + 0.2 * airK + 0.25 * gLoad + 0.22 * Math.min(1, Math.abs(rider.lean) / RIDE.leanMax) + 0.2 * (rider.stalling || 0));   // (the crouch clip is a full squat: trim is a light knee bend, hips well above the knees)
     if (curClip !== clips.crouch) { play('crouch', { fade: 0.3 }); clips.stand.reset().play(); }
     // rising out of the pop-up's deep squat over half a second (not snapping up: that jerks your eyes up 16 cm in a frame)
     const up_ = Math.min(1, visT() / 0.6), rise = up_ * up_ * (3 - 2 * up_);
@@ -2684,7 +2711,11 @@ function surfStance() {
   { const pg = rider.pumpGap, want = rider.standing && pg < PUMP_PERIOD ? Math.sin(2 * Math.PI * pg / PUMP_PERIOD) : 0;
     armPw += (want - armPw) * Math.min(1, dtArm * 18); }
   const aw = (armPw > 0 ? armPw : 0.55 * armPw) * 0.14 * (1 - popK);
-  { const on = rider.standing && rider.swT >= 0 && rider.swT < SW_T + 0.25 ? 1 : 0; swArmK += (on - swArmK) * Math.min(1, dtArm * (on ? 30 : 5)); }   // (aw: metres, down 14 cm at the press, up ~8 cm on the spring; swArmK: the switch's balance pose)
+  { const on = rider.standing && rider.swT >= 0 && rider.swT < SW_T + 0.25 ? 1 : 0; swArmK += (on - swArmK) * Math.min(1, dtArm * (on ? 30 : 5)); }
+  grabV += ((rider.air && rider.air.grabbing ? 1 : 0) - grabV) * Math.min(1, dtArm * 14);
+  tuckV += ((rider.air && rider.air.grabbing ? 1 : 0) - tuckV) * Math.min(1, dtArm * 5);   // (the tuck and the look down ease in slower than the hand: dropping into it at the hand's pace jolted your eyes 8 cm a frame)
+  { const spinNow = !!((rider.air && Math.abs(rider.air.spin) > 1.2) || rider.rev); /* (a real spin, past ~70 deg, not a nudge of the thumb: a grab keeps its hand on the rail till then) */ if (spinNow) spinEndT = 0; else spinEndT += dtArm;
+    const on = rider.standing && (spinNow || spinEndT < 0.25) ? 1 : 0; spinArmK += (on - spinArmK) * Math.min(1, dtArm * (on ? 30 : 5)); }   // (spinning in the air or riding out a reverse: arms out wide for balance, out of the picture, see ARMHIDE)   // (aw: metres, down 14 cm at the press, up ~8 cm on the spring; swArmK: the switch's balance pose)
   // your eyes this frame (the camera itself is placed after the pose, a frame behind: at 10 m/s that's 17 cm)
   const eye = bones.head.getWorldPosition(_eyeA).addScaledVector(F, POVCAM.fwd).addScaledVector(WORLD_UP, POVCAM.up);
   // a target in eye space: f forward, d down, x toward the wave (negative = open side)
@@ -2714,6 +2745,8 @@ function surfStance() {
     if (popK > 0) { const sideSign = Math.sign(_cv.subVectors(bones['upperarm_' + s].getWorldPosition(_ik4), bones.spine_03.getWorldPosition(_ik1)).dot(_ik2.set(1, 0, 0).applyQuaternion(rig.quaternion))) || 1;
       P.lerp(rig.localToWorld(_aq.set(0.17 * sideSign, 0.1, 0.35)), popK); }
     if (noseV > 0.01) P.lerp(at(_aq, front ? ARMPOSE.nf : ARMPOSE.nf - 0.1, ARMPOSE.nd + 0.03 * Math.sin(bodyT * 1.3 + (front ? 0 : 2)), (s === 'r' ? ARMPOSE.nx : -ARMPOSE.nx) * ws), smooth01(noseV / ARMPOSE.spread));   // (walking to the nose: arms spread out wide for balance, out past the edges of the picture before the view leaves them out)   // (on the nose: arms out wide for balance, the noserider's poise, away from your eyes and just out of view; low at the hips they were trimmed into jagged shapes right at the lens, his report 29 Sep 2026)
+    if (grabV > 0.01 && front) { const sideSign = Math.sign(_cv.subVectors(bones['upperarm_' + s].getWorldPosition(_ik4), bones.spine_03.getWorldPosition(_ik1)).dot(_ik2.set(1, 0, 0).applyQuaternion(rig.quaternion))) || 1; P.lerp(rig.localToWorld(_aq.set(GRABAT.x * sideSign, GRABAT.y, GRABAT.z)), grabV); }   // (the grab: your front hand takes the rail ahead of you, where you see it; the back hand couldn't reach into view)
+    if (spinArmK > 0.01) P.lerp(at(_aq, front ? ARMPOSE.nf : ARMPOSE.nf - 0.1, ARMPOSE.nd, (s === 'r' ? ARMPOSE.nx : -ARMPOSE.nx) * ws), spinArmK);   // (spinning: arms flung out wide, out of the picture)
     if (swArmK > 0.01) P.lerp(at(_aq, front ? ARMPOSE.nf : ARMPOSE.nf - 0.1, ARMPOSE.nd, (s === 'r' ? ARMPOSE.nx : -ARMPOSE.nx) * ws), swArmK);   // (the switch: arms flung out wide for balance, out of the picture while your shoulders turn past your eyes, then back)
     if (aw) P.addScaledVector(F, (front ? 0.6 : 0.25) * aw).addScaledVector(WORLD_UP, -(front ? 1 : 0.6) * aw);   // (the pump swing, on top of whatever the arms are doing)
     // smooth each hand's path (the pose blends above can jump between frames when the lean changes side)
@@ -2736,7 +2769,7 @@ function surfStance() {
     reachArm(ua, la, hd, P, _aq, st === 'POP' ? 0.95 : 0.92 * w);
   }
 }
-let waveSide = -1, armPw = 0, swArmK = 0; const _eyeA = new THREE.Vector3(), _wr = new THREE.Vector3(), _ray = new THREE.Raycaster(); const armSm = { l: { p: new THREE.Vector3(), ok: false }, r: { p: new THREE.Vector3(), ok: false } }, _hq = new THREE.Quaternion();
+let waveSide = -1, armPw = 0, swArmK = 0, spinArmK = 0, spinEndT = 9; const _eyeA = new THREE.Vector3(), _wr = new THREE.Vector3(), _ray = new THREE.Raycaster(); const armSm = { l: { p: new THREE.Vector3(), ok: false }, r: { p: new THREE.Vector3(), ok: false } }, _hq = new THREE.Quaternion();
 let dtArm = 1 / 60;
 
 // ---------- HUD + end of ride
@@ -2781,7 +2814,7 @@ function hudScore(v, dt) {
 // ---------- a good wave on the free beach (his call 2 Oct 2026: 7.0 and up only): a small pill under MENU for everyone
 // there, the score coloured by its level (Advanced, Pro Surfer, a perfect 10), the surfer's name and their best move.
 // One at a time (a queue of three at most), 4 s each; never in the middle of the screen where your own moves are called
-const TOAST_MOVE = { 'TAIL SLIDE': 'tail slide', SNAP: 'snap', CUTBACK: 'cutback', ROUNDHOUSE: 'roundhouse', BARREL: 'barrel', AIR: 'air', 'AIR 360': 'air 360', FLOATER: 'floater', 'HANG TEN': 'hang ten', 'HANG FIVE': 'hang five', SLIDE: 'slide', SWITCH: 'switch' };
+const TOAST_MOVE = { 'TAIL SLIDE': 'tail slide', SNAP: 'snap', CUTBACK: 'cutback', ROUNDHOUSE: 'roundhouse', BARREL: 'barrel', AIR: 'air', 'AIR 360': 'air 360', FLOATER: 'floater', 'HANG TEN': 'hang ten', 'HANG FIVE': 'hang five', SLIDE: 'slide', SWITCH: 'switch', 'AIR REVERSE': 'air reverse' };
 const toastQ = []; let toastOn = false, toastEl = null;
 function scoreToast(name, sc, move) {
   sc = Math.min(10, +sc || 0); if (!(sc >= 7) || !isFree()) return;
@@ -2811,7 +2844,10 @@ function hudCallShow(key, big, word, pts, col, slam) {
 // (2 Oct 2026, players' note: hitting the lip should feel like it) a crack of the board through the lip and a low thump, your
 // eyes dipping for a moment with the hit, drops on the lens, a short buzz on Android phones (iPhones don't allow it in a browser)
 const tailWarn = () => !!(rider && rider.state === 'RIDE' && (rider.tailOutT || 0) > 0.6);   // (a tail slide held too long: warn before it slides out)
-let lipKick = 0, tsV = 0;   // (tsV: a tail slide in progress, eased 0..1: bigger spray fan, the view drifting with the tail, the scrape)
+let lipKick = 0, tsV = 0, revV = 0; const _rvA = new THREE.Vector3(), _rvB = new THREE.Vector3();
+const SPINVIEW = { max: 0.95, rate: 5 }, spinChest = { a: 0, ok: false };   /* (rate: rad/s at most) */   /* (how far your eyes can be off the way your chest faces while spinning, rad) */
+const GRABAT = { x: 0.24, y: 0.07, z: 0.75 }, GRABVIEW = { down: 0.18, tuck: 0.45 };   /* (GRABVIEW.down: how far your eyes tip down to your hand on the rail while you grab, rad) */   /* (where on the board the grab takes the rail, board metres: out to the rail, up, toward the nose) */   // (tsV: a tail slide in progress, eased 0..1: bigger spray fan, the view drifting with the tail, the scrape)
+function landFx(k) { lipKick = Math.max(lipKick, 0.06 * k); splashLens(Math.round(4 * k), 0.8 * k); if (!DESK) try { navigator.vibrate && navigator.vibrate(k > 1.1 ? 40 : 25); } catch (e) {} }
 function lipHitFx(k) {
   audio.burst(0.2 * k, 2800, 0.1, 'highpass'); audio.burst(0.26 * k, 210, 0.28, 'lowpass', 0.02);
   lipKick = Math.max(lipKick, 0.05 * k); splashLens(Math.round(3 * k), 0.7 * k);
@@ -2826,6 +2862,12 @@ function hudCall(st, dt) {
   }
   // up on the longboard's nose: the hang's own clock, like the barrel's (HANG FIVE counting, HANG TEN once you're on
   // the tip), coral while the nose is digging in. Stepping back off it, the scored hang slams in with its points below
+  // in the air (his call 3 Oct 2026): you can't see your own grab or count your own spin, so the callout does: GRAB with its
+  // clock while you hold the rail, and the spin counting round (90, 180, 270, 360) so you know when to stop
+  if (st === 'RIDE' && rider.air) {
+    const A = rider.air, deg = Math.abs(A.spin || 0) * 57.3, step = deg >= 80 ? Math.min(720, Math.floor((deg + 10) / 90) * 90) : 0, gr = (A.grabT || 0) > 0.08;
+    if (gr || step) { const word = (gr ? 'GRAB ' : '') + (step ? step : '') + (gr && !step ? (A.grabT).toFixed(1) + 's' : ''); hudCallShow('air' + (gr ? 'g' : '') + step, '', word.trim(), '', 'gold', true); if (!callSlamT && !ui.tube.classList.contains('live')) { ui.tube.classList.remove('slam', 'big'); ui.tube.classList.add('live'); } return; }
+  }
   // a switch in a risky spot (the drop, behind the curl, a hard turn, out on the nose): the board rocks under you; the
   // balance bar shows which way, steer against it until it settles
   if (st === 'RIDE' && rider.swT >= 0 && (rider.swRisk || 0) > 0.3 && !((rider.nose || 0) >= 0.74 && rider.hangT > 0)) {
@@ -2917,7 +2959,7 @@ function updateHUD(dt) {
     const judge = r.score < 2 ? 'Poor' : r.score < 5 ? 'Fair' : r.score < 6.5 ? 'Good' : r.score < 8 ? 'Very good' : r.score < 10 ? 'Excellent' : 'Perfect';   // (the contest judges' own words for the range, 28 Sep 2026)
     ui.msgN.innerHTML = r.t > 0 ? `${r.score.toFixed(1)}<small>${judge.toUpperCase()}${newBest ? '  \u00b7  NEW BEST' : ''}</small>` : '';
     ui.msgS.innerHTML = '';
-    { const J = r.t > 0 ? rider.liveScore(st === 'WIPE', true) : null, NM = { TURN: 'Turn', SNAP: 'Snap', CUTBACK: 'Cutback', FLOATER: 'Floater', AIR: 'Air', 'AIR 360': 'Air 360', 'HANG FIVE': 'Hang five', 'HANG TEN': 'Hang ten', BARREL: 'Barrel' , ROUNDHOUSE: 'Roundhouse', 'LATE DROP': 'Late drop', 'TAIL SLIDE': 'Tail slide', SLIDE: 'Slide', SWITCH: 'Switch' };
+    { const J = r.t > 0 ? rider.liveScore(st === 'WIPE', true) : null, NM = { TURN: 'Turn', SNAP: 'Snap', CUTBACK: 'Cutback', FLOATER: 'Floater', AIR: 'Air', 'AIR 360': 'Air 360', 'HANG FIVE': 'Hang five', 'HANG TEN': 'Hang ten', BARREL: 'Barrel' , ROUNDHOUSE: 'Roundhouse', 'LATE DROP': 'Late drop', 'TAIL SLIDE': 'Tail slide', SLIDE: 'Slide', SWITCH: 'Switch', 'AIR REVERSE': 'Air reverse' };
       const top = J ? J.lines.filter((l) => NM[l.name]).slice(0, 3) : [];
       ui.msgJ.innerHTML = top.map((l) => `<div><span><b>${NM[l.name]}${l.name === 'BARREL' || l.name.startsWith('HANG') ? ` ${l.dur.toFixed(1)}<small>s</small>` : ''}</b>${l.notes.length ? `<i>${l.notes.join(', ')}</i>` : ''}</span><em>${l.pts.toFixed(1)}</em></div>`).join('') + (J && J.fell ? '<div><span><i>fell at the end: moves in the last second did not count</i></span></div>' : ''); }
     // the level this wave reached stands out (amber, with the menu's three dots), then how far the next one is
@@ -3456,7 +3498,7 @@ function tick(dt) {
       if (st === 'POP') audio.splash(0.35);
       lastState = st;
     }
-    if (!!rider.air !== lastAir) { if (rider.air) audio.air(); else if (rider.state === 'RIDE') audio.land(); lastAir = !!rider.air; }
+    if (!!rider.air !== lastAir) { if (rider.air) audio.air(); else if (rider.state === 'RIDE') { audio.land(); landFx(Math.max(0.5, Math.min(1.6, (rider.landImpact || 4) / 5))); } lastAir = !!rider.air; }   /* (the landing: his call 3 Oct 2026, a slap of spray, a kick of the view and a buzz, harder from higher) */
     // a snap or cutback rips spray off the rail: a sharp tearing hiss
     if (rider.trick && rider.trick !== lastTrick) { audio.burst(0.3, 3200, 0.45, 'highpass'); audio.burst(0.2, 1300, 0.35); }
     lastTrick = rider.trick;
@@ -3546,7 +3588,7 @@ renderer.setAnimationLoop(() => {
   if (isFree() && FREE.mapId === 'point') { if (!held) pointTick(dt); } else { if (ripPts) ripPts.visible = false; if (pcBtn) pcBtn.hidden = true; if (pcCard) pcCard.hidden = true; }
   if (hasBoat()) boatTick(dt); else { if (boat) boat.visible = false; if (isFree() && FREE.toHut && !held) { FREE.toHut = false; if (!strand) hutArrive(); pwShow('PARTY WAVE TIME', 'Welcome to Party Point'); } }
   if (peers.size) peersTick(dt);   // (friends on the free beach)
-  if (camera.layers.isEnabled(1) || (tick.demo && !rider && mode !== 'villa')) renderer.render(scene, camera);   // (the menu has no arms to draw: one pass)
+  if (camera.layers.isEnabled(1) || (tick.demo && !rider && mode !== 'villa')) { BODYHIDE.value = 0; renderer.render(scene, camera); }   // (the menu has no arms to draw: one pass; seen from outside your body is always drawn)
   else {
     if (foamK && !(rider && rider.state === 'WIPE' && W.on)) setFoam(0);   // (never left on screen: back to the menu mid-wipeout, the villa)
     ARMCUT.value = rider && rider.standing ? armCutNow() : 0; WATERY.value = rider && rider.state === 'LIE' && !W.on ? rig.position.y + 0.01 : -99;
@@ -3627,4 +3669,4 @@ function specApply(dt) {
   rider.wave = waves.find((v) => v.sid === R.waveId) || null;
   input.paddle = !!b.pad;
 }
-window.__g = { sw: () => { swPress = true; }, SWVIEW, ARMPOSE, get swHopK() { return swHopK; }, scoreToast: (n, s, m) => scoreToast(n, s, m), NOSEVIEW, get noseV() { return noseV; }, armCutNow: () => armCutNow(), hut: () => hutArrive(), hutJump: () => boatGo(false), photoCanvas: () => photo && photo.cv, pwShow: (a, b, k) => pwShow(a, b, k), partyOn: (sid) => { if (rider && rider.standing && rider.wave && rider.wave.sid === sid) return true; for (const P of peers.values()) { const q = P.buf.length && P.buf[P.buf.length - 1].a; if (q && (q[0] === 'RIDE' || q[0] === 'POP') && q[19] === sid) return true; } return false; }, snapTest: () => { if (rider) snapPhoto(rider); return !!photo; }, photoShow: () => { if (photo) { photo.shown = true; photoThumb(); } }, ripAt: (x, z) => ripAt(x, z), towPoint, towNow: (w) => towNow(w), towStart: () => towStart(), get towDbg() { return { tow, ski, rope, cam: camera }; }, freeStart: (ext, map) => { FREE.forceX = !!ext; freeMap(map); return start('free'); }, freeNet: FREE.net, freeWaveOut, freeWaveApply, freeWaveState, freeWaveSync, freeClearWaves, freeBecomeHost, freeSnap, freePeer, freePeerGone, freeSay, freeShorts, freeFollow, peersTick: (dt) => peersTick(dt), get following() { return FREE.follow || null; }, get followD() { return FREE.followD || 0; }, shortsFor: (id) => shortsFor(id), get peers() { return peers; }, hint: (t) => setText(ui.hint, t), get strand() { return strand; }, groundAt: (x, z) => groundAt(x, z), shoreZ: (x) => shoreZ(x), lockRanch, get ranchDbg() { return { people: !!people, loading: peopleLoading, failed: peopleFailed, crowd: crowd && crowd.length, life: !!life }; }, get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t, d) => useBoard(t, true, d == null ? null : d), useStance: (k) => useStance(k), get board() { return boardType; }, get design() { return boardDesign; }, setDesign: (t, d) => setDesign(t, d), designOf: (t) => designOf(t), get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; for (const z of FREE) z.next = undefined; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };
+window.__g = { sw: () => { swPress = true; }, SWVIEW, ARMPOSE, GRABAT, GRABVIEW, SPINVIEW, ARMNEAR, get spinArmK() { return spinArmK; }, get bodyHide() { return BODYHIDE.value; }, get noCap() { return NOCAP.value; }, get armHide() { return ARMHIDE.value; }, get spinEndT() { return spinEndT; }, get swHopK() { return swHopK; }, scoreToast: (n, s, m) => scoreToast(n, s, m), NOSEVIEW, get noseV() { return noseV; }, armCutNow: () => armCutNow(), hut: () => hutArrive(), hutJump: () => boatGo(false), photoCanvas: () => photo && photo.cv, pwShow: (a, b, k) => pwShow(a, b, k), partyOn: (sid) => { if (rider && rider.standing && rider.wave && rider.wave.sid === sid) return true; for (const P of peers.values()) { const q = P.buf.length && P.buf[P.buf.length - 1].a; if (q && (q[0] === 'RIDE' || q[0] === 'POP') && q[19] === sid) return true; } return false; }, snapTest: () => { if (rider) snapPhoto(rider); return !!photo; }, photoShow: () => { if (photo) { photo.shown = true; photoThumb(); } }, ripAt: (x, z) => ripAt(x, z), towPoint, towNow: (w) => towNow(w), towStart: () => towStart(), get towDbg() { return { tow, ski, rope, cam: camera }; }, freeStart: (ext, map) => { FREE.forceX = !!ext; freeMap(map); return start('free'); }, freeNet: FREE.net, freeWaveOut, freeWaveApply, freeWaveState, freeWaveSync, freeClearWaves, freeBecomeHost, freeSnap, freePeer, freePeerGone, freeSay, freeShorts, freeFollow, peersTick: (dt) => peersTick(dt), get following() { return FREE.follow || null; }, get followD() { return FREE.followD || 0; }, shortsFor: (id) => shortsFor(id), get peers() { return peers; }, hint: (t) => setText(ui.hint, t), get strand() { return strand; }, groundAt: (x, z) => groundAt(x, z), shoreZ: (x) => shoreZ(x), lockRanch, get ranchDbg() { return { people: !!people, loading: peopleLoading, failed: peopleFailed, crowd: crowd && crowd.length, life: !!life }; }, get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t, d) => useBoard(t, true, d == null ? null : d), useStance: (k) => useStance(k), get board() { return boardType; }, get design() { return boardDesign; }, setDesign: (t, d) => setDesign(t, d), designOf: (t) => designOf(t), get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; for (const z of FREE) z.next = undefined; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };
