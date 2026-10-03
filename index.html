@@ -902,6 +902,56 @@
     #start .fsPanel .mmPicks .boardrow .boards button { padding: 3px 2px 2px !important; } #start .fsPanel .mmPicks .boardrow .boards svg { width: 18px !important; }
     #start .fsPanel .mmPicks .stancerow .boards button { padding: 3px 4px 2px 3px !important; font-size: 10.5px !important; }
   }
+  /* the free surf lobby (his call 3 Oct 2026: 'the rooms list is very very small, everything else so big, people only see one or
+     two rooms'; measured: 0-1 rooms in view on a phone, 3 on a laptop): the title shrinks and shares its row with a compact
+     Open a beach button, the private code is one slim row at the bottom, and the rooms, one slim line each, take all the
+     height between. (A grid over the same markup: kicker and title on the left, the button on the right) */
+  body #start .fsPanel .fsLob { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto minmax(0, 1fr) auto auto; column-gap: 12px; row-gap: clamp(5px, 1vh, 8px); }
+  body #start .fsPanel .fsLob > .fsK { grid-column: 1; grid-row: 1; }
+  body #start .fsPanel .fsLob > .fsH { grid-column: 1; grid-row: 2; font-size: clamp(22px, 4.4vh, 40px); align-self: end; }
+  body #start .fsPanel .fsLob > .fsActs { grid-column: 2; grid-row: 1 / span 2; align-self: center; margin: 0; }
+  body #start .fsPanel .fsLob > .fsActs .fsGo { min-height: 0; padding: 9px 14px 8px 16px; gap: 10px; font-size: clamp(14px, 2.2vh, 18px); border-radius: 10px; }
+  body #start .fsPanel .fsLob > .fsActs .fsGo svg { width: 18px; height: 18px; }
+  body #start .fsPanel .fsLob > .fsRooms { grid-column: 1 / -1; grid-row: 3; gap: 4px; }
+  body #start .fsPanel .fsLob > .fsMsg { grid-column: 1 / -1; grid-row: 4; }
+  body #start .fsPanel .fsLob > .fsCode { grid-column: 1 / -1; grid-row: 5; gap: 6px; }
+  body #start .fsPanel .fsLob .fsRoom { padding: 3px 4px 3px 10px; gap: 8px; border-radius: 9px; }
+  body #start .fsPanel .fsLob .fsRoom b { font-size: clamp(13px, 2vh, 16px); }
+  body #start .fsPanel .fsLob .fsRoom i { font-size: 12px; } body #start .fsPanel .fsLob .fsRoom em { font-size: 10px; padding: 2px 6px 1px; }
+  body #start .fsPanel .fsLob .fsRoom button { padding: 5px 11px 4px; font-size: 12px; border-radius: 7px; }
+  body #start .fsPanel .fsLob .fsCode input { padding: 5px 10px 4px; font-size: 13px; border-radius: 8px; }
+  body #start .fsPanel .fsLob .fsCode button { padding: 5px 12px 4px; font-size: 13px; border-radius: 8px; }
+  body #start .fsPanel .fsLob .fsCode b { font-size: 11px; }
+  /* the board and stance in the lobby (his call 3 Oct 2026: keep the boards' names, the outlines alone don't say which is which):
+     the six boards as small name buttons across the panel, then Goofy / Regular sharing the last row with the private code */
+  body #start .fsPanel .fsLob { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; grid-template-rows: auto auto minmax(0, 1fr) auto auto auto; }
+  body #start .fsPanel .fsLob > .fsK { grid-column: 1 / span 2; } body #start .fsPanel .fsLob > .fsH { grid-column: 1 / span 2; }
+  body #start .fsPanel .fsLob > .fsActs { grid-column: 3; }
+  body #start .fsPanel .fsLob .mmPicks { display: contents !important; }
+  body #start .fsPanel .fsLob .mmPicks .blabel, body #start .fsPanel .fsLob .mmPicks #boardName { display: none !important; }
+  body #start .fsPanel .fsLob .mmPicks .boardrow { grid-column: 1 / -1; grid-row: 5; display: block !important; margin: 0 !important; padding-top: 6px; border-top: 1px solid rgba(246,236,220,.12); }
+  body #start .fsPanel .fsLob .mmPicks .stancerow { grid-column: 1; grid-row: 6; display: block !important; margin: 0 !important; }
+  body #start .fsPanel .fsLob > .fsCode { grid-column: 2 / -1; grid-row: 6; }
+  body #start .fsPanel .fsLob .mmPicks .boardrow .boards { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px !important; }
+  body #start .fsPanel .fsLob .mmPicks .stancerow .boards { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px !important; }
+  body #start .fsPanel .fsLob .mmPicks .boards button { width: 100%; min-width: 0; justify-content: center; padding: 4px 4px 3px !important; gap: 6px !important; font-size: 12px !important; white-space: nowrap; }
+  body #start .fsPanel .fsLob .mmPicks .boardrow .boards button :is(small, em) { display: none !important; } body #start .fsPanel .fsLob .mmPicks .boardrow .boards button svg { display: block !important; width: 24px !important; }   /* (the board's own outline beside its name: his call, it says which board at a glance) */
+  body #start .fsPanel .fsLob .mmPicks .boardrow .boards button span { display: inline !important; }
+  body #start .fsPanel .fsLob .mmPicks .boards button.best::after { display: none; }
+  body #start .fsPanel .fsLob .mmPicks .stancerow .boards button svg { display: none !important; }   /* (Goofy / Regular as words alone: their little dots said nothing the words don't, his call) */
+  @media (min-width: 1300px) {   /* (a wide window: all six boards on one row) */
+    body #start .fsPanel .fsLob .mmPicks .boardrow .boards { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  }
+  @media (max-height: 460px) {   /* (a phone on its side: no kicker line, so title and button are one row) */
+    body #start .fsPanel .fsLob > .fsK { display: none; } body #start .fsPanel .fsLob > .fsH { grid-row: 1 / span 2; align-self: center; font-size: 22px; }
+    body #start .fsPanel .fsLob { row-gap: 5px; } body #start .fsPanel .fsLob > .fsActs .fsGo { padding: 6px 11px 5px 13px; font-size: 14px; }
+    body #start .fsPanel .fsLob .fsRoom i { font-size: 11px; }
+  }
+  @media (max-width: 620px) {   /* (the narrowest: the room's waves tag goes, its beach and player count stay) */
+    body #start .fsPanel .fsLob .fsRoom { grid-template-columns: minmax(0, 1fr) auto auto; } body #start .fsPanel .fsLob .fsRoom em { display: none; }
+    body #start .fsPanel .fsLob .fsCode b { display: none; } body #start .fsPanel .fsLob > .fsH { font-size: 19px; }
+    body #start .fsPanel .fsLob .mmPicks .boards button { font-size: 11px !important; } body #start .fsPanel .fsLob .mmPicks .boardrow .boards button svg { width: 18px !important; } body #start .fsPanel .fsLob .mmPicks .boards button { gap: 4px !important; }
+  }
   /* the spot panel's picks across the panel (his call 3 Oct 2026, a phone on Wavedash: 'wasted empty space, then all squeezed
      into one side', and the Your best line hidden under START SURFING): the spot's text on top is never squeezed, the six
      boards sit three across the full width and Goofy / Regular split a row, and START SURFING goes last, at the bottom.
@@ -1091,13 +1141,17 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261003-2115</small>
+    <small id="build">build 261003-2134</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-03-lobby', date: '3 Oct 2026', time: '9:34 pm', title: 'See more free surf beaches at once', items: [
+      'The free surf lobby gives the beach list most of the screen, so you see more open beaches at a time on every phone.',
+      'Open a beach sits up top beside the title, and your board, stance and private code are tucked in neatly underneath.',
+    ] },
     { id: '2026-10-03-menu', date: '3 Oct 2026', time: '9:15 pm', title: 'A cleaner menu on every screen', items: [
       'The spot panel fits every phone now: your best score always shows, the boards spread across the panel and START SURFING sits at the bottom.',
       'Free surf fits small phones too, with Go surf always in view.',
