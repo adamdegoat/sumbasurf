@@ -94,3 +94,49 @@ export async function friend({ when = [0, 0.15, 0.25, 0.35, 0.5, 1.0], maxS = 12
   }
   g.input.test = null; g.input.paddleBtn = false; g.paused = false; return out;
 }
+// dark blobs in your own view through a switch: dark pixels (sum of RGB < 60) in the picture every 1/30 s from the press
+// to 1.2 s after, in a stance; returns the counts and the worst frame's picture
+export async function dark({ mode = 'easy', seed = 4, stance = 'regular', at = 4, nose = false } = {}) {
+  const FM = await import('./film.js?v=' + Date.now()), N = await import('./noseshot.js?v=' + Date.now()), g = G(), nm = 'sd' + Math.random(), n = 60 * 20;
+  g.useStance(stance); FM.addPro(nm, mode, seed, n, 'long', 'carve', nose ? { walk: [2, 99] } : undefined); const t = FM.takes[nm]; t.init();
+  const r = g.rider, cv = g.renderer.domElement, c = document.createElement('canvas'), counts = []; let pressed = false, t0 = 0, worst = -1, worstImg = null;
+  const cnt = () => { const w = 160, h = Math.round(160 * cv.height / cv.width); c.width = w; c.height = h; const x = c.getContext('2d'); x.drawImage(cv, 0, 0, w, h); const d = x.getImageData(0, 0, w, Math.round(h * 0.85)).data; let k = 0; for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] < 60) k++; return k; };
+  for (let i = 0; i < n; i++) {
+    if (!pressed && r.state === 'RIDE' && r.stateT >= at && (!nose || (r.nose || 0) >= 0.95)) { g.sw(); pressed = true; t0 = r.stateT; }
+    t.frame(i); if (r.state === 'WIPE' || r.state === 'OUT') break;
+    if (pressed) { N.draw(g); const k = cnt(); counts.push(k); if (k > worst) { worst = k; worstImg = cv.toDataURL('image/jpeg', 0.7); } if (r.stateT - t0 > 1.2) break; }
+  }
+  t.done(); return { stance, counts: counts.join(','), worst, worstImg, sw: r.sw, end: r.state };
+}
+// walking to the nose: is any of your arm on screen while the view is leaving it out? Each frame: walk (noseV), how far the
+// arms are left out (hide, as game.js works it out), and whether a hand, wrist or elbow is inside the picture
+export async function armwalk({ mode = 'medium', seed = 5, stance = 'regular', frames = 60 * 14 } = {}) {
+  const FM = await import('./film.js?v=' + Date.now()), N = await import('./noseshot.js?v=' + Date.now()), g = G(), nm = 'aw' + Math.random();
+  g.useStance(stance); FM.addPro(nm, mode, seed, frames, 'long', 'carve', { walk: [3, 10] }); const t = FM.takes[nm]; t.init();
+  const r = g.rider, AP = g.ARMPOSE, bones = {}; g.surfer.traverse((o) => { if (o.isBone) bones[o.name] = o; });
+  const V3 = g.camera.position.constructor, v = new V3(), rows = []; let bad = 0, badAt = [];
+  for (let i = 0; i < frames; i++) {
+    t.frame(i); if (r.state === 'WIPE' || r.state === 'OUT') break; if (r.state !== 'RIDE') continue;
+    N.draw(g); const cam = g.armCam, nv = g.noseV, hide = Math.min(1, Math.max(0, (nv - AP.hideAt) / 0.15)), hs = hide * hide * (3 - 2 * hide);
+    let on = 0; for (const b of ['hand_l', 'hand_r', 'lowerarm_l', 'lowerarm_r']) { bones[b].getWorldPosition(v); v.project(cam); if (Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1) on++; }
+    if (hs > 0.02 && hs < 0.98 && on) { bad++; if (badAt.length < 6) badAt.push(+nv.toFixed(2)); }
+    if (i % 10 === 0) rows.push(`${nv.toFixed(2)}/${hs.toFixed(2)}/${on}`);
+  }
+  t.done(); return { stance, fadingWhileOnScreen: bad, badAt, rows: rows.slice(0, 40).join(' ') };
+}
+// through a switch: is any of your arm on screen while the view is leaving it out? (as armwalk, for the hop)
+export async function armswitch({ mode = 'medium', seed = 5, stance = 'regular', at = 4 } = {}) {
+  const FM = await import('./film.js?v=' + Date.now()), N = await import('./noseshot.js?v=' + Date.now()), g = G(), nm = 'as' + Math.random(), n = 60 * 20;
+  g.useStance(stance); FM.addPro(nm, mode, seed, n, 'long', 'carve'); const t = FM.takes[nm]; t.init();
+  const r = g.rider, AP = g.ARMPOSE, bones = {}; g.surfer.traverse((o) => { if (o.isBone) bones[o.name] = o; });
+  const sm = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); }, v = new (g.camera.position.constructor)(), rows = []; let bad = 0, pressed = false, t0 = 0;
+  for (let i = 0; i < n; i++) {
+    if (!pressed && r.state === 'RIDE' && r.stateT >= at) { g.sw(); pressed = true; t0 = r.stateT; }
+    t.frame(i); if (r.state === 'WIPE' || r.state === 'OUT') break; if (!pressed) continue;
+    N.draw(g); const hide = r.swT >= 0 ? Math.min(sm((r.swT - AP.swHide[0]) / 0.06), 1 - sm((r.swT - AP.swHide[1]) / 0.06)) : 0;
+    let on = 0; for (const b of ['hand_l', 'hand_r', 'lowerarm_l', 'lowerarm_r']) { bones[b].getWorldPosition(v); v.project(g.armCam); if (Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1) on++; }
+    if (hide > 0.02 && hide < 0.98 && on) bad++;
+    rows.push(`${r.swT.toFixed(2)}/${hide.toFixed(2)}/${on}`); if (r.stateT - t0 > 1.3) break;
+  }
+  t.done(); return { stance, fadingWhileOnScreen: bad, rows: rows.join(' ') };
+}

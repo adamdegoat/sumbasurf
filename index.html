@@ -1024,13 +1024,18 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261003-0949</small>
+    <small id="build">build 261003-1012</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-03-arms', date: '3 Oct 2026', time: '10:12 am', title: 'Natural arms on the longboard', items: [
+      'Walking up to the nose, your arms now spread out wide for balance and out of view, instead of fading away in the air.',
+      'When you switch, your arms swing out wide while your feet change over, then come back on the other side.',
+      'Fix: dark shapes could flash in front of you when you switched.',
+    ] },
     { id: '2026-10-03-switch', date: '3 Oct 2026', time: '9:50 am', title: 'New move: switch on the longboard', items: [
       'On a longboard, tap SWITCH (just above WALK) while you ride to swap which foot is forward. A quick hop and you ride the other way round. On a computer, press X.',
       'Switch on a clean face and it scores. On the drop, in a hard turn or behind the curl the board rocks under you: steer against it or you fall.',
@@ -1576,6 +1581,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1214"></script>
+<script type="module" src="js/game.js?v=1216"></script>
 </body>
 </html>
