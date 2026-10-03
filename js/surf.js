@@ -50,6 +50,11 @@ export const RIDE = {
 //             slides right out. No airs. Slides, not spins: a spin whips your view round (his call)
 const BASE = { ...RIDE, walk: false };   // (walk: false here, or a longboard picked earlier left every board walking to the nose on PUMP, found 29 Sep 2026)
 const BOG_FALL = 1.1;
+// stance switch (3 Oct 2026, his call; the longboard only): the SWITCH button swaps which foot is forward, a quick shuffle-hop
+// of SW_T s with the feet changing over half way. On a clean face it's a style move; on the drop, behind the curl, in a hard
+// turn or out on the nose the board rocks under you for a moment (the nose wobble: steer against it or fall)
+export const SW_T = 0.5;
+const SW_AFTER = 0.6, SW_INST = 5.5, SW_KICK = 1.5;
 const NOSE_STEP = 0.38, NOSE_BACK = 0.24, PEARL_T = 0.8, WOB_MAX = 0.3, WOB_STEER = 3.2;   // (the rock at the nose: how far it can tip before you fall, rad; how hard your thumb pushes it back)   // (one cross-step up or down the longboard, s; how long the nose can be out of the pocket before it digs in)   // seconds a board can sit below planing speed in a stall before the tail sinks and you fall
 export const BOARDS = {
   short: {},
@@ -70,7 +75,7 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 // wave of hard, committed turns in the pocket can score like a barrel, as real judges score it)
 const LINK_TOP = new Set(['SNAP', 'CUTBACK', 'FLOATER', 'AIR', 'AIR 360']);   // (the moves a bottom turn sets up)
 export const RH = { s: 0.6, v: 0.5 };   // (the roundhouse's rebound: how close to the whitewater, in wave heights, and how much of the wave's speed kept)
-export const MOVE_BASE = { 'TAIL SLIDE': 5.0, SLIDE: 4.2, TURN: 1.0, CARVE: 3.8, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0, 'HANG FIVE': 3.6, 'HANG TEN': 5.2, ROUNDHOUSE: 5.8, 'LATE DROP': 4.0 };   // (airs kept above the turns: the hardest move scores most)
+export const MOVE_BASE = { 'TAIL SLIDE': 5.0, SLIDE: 4.2, TURN: 1.0, CARVE: 3.8, SNAP: 4.4, CUTBACK: 4.6, FLOATER: 3.9, AIR: 5.6, 'AIR 360': 7.0, 'HANG FIVE': 3.6, 'HANG TEN': 5.2, ROUNDHOUSE: 5.8, 'LATE DROP': 4.0, SWITCH: 1.3 };   // (airs kept above the turns: the hardest move scores most)
 export const MOVE_BASE_OLD = { TURN: 0.9, SNAP: 2.2, CUTBACK: 2.4, FLOATER: 2.0, AIR: 3.0, 'AIR 360': 4.2 };
 const JUDGE_K = 6;   // (28 Sep 2026: with quality over quantity below, 3 to 5 great moves reach the 8s; was 8)   // how hard the top of the scale is (calibrated with test riders: see HANDOVER)
 
@@ -193,7 +198,7 @@ export function scoreRide(r, fell = false, detail = false) {
     return { m, n, v: pts * Math.pow(m.name === 'TURN' ? SC.repTurn : m.name === 'BARREL' ? SC.repBarrel : SC.rep, n - 1) }; }).sort((a, b) => b.v - a.v);
   items.forEach((it, i) => (it.w = it.v * (SC.W[i] ?? SC.Wtail)));
   let raw = items.reduce((a, it) => a + it.w, 0);
-  const kinds = new Set(ms.filter((m) => m.name !== 'TURN').map((m) => m.name.replace('AIR 360', 'AIR'))).size, variety = Math.min(SC.varMax, SC.varK * Math.max(0, kinds - 1));
+  const kinds = new Set(ms.filter((m) => m.name !== 'TURN' && m.name !== 'SWITCH').map((m) => m.name.replace('AIR 360', 'AIR'))).size, variety = Math.min(SC.varMax, SC.varK * Math.max(0, kinds - 1));
   const flow = Math.min(SC.flowMax, r.speed * SC.flowK) + Math.min(SC.pocketMax, (r.pocket || 0) * SC.pocketK), finish = r.end && !fell ? SC.finish : 0;
   raw += variety + flow + finish;
   if (fell) raw *= SC.fellK;
@@ -256,6 +261,7 @@ export class Rider {
     this.wave = null; this.s = 99; this.zl = 99; this.inBarrel = false; this.onFace = false; this.lowT = 0;
     this.air = null; this.vyS = 0; this.hitV = 0; this.vyPk = 0; this.prevY = undefined;
     this.pumpWas = false; this.pumpN = 0; this.pumpGap = 9; this.pumpT = 9; this.pumpQ = 0; this.weave = 0; this.pumping = false; this.foamT = 0; this.backT = 0; this.wwFloatT = 0; this.tubeOut = 0; this.turnHold = 0; this.recentPaddle = 0; this.slide = 0; this.slideT = 0; this.slidePk = 0; this.slideOutT = 0; this.stalling = 0;
+    this.sw = false; this.swT = -1; this.swQ = false; this.swRisk = 0; this.swFrom = false;
     this.ride = { t: 0, top: 0, barrel: 0, pocket: 0, turns: 0, cutbacks: 0, snaps: 0, speed: 0, end: 0, score: 0, moves: [], tubeT: 0, leanPk: 0, gPk: 0, tubeDeep: 0, combo: 0, lastMoveT: -9 }; this.turnSign = 0; this.tyMin = this.tyMax = undefined; this.cbArmed = false; this.snapArm = 0; this.snapK = 0; this.snapPk = 0; this.lipPush = 0; this.lipHit = false; this.trick = null;
   }
   set(state) { this.state = state; this.stateT = 0; }
@@ -350,10 +356,25 @@ export class Rider {
       // nose riding (29 Sep 2026, his call; the longboard only: P.walk): the PUMP button walks you up the board a cross-step
       // at a time (4 steps, each ~0.38 s, eased: never a slide or a jump) and back when you let go. Up there you only steer
       // gently; you need the pocket (close to the curl, the wave holding the tail down) or the nose digs in and you fall
+      if (this.state === 'POP' && this.sw) { this.sw = false; this.backside = !this.backside; this.swT = -1; this.swQ = false; }   // (every ride starts in your own stance)
       let steer = inp.steer;
       if (P.walk && this.state === 'RIDE') {
-        const held = !!inp.pump;
-        if (!this.stepDir) { if (held && (this.noseStep || 0) < 4) { this.stepDir = 1; this.stepT = 0; } else if (!held && (this.noseStep || 0) > 0) { this.stepDir = -1; this.stepT = 0; } }
+        const held = !!inp.pump, hop = this.swT >= 0 && this.swT < SW_T;
+        // the switch: pressed mid-step, it waits for that step to land; never two at once
+        if (inp.sw && this.swT < 0) this.swQ = true;
+        if (this.swQ && !this.stepDir && this.swT < 0) {
+          this.swQ = false; this.swT = 0; this.swFrom = this.sw; this.swDone = false;
+          const Hs = w ? C.H : 1, sHs = (this.s || 0) / Hs, leanK = Math.abs(this.lean) / P.leanMax;
+          // how risky this spot is to change your feet, 0 (a clean face) to 1: just up off the drop, behind the curl in the
+          // broken water, deep in the tube, leaning hard into a turn, or out on the nose
+          this.swRisk = Math.min(1, Math.max(0.08, 1 - smooth(1.0, 1.8, this.stateT), smooth(-0.6, -1.4, sHs), this.inBarrel ? 0.7 : 0, smooth(0.4, 0.75, leanK), smooth(0.4, 0.8, this.nose || 0) * 0.6));
+        }
+        if (this.swT >= 0) { this.swT += h;
+          if (this.sw === this.swFrom && this.swT >= SW_T / 2) { this.sw = !this.swFrom; this.backside = !this.backside; }   // (half way through the hop the feet change over: backside becomes frontside, and the other way)
+          if (!this.swDone && this.swT >= SW_T) { this.swDone = true; if (w) this.move('SWITCH', Math.min(1, 0.3 + 0.7 * smooth(-1.2, -0.2, (this.s || 0) / C.H) * (1 - smooth(1.2, 2.2, (this.s || 0) / C.H))) * (1 - 0.5 * this.swRisk)); }
+          if (this.swT >= SW_T + SW_AFTER) this.swT = -1; }
+        if (hop) steer *= 0.5;   // (finding your feet: the board only half answers your thumb)
+        if (!this.stepDir && !hop) { if (held && (this.noseStep || 0) < 4) { this.stepDir = 1; this.stepT = 0; } else if (!held && (this.noseStep || 0) > 0) { this.stepDir = -1; this.stepT = 0; } }
         else if (this.stepDir > 0 && !held) { const u = Math.min(1, this.stepT / NOSE_STEP); this.noseStep = (this.noseStep || 0) + 1; this.stepDir = -1; this.stepT = (1 - u) * NOSE_BACK; }   // (let go mid-step and your weight comes straight back: the step reverses from where your foot is, no finishing it first)
         if (this.stepDir) { this.stepT += h; const u = Math.min(1, this.stepT / (this.stepDir < 0 ? NOSE_BACK : NOSE_STEP)); this.stepU = u;   // (stepping back is quicker: a couple of fast steps off the nose, as a real longboarder bails back)
           this.nose = ((this.noseStep || 0) + this.stepDir * u * u * (3 - 2 * u)) / 4;
@@ -376,11 +397,13 @@ export class Rider {
         // up front the board rocks rail to rail and you hold it with small opposite steers (tipping right, thumb left);
         // more on a heavy wave, and the longer you stay up there the livelier it gets and the heavier the nose. Past
         // about 1.5 s on the front the nose starts to dig in slowly even in the pocket: bank the hang or push your luck
-        if (front > 0) {
-          const inst = (3.2 + 3 * over) * front, kick = (0.9 + 0.8 * over) * front / (C.nose ?? 1);   // (left alone it tips over in about a second)
-          this.wobV = (this.wobV || 0) + (inst * (this.wob || 0) + WOB_STEER * inp.steer + kick * (Math.random() * 2 - 1) * 3) * h;
+        const swK = this.swT >= 0 ? this.swRisk * (this.swT < SW_T ? smooth(0, SW_T, this.swT) : 1 - smooth(SW_T, SW_T + SW_AFTER, this.swT)) : 0;   // (the switch: the rock builds through the hop and settles after)
+        if (front > 0 || swK > 0.01) {
+          const sOnly = front > 0 ? 0 : 1;   // (a switch away from the nose: the rock is only as lively as the spot is risky, and on a clean face it settles by itself)
+          const inst = (3.2 + 3 * over) * front + SW_INST * swK - 8 * sOnly * (1 - swK), kick = (0.9 + 0.8 * over) * front / (C.nose ?? 1) + SW_KICK * swK;   // (left alone it tips over in about a second)
+          this.wobV = (this.wobV || 0) + (inst * (this.wob || 0) + WOB_STEER * inp.steer * (front > 0 ? 1 : swK) + kick * (Math.random() * 2 - 1) * 3) * h;   // (your thumb only rocks it as much as it's already rocking: carving on through a clean switch is fine)
           this.wobV *= 1 - 2.2 * h; this.wob = (this.wob || 0) + this.wobV * h;
-          if (Math.abs(this.wob) > WOB_MAX) return this.wipe('Lost your balance on the nose');
+          if (Math.abs(this.wob) > WOB_MAX) return this.wipe(front > 0 ? 'Lost your balance on the nose' : 'Lost your feet on the switch');
         } else { this.wobV = (this.wobV || 0) * (1 - 8 * h); this.wob = (this.wob || 0) * (1 - 6 * h); }
         this.wobK = Math.min(1, Math.abs(this.wob || 0) / WOB_MAX);   // (how close to toppling: the game shows it)
         this.pearlK = Math.min(1, this.pearlT / pearlLim);
@@ -389,7 +412,7 @@ export class Rider {
         // the hang: timed at the nose, scored when you step back off it (or the ride ends)
         if (this.nose >= 0.74) { this.hangT = (this.hangT || 0) + h; if (this.nose >= 0.99) this.hang10T = (this.hang10T || 0) + h; this.hangPocket = (this.hangPocket || 0) + (pocket ? h : 0); }
         else if (this.hangT > 0) this.scoreHang();
-      } else if (P.walk) { if (this.hangT > 0) this.scoreHang(); this.nose = 0; this.noseStep = 0; this.stepDir = 0; this.pearlT = 0; this.pearlK = 0; this.shoulderK = 0; this.wob = 0; this.wobV = 0; this.wobK = 0; }
+      } else if (P.walk) { if (this.hangT > 0) this.scoreHang(); this.swT = -1; this.swQ = false; this.nose = 0; this.noseStep = 0; this.stepDir = 0; this.pearlT = 0; this.pearlK = 0; this.shoulderK = 0; this.wob = 0; this.wobV = 0; this.wobK = 0; }
       const wantLean = Math.sign(steer) * Math.atan(Math.abs(steer) * Math.tan(P.leanMax)) * pop, dl = wantLean - this.lean;
       // backside (your back to the wave), rolling onto the heel rail to turn up into it is slower and blinder than
       // frontside's toe rail: the board answers a little later (the wave is on your right when you head toward -x)
@@ -754,8 +777,11 @@ export class Rider {
     this.trick = { name: (m.strong ? 'BIG ' : '') + 'ROUNDHOUSE', t: 0 };
   }
   move(name, crit, dur = 0, k = 1, snap = null) {
+    // a switch is style, and judges credit it once or twice a wave: after two it's just how you're standing (no points), and
+    // it never links a combo (vet 3 Oct 2026: switching back and forth on a clean face took a 3 ride to a 6)
+    if (name === 'SWITCH' && this.ride.moves.filter((x) => x.name === 'SWITCH').length >= 2) { this.trick = { name: 'SWITCH', t: 0 }; return; }
     const C = this.wave.cond, R = this.ride, spd = Math.min(1, this.v / (C.speed * 1.15));
-    const pow = name === 'TURN' ? Math.min(1, R.gPk / 2.1) : name.startsWith('HANG') ? 0.85 : R.leanPk;   // (a hang is poise, not power)
+    const pow = name === 'TURN' ? Math.min(1, R.gPk / 2.1) : name.startsWith('HANG') || name === 'SWITCH' ? 0.85 : R.leanPk;   // (a hang is poise, not power)
     let q = Math.min(1, 0.35 * spd + 0.35 * pow + 0.3 * crit), base = MOVE_BASE[name] || 0;
     if (name === 'TURN' && q >= 0.65 && crit >= 0.55) base = MOVE_BASE.CARVE;   // (a powerful carve close to the curl is a real move to a judge, not a linking turn)
     let posK = 0.25 + 0.75 * crit;   // (where you did it: the pocket counts, the flats barely)
@@ -772,13 +798,13 @@ export class Rider {
     // a bottom turn linked straight into a move up top (the classic surf line: down, round, and hit the lip): the top
     // move scores a quarter more and is called as the pair. The bottom turn has to be the last thing you did
     const offBottom = LINK_TOP.has(name) && R.lastMove === 'TURN' && R.t - (R.botT ?? -9) < 2.2; if (offBottom) { R.botT = -9; notes.push('off a bottom turn'); }
-    const linked = R.t - R.lastMoveT < 1.6; R.combo = !linked ? 1 : name !== R.lastMove ? Math.min(5, R.combo + 1) : R.combo; R.lastMoveT = R.t; R.lastMove = name;
-    const comboK = 1 + 0.1 * Math.min(R.combo - 1, 4); if (R.combo > 1) notes.push(`combo x${R.combo}`);
+    const linked = name !== 'SWITCH' && R.t - R.lastMoveT < 1.6; if (name !== 'SWITCH') { R.combo = !linked ? 1 : name !== R.lastMove ? Math.min(5, R.combo + 1) : R.combo; R.lastMoveT = R.t; R.lastMove = name; }
+    const comboK = name === 'SWITCH' ? 1 : 1 + 0.1 * Math.min(R.combo - 1, 4); if (R.combo > 1 && name !== 'SWITCH') notes.push(`combo x${R.combo}`);
     const pts = k * base * posK * (0.2 + 0.8 * Math.pow(q, 1.3)) * comboK * (offBottom ? 1.25 : 1) * (0.8 + 0.2 * Math.min(1.5, C.H / 3));   // bigger surf, bigger scores
     // (2 Oct 2026, his call: 0 of 17 test snaps ever counted. A snap's at the top, rarely right in the pocket: one hit hard off
     //  the lip, or whipped round at full pivot, with speed, counts as a big one a little further from the curl)
     const bigSnap = snap && (name === 'SNAP' || name === 'TAIL SLIDE') && q >= 0.6 && crit >= 0.3 && (snap.lip || snap.pivot > 0.6);
-    const strong = name === 'BARREL' ? dur >= 1.5 : (q >= 0.65 && crit >= 0.55) || !!bigSnap;
+    const strong = name === 'BARREL' ? dur >= 1.5 : name === 'SWITCH' ? false : (q >= 0.65 && crit >= 0.55) || !!bigSnap;   // (a switch is style: it never counts toward the excellent range on its own)
     this.ride.moves.push({ name, pts, t: this.ride.t, notes, dur, base, strong });   // (strong: a big, committed one: see the excellent rule in scoreRide)
     const big = q > 0.75 || bigSnap ? (name === 'BARREL' ? 'DEEP ' : 'BIG ') : '';
     this.trick = { name: big + (offBottom ? 'BOTTOM TURN + ' : '') + name + (name === 'BARREL' || name.startsWith('HANG') ? ` ${dur.toFixed(1)}s` : name.startsWith('AIR') ? ` ${dur.toFixed(1)}m` : ''), t: 0 };

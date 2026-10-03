@@ -122,6 +122,7 @@ export class OtherSurfer {
     this.W = { crouch: 0.4, stand: 0.6 };   // each clip's weight, eased toward what the moment wants (a change of pose is a blend, never a snap)
     this.seed = Math.random() * 20;   // (each friend's own rhythm for the idle sway on deck: two friends never move in step)
     this.pos0 = V().set(0, -0.36, -0.25); this.q0 = Q(); this.paddlePh = 0; this.paddleW = 0; this.sitW = 0;
+    this.stSign = stance === 'regular' ? -1 : 1; this.swK = 0;   // (their stance, and how far into a switch they are: see tick)
     this.stanceQ = Q().setFromAxisAngle(UP, (stance === 'regular' ? -1 : 1) * Math.PI / 2);
     // eased state
     this.crouch = 0.4; this.lean = 0; this.twist = 0; this.barrel = 0; this.load = 0; this.pumpA = 0; this.stall = 0; this.t = 0;
@@ -190,6 +191,7 @@ export class OtherSurfer {
     { const ang = this.bodyUp.angleTo(UP), MAXT = 0.36; if (ang > MAXT) this.bodyUp.lerp(UP, 1 - MAXT / ang).normalize(); }   // (never tipped more than ~20 deg from upright: past that, with the crouch and stoop on top, a hard turn folded the body over onto the deck, his catch 30 Sep 2026)
     this.bodyUp.addScaledVector(this.bodyFwd, -this.bodyUp.dot(this.bodyFwd)).normalize();
     this.bodyX.crossVectors(this.bodyUp, this.bodyFwd); this.bodyQ.setFromRotationMatrix(_m.makeBasis(this.bodyX, this.bodyUp, this.bodyFwd));
+    { const k = S.sw || 0; if (k !== this.swK) { this.swK = k; this.stanceQ.setFromAxisAngle(UP, this.stSign * (1 - 2 * k) * Math.PI / 2); } }   // (a longboarder's stance switch, sent as 0 to 1 through the hop: turning through square to the nose)
     this.inv.copy(S.q).invert(); _q3.copy(this.inv).multiply(this.bodyQ).multiply(this.stanceQ);
     // pop-up: from flat along the board, turning side-on and rising into the crouch in about a third of a second
     const pop = st === 'POP' ? Math.min(1, (S.stateT || 0) / 0.35) : 1, pe2 = pop * pop * (3 - 2 * pop);

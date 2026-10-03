@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=218';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD } from './surf.js?v=209';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD, SW_T } from './surf.js?v=210';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER, DESIGNS, SEASON, bakeDesigns } from './board.js?v=23';
 import { SurfAudio } from './audio.js?v=30';
 import { ranch, POOL } from './ranch.js?v=9';
@@ -13,8 +13,8 @@ import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=30';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=76';
-import { wildlife } from './wildlife.js?v=80';
+import { crew } from './crew.js?v=77';
+import { wildlife } from './wildlife.js?v=81';
 import { droneShow } from './show.js?v=17';
 import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=5';
 
@@ -276,6 +276,7 @@ vArm = 0.; vLeg = 0.;
   if (uHideLegs > .5 && (vLeg > .35 || uNear > 0.)) discard;   // (and the shorts with them: seen through the crease of a bent elbow they showed as a teal band)   // your own legs aren't drawn in your view (knees coming up at the lens read as a glitch): arms and board only
   if (vCutW.y < uWaterY) discard;   // lying or sitting on the board: hands and legs under the surface are hidden by the water (the body is drawn after the world, so it would show on top)
   if (vArm >= 0.12 && length(cq) < uArmCut) discard;   // (>= 0.12: the shoulder skin is only part arm-weighted)   // the upper arm is right at the lens: only forearms and hands show, like helmet-cam footage
+  if (!gl_FrontFacing && uArmHide > .5) discard;   // (up on the longboard's nose your eyes sit by your shoulders: their inside faces, half arm so never faded with the arms, showed as black shapes in regular stance, his report 3 Oct 2026. Up there no inside face is drawn)
   if (!gl_FrontFacing && length(cq) < uFade.z) discard;   // (right at the lens a cut arm's inside is never capped: seen from inside, the cap filled the view as a black blob)
   if (!gl_FrontFacing) { gl_FragColor = vec4(uCap, smoothstep(uFade.z, uFade.z + .2, length(cq))); gl_FragDepth = gl_FragColor.a < .98 ? .99999 : gl_FragCoord.z; return; }   // (fading in away from the lens: up close a solid cap filled the view as a dark blob)   // a cut shows solid skin/cloth, never the hollow inside (that was the 'fin')
   if (length(cq) < uCut * 0.6 + uNear) discard;   // (uNear > 0 on the shorts: sliced close to the lens they showed as teal hooks)   // anything right in the lens (arms are never cut: a cut shows the hollow inside of the arm as a 'fin')`);
@@ -284,7 +285,7 @@ vArm = 0.; vLeg = 0.;
   m.side = THREE.DoubleSide;   // (inside faces are drawn as a solid cap colour, so a cut looks closed)
   m.transparent = true;   // (for the fade at the lens; everything else is drawn solid, alpha 1)
   m.forceSinglePass = true;   // (2 Oct 2026, heat check: see-through and two-sided, three drew it in two passes and flipped its side between them, which re-did its whole shader setup twice a frame; both sides in one pass, back faces still capped via gl_FrontFacing)
-  m.customProgramCacheKey = () => 'cutaway27' + (m.userData.near || 0);
+  m.customProgramCacheKey = () => 'cutaway31' + (m.userData.near || 0);   /* (31: 3 Oct 2026, no inside faces on the nose) */
   m.needsUpdate = true;
 }
 const hairMeshes = [];   // your own hair: with your head shrunk away for your own eyes it collapsed into a dark sheet from your neck to the lens, which filled the screen in hard turns. Only drawn when you're seen from outside
@@ -577,7 +578,8 @@ function freeSnap() {
     +(rider.lean / RIDE.leanMax).toFixed(3), +(rider.turn || 0).toFixed(3), rider.inBarrel ? 1 : 0, rider.pumping ? 1 : 0, +(rider.pumpT || 0).toFixed(2), +stallV.toFixed(2),
     wv ? +(rider.v / wv.cond.speed).toFixed(2) : 0, boardType, stance, wv && rider.standing ? wv.sid || 0 : 0, rider.state === 'LIE' && !sitting ? 1 : 0,   // (20: lying down paddling, not sitting up)
     wv && rider.standing ? +(p.x - wv.peelX).toFixed(2) : 0, wv && rider.standing ? +(p.z - wv.zW).toFixed(2) : 0,   // (21, 22: where on the wave they are, so the others can put them on their own copy of it)
-    boardDesign];   // (23: the paint on their board; an older copy of the game sends none, which reads as the classic)
+    boardDesign,   // (23: the paint on their board; an older copy of the game sends none, which reads as the classic)
+    rider.swT >= 0 && rider.swT < SW_T ? +(rider.swFrom ? 1 - smooth01((rider.swT / SW_T - 0.15) / 0.7) : smooth01((rider.swT / SW_T - 0.15) / 0.7)).toFixed(2) : rider.sw ? 1 : 0];   // (24: switched, 0 to 1 through the hop; an older copy ignores it)
 }
 const peers = new Map(), _tagV = new THREE.Vector3(), tagsOn = []; let OSmod = null, osLoading = false;
 const _pqa = new THREE.Quaternion(), _pqb = new THREE.Quaternion();
@@ -591,7 +593,7 @@ function freePeer(id, a, name, sent) {   // (sent: the sender's own clock when i
   if (P.buf.length) { const L = P.buf[P.buf.length - 1].a; if (Math.hypot(a[1] - L[1], a[3] - L[3]) > 25) P.buf = []; }   // (Paddle out: they're simply there, not sliding across the bay; his note 30 Sep 2026)
   if (name) P.name = name;
   P.buf.push({ t, a }); if (P.buf.length > 12) P.buf.shift(); P.last = now;
-  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=25').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }
+  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=26').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }
 }
 function freeSay(id, text) { const P = peers.get(id); if (P) P.say = { text: String(text).slice(0, 90), until: performance.now() + 5000 }; }
 // every player's own shorts colour (his call 30 Sep 2026: automatic, different for each), picked from their player id,
@@ -622,11 +624,11 @@ function peersTick(dt) {
     if (c[0] === 'HUT') {   // on The Point's lookout hut: standing on its deck, facing their way
       const a2 = a[0] === 'HUT' ? a : c, dy = Math.atan2(Math.sin(c[4] - a2[4]), Math.cos(c[4] - a2[4]));
       S.pos.set(a2[1] + (c[1] - a2[1]) * f, a2[2] + (c[2] - a2[2]) * f, a2[3] + (c[3] - a2[3]) * f); S.q.setFromAxisAngle(_yUp, Math.PI / 2 - (a2[4] + dy * f));
-      S.state = 'DECK'; S.v = B.t > A.t ? Math.hypot(c[1] - a2[1], c[3] - a2[3]) / ((B.t - A.t) / 1000) : 0; S.paddling = false;
+      S.state = 'DECK'; S.v = B.t > A.t ? Math.hypot(c[1] - a2[1], c[3] - a2[3]) / ((B.t - A.t) / 1000) : 0; S.paddling = false; S.sw = 0;
     } else if (c[0] === 'DECK') {   // on the boat: stood on its deck (their spot on it, on your copy of the boat), facing their way
       if (!boat) continue; const a2 = a[0] === 'DECK' ? a : c, lx = a2[1] + (c[1] - a2[1]) * f, lz = a2[3] + (c[3] - a2[3]) * f, dy = Math.atan2(Math.sin(c[4] - a2[4]), Math.cos(c[4] - a2[4])), yaw = a2[4] + dy * f;
       S.pos.copy(boatWorld(lx, DECK_Y, lz)); S.q.setFromAxisAngle(_yUp, Math.PI / 2 - yaw).premultiply(boat.quaternion);
-      S.state = 'DECK'; S.v = B.t > A.t ? Math.hypot(c[1] - a2[1], c[3] - a2[3]) / ((B.t - A.t) / 1000) : 0; S.paddling = false;
+      S.state = 'DECK'; S.v = B.t > A.t ? Math.hypot(c[1] - a2[1], c[3] - a2[3]) / ((B.t - A.t) / 1000) : 0; S.paddling = false; S.sw = 0;
     } else {
     S.pos.set(a[1] + (c[1] - a[1]) * f, a[2] + (c[2] - a[2]) * f, a[3] + (c[3] - a[3]) * f);
     // riding: placed on the wave itself (its peel point and crest line now, on your copy), not where they were 140 ms
@@ -635,7 +637,7 @@ function peersTick(dt) {
     if (wv) S.pos.set(wv.peelX + a[21] + (c[21] - a[21]) * f, S.pos.y, wv.zW + a[22] + (c[22] - a[22]) * f);   // (their own height on the face: inside a barrel the water's top is the lip overhead)
     else if (c[0] !== 'WIPE') S.pos.y = heightAt(waves, S.pos.x, S.pos.z);
     _pqa.set(a[4], a[5], a[6], a[7]); _pqb.set(c[4], c[5], c[6], c[7]); S.q.copy(_pqa).slerp(_pqb, Math.min(1, f));
-    S.state = c[0]; S.stateT = c[8]; S.v = c[9]; S.lean = c[10]; S.turn = c[11]; S.inBarrel = !!c[12]; S.pumping = !!c[13]; S.pumpT = c[14]; S.stalling = c[15]; S.speedK = c[16]; S.paddling = !!c[20];
+    S.state = c[0]; S.stateT = c[8]; S.v = c[9]; S.lean = c[10]; S.turn = c[11]; S.inBarrel = !!c[12]; S.pumping = !!c[13]; S.pumpT = c[14]; S.stalling = c[15]; S.speedK = c[16]; S.paddling = !!c[20]; S.sw = typeof c[24] === 'number' ? (typeof a[24] === 'number' ? a[24] + (c[24] - a[24]) * Math.min(1, f) : c[24]) : 0;
     }
     P.os.tick(dt, S, camera);
     // their name, small over their head (his call 30 Sep 2026), fading out far away; not drawn behind you
@@ -688,7 +690,7 @@ function ripAt(x, z) {   // how much of the current is here (0..1), and how far 
   return [Math.max(0, Math.min(1, 1 - (off - RIP.w) / RIP.fade)), t];
 }
 function pointTick(dt) {
-  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=25').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }   // (the photographer draws you as friends see you)
+  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=26').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }   // (the photographer draws you as friends see you)
   // PARTY WAVE: who else is standing on the wave you're riding (their latest message says which wave: index 19)
   const r = rider;
   if (r && r.standing && r.wave && r.wave.sid && !spec) {
@@ -1261,10 +1263,10 @@ function ranchPeople(dt) {
 // ---------- controls: PADDLE/PUMP (hold, left) and a thumb pad (right half). Keyboard for testing.
 const input = { paddle: false, steer: 0 };
 const keys = new Set();
-addEventListener('keydown', (e) => { keys.add(e.code); if (e.code === 'KeyT' && !e.repeat && !inputLock) towStart(); if (/^(Space|Arrow)/.test(e.code) && ui.start.style.display === 'none') { e.preventDefault(); if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); } });   // (in play, Space and the arrows are the controls: never 'press' a button left focused, never scroll)
+addEventListener('keydown', (e) => { keys.add(e.code); if (e.code === 'KeyT' && !e.repeat && !inputLock) towStart(); if (e.code === 'KeyX' && !e.repeat && !inputLock && !/^(INPUT|TEXTAREA)$/.test((e.target && e.target.tagName) || '')) swPress = true; /* (not while typing in the chat) */ if (/^(Space|Arrow)/.test(e.code) && ui.start.style.display === 'none') { e.preventDefault(); if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); } });   // (in play, Space and the arrows are the controls: never 'press' a button left focused, never scroll)
 addEventListener('keyup', (e) => keys.delete(e.code)); addEventListener('blur', () => keys.clear());   // (switching apps mid-press)
 const ui = {
-  paddle: document.getElementById('paddle'), stall: document.getElementById('stall'), pad: document.getElementById('pad'), touch: document.getElementById('touch'), knob: document.querySelector('#touch b'),
+  paddle: document.getElementById('paddle'), stall: document.getElementById('stall'), sw: document.getElementById('swBtn'), pad: document.getElementById('pad'), touch: document.getElementById('touch'), knob: document.querySelector('#touch b'),
   speed: document.getElementById('speed'), score: document.getElementById('score'), cond: document.getElementById('cond'),
   msg: document.getElementById('msg'), msgT: document.getElementById('msg-t'), msgN: document.getElementById('msg-n'), msgS: document.getElementById('msg-s'), msgJ: document.getElementById('msg-j'),
   tube: document.getElementById('tube'), hint: document.getElementById('hint'), load: document.getElementById('load'), start: document.getElementById('start'), sess: document.getElementById('sess'),
@@ -1283,6 +1285,7 @@ const hold = (el, on, off) => {
 if (DESK) ui.stall.innerHTML = 'STALL<small>SHIFT</small>';   // (Shift only, his call 28 Sep 2026: one stall key, no confusion)
 hold(ui.paddle, () => { audio.wake(); input.paddleBtn = true; ui.paddle.classList.add('down'); }, () => { input.paddleBtn = false; ui.paddle.classList.remove('down'); });
 hold(ui.stall, () => { audio.wake(); input.stallBtn = true; ui.stall.classList.add('down'); }, () => { input.stallBtn = false; ui.stall.classList.remove('down'); });
+if (ui.sw) { hold(ui.sw, () => { swPress = true; ui.sw.classList.add('down'); }, () => ui.sw.classList.remove('down')); if (DESK) ui.sw.innerHTML = 'SWITCH<small>X</small>'; }   // (a tap: one switch, the physics times the hop)
 // thumb: touch anywhere on the right half and drag; the spot you first touch is the centre.
 // Left/right turns the board left/right, like leaning on a real board: lying, it points you where you paddle; standing, it carves.
 let keyLean = 0; const KEY_START = 0.3, KEY_FULL = 0.6;   // (0.35 to a full lean until 28 Sep 2026: held keys gave the hardest carve every time, his call: gentler and smoother)           // (arrow keys: the lean a press starts at, seconds held to a full lean)
@@ -1600,7 +1603,9 @@ const _wT = new THREE.Vector3(), _lT = new THREE.Vector3();
 // the first part of the walk (by noseV 0.15 + arm): with the eyes back they came into view as a floating hand (the forearm
 // fades near the lens, the hand doesn't), and on the nose they're out to your sides anyway
 const NOSEVIEW = { down: 0.14, lens: 1, back: 0.5, cut: 0.25, arm: 0.3 };
-const noseTip = () => noseV;   // (0 at your stance, 1 right up at the tip, eased with the walk)
+const noseTip = () => noseV;
+const SWVIEW = { turn: 0.3 };
+const swEye = new THREE.Vector3(), _swv = new THREE.Vector3(), _swq = new THREE.Quaternion(); let swEyeOn = false;   // (how far the head turns with the shoulders in the switch hop)   // (0 at your stance, 1 right up at the tip, eased with the walk)
 const POVCAM = { fwd: 0.1, up: 0.14, pitch: -0.5, drop: 0.08 };   // eye point ahead of/above the head bone, head pitch riding, extra pitch at the take-off
 const _pq2 = new THREE.Quaternion(), popEye0 = new THREE.Vector3(), lastEye = new THREE.Vector3(), eyeCarry = new THREE.Vector3(); let lastEyeSt = ''; let tubeLook = 0, roofOff = 0, curtOff = 0, wallOff = 0;
 const pov = { pos: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0, pitch: -0.2, roll: 0, ready: false }, _eye = new THREE.Vector3(), _pe = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -1621,7 +1626,8 @@ function povCamera(dt) {
   const popIn = st === 'POP' ? smooth01(popClock() / 0.2) : 1;   // (the catch: the view eases into the pop over 0.2 s; it used to lurch and tip in the first frame)
   tsV += ((st === 'RIDE' && rider.tsT > 0 ? 1 : 0) - tsV) * Math.min(1, dt * 12);   // (a tail slide: the horizon tips and you drift out with the tail; the eyes still follow the board, so it stays in view sliding)
   let yawT = travel + dh * (standing ? 0.8 - 0.4 * popIn : 0.8);
-  if (noseV > 0.001) yawT += Math.atan2(Math.sin(rider.th - yawT), Math.cos(rider.th - yawT)) * 0.35 * noseV;   // (on the nose, head up and looking ahead down the wave, as real longboarders do: only partly round to the board, his call 29 Sep 2026)   // (up the longboard you look along the board, down at its nose)   // (a little toward where the board points: you see the nose swing in a turn)
+  if (noseV > 0.001) yawT += Math.atan2(Math.sin(rider.th - yawT), Math.cos(rider.th - yawT)) * 0.35 * noseV;
+  { const u = standing && rider.swT >= 0 && rider.swT < SW_T ? rider.swT / SW_T : 0; swHopK = u > 0 ? Math.sin(Math.PI * u) : 0; if (swHopK > 0.001) yawT += Math.atan2(Math.sin(rider.th - yawT), Math.cos(rider.th - yawT)) * SWVIEW.turn * swHopK * swHopK; }   // (the switch: the shoulders come round square to the nose and the head goes a little with them, eyes still mostly down the line)   // (on the nose, head up and looking ahead down the wave, as real longboarders do: only partly round to the board, his call 29 Sep 2026)   // (up the longboard you look along the board, down at its nose)   // (a little toward where the board points: you see the nose swing in a turn)
   // in the barrel look down the tube toward the exit (along the line), not out through the open side at the beach
   tubeLook += ((standing && (rider.inBarrel || (rider.ride && rider.ride.tubeT > 0)) ? 1 : 0) - tubeLook) * Math.min(1, dt * 1.5);   // (held through a wobble at the tube's edge: tubeT only clears after 0.4 s out)
   const tubeEase = smooth01(tubeLook);   // (eases in and out: no kick as you enter)
@@ -1639,6 +1645,14 @@ function povCamera(dt) {
     const yN = Math.atan2(_gl.z, _gl.x); yawT += Math.atan2(Math.sin(yN - yawT), Math.cos(yN - yawT)) * glK; glP = Math.max(-0.62, Math.atan2(_gl.y, Math.hypot(_gl.x, _gl.z))); }   // (not straight down at the nose: looking steeply down you saw your own chest, his report 29 Sep 2026)
   // smooth the eye's position relative to the board (not in the world, or at speed it would trail behind your head)
   _eye.sub(rig.position);
+  // the switch hop (vet 3 Oct 2026): the body turning half round swung the head bone ~20 cm across the lens. Your head
+  // stays where it was over the board through the hop, with just the dip and the small spring, then glides to where the
+  // new stance carries it
+  { const sT = standing && st === 'RIDE' ? rider.swT : -1, hold = sT < 0 ? 0 : sT < SW_T ? 1 : 1 - smooth01((sT - SW_T) / 0.35);
+    if (hold > 0) { if (!swEyeOn) { swEyeOn = true; swEye.copy(_eye).applyQuaternion(_swq.copy(rig.quaternion).invert()); }
+      const u = Math.min(1, sT / SW_T), bp = (a, b) => u > a && u < b ? Math.sin(Math.PI * (u - a) / (b - a)) : 0;
+      _swv.copy(swEye).applyQuaternion(rig.quaternion); _swv.y += -0.07 * bp(0, 0.42) + 0.035 * bp(0.3, 0.72) - 0.03 * bp(0.68, 1);
+      _eye.lerp(_swv, hold); } else swEyeOn = false; }
   // eyes never lower than this above the board; during the pop it rises with you instead of snapping up in one frame
   const popT = st === 'POP' ? Math.min(1, popClock() / 0.4) : standing ? 1 : 0, eyeFloor = 0.25 + 0.35 * popT * popT * (3 - 2 * popT);
   if (_eye.y < eyeFloor) _eye.y = eyeFloor;
@@ -1898,7 +1912,8 @@ const _xAxis = new THREE.Vector3(1, 0, 0), _up = new THREE.Vector3(), _tq = new 
 // the rider's world orientation (bodyQ, plus side-on stance) expressed in the board's frame
 if (stance === 'regular') stanceQ.setFromAxisAngle(WORLD_UP, -Math.PI / 2);   // (turned the other way round on the board: left foot to the nose)
 const _stq = new THREE.Quaternion(), _idq = new THREE.Quaternion();
-const setStance = () => { invQ.copy(rig.quaternion).invert(); surfer.quaternion.copy(invQ).multiply(bodyQ).multiply(_stq.copy(stanceQ).slerp(_idq, 0.55 * noseV)); };   // (walking to the nose you turn to face it, gradually over the steps)
+const swAng = () => { const base = (physStance() === 'regular' ? -1 : 1) * Math.PI / 2; if (!rider) return base; if (rider.swT >= 0 && rider.swT < SW_T) { const u = rider.swT / SW_T, e = smooth01(Math.min(1, Math.max(0, (u - 0.15) / 0.7))); return base * (rider.swFrom ? -1 : 1) * (1 - 2 * e); } return base * (rider.sw ? -1 : 1); };
+const setStance = () => { stanceQ.setFromAxisAngle(WORLD_UP, swAng()); invQ.copy(rig.quaternion).invert(); surfer.quaternion.copy(invQ).multiply(bodyQ).multiply(_stq.copy(stanceQ).slerp(_idq, 0.55 * noseV)); };   // (walking to the nose you turn to face it, gradually over the steps)
 // body moves between poses (sitting -> lying -> popping up) glide over ~0.15 s instead of jumping in one frame: the
 // camera rides on your head, so a jump was a jolt in the view (sit to paddle dropped 57 cm, paddle to pop rose 44 cm)
 const _gp = new THREE.Vector3();
@@ -2029,13 +2044,16 @@ function updateRig(dt, t) {
     // pumping is a rhythm, not a held squat: compress onto the board on the way down, spring up light, ~1.4 times a second
     { const pe = rider.pumping ? 0.5 - 0.5 * Math.cos(2 * Math.PI * rider.pumpT / PUMP_STROKE) : 0; pumpA += (pe - pumpA) * Math.min(1, dt * 20); }   // (each stroke of the physics, not a clock of its own: what you see is what pushes you)   // (smooth down and up each stroke: back to back they make one continuous bob)
     // knees: deeper at speed, in the barrel and when pumping; they compress under the load of a hard turn and extend out of it
-    const deep = Math.min(0.7, (0.14 + 0.06 * Math.min(1, rider.v / 10) + (0.31 - 0.06 * Math.min(1, rider.v / 10)) * barrelK) + 0.25 * pumpA + 0.2 * airK + 0.25 * gLoad + 0.22 * Math.min(1, Math.abs(rider.lean) / RIDE.leanMax) + 0.2 * (rider.stalling || 0));   // (the crouch clip is a full squat: trim is a light knee bend, hips well above the knees)
+    // the switch hop: knees bend, a small spring as the feet change over, then they soak up the landing (all in SW_T)
+    const swU = rider.swT >= 0 && rider.swT < SW_T ? rider.swT / SW_T : -1, bump = (a, b) => swU > a && swU < b ? Math.sin(Math.PI * (swU - a) / (b - a)) : 0;
+    const swDip = 0.32 * bump(0, 0.42) + 0.16 * bump(0.68, 1), swLift = 0.045 * bump(0.3, 0.72);
+    const deep = Math.min(0.7, swDip + (0.14 + 0.06 * Math.min(1, rider.v / 10) + (0.31 - 0.06 * Math.min(1, rider.v / 10)) * barrelK) + 0.25 * pumpA + 0.2 * airK + 0.25 * gLoad + 0.22 * Math.min(1, Math.abs(rider.lean) / RIDE.leanMax) + 0.2 * (rider.stalling || 0));   // (the crouch clip is a full squat: trim is a light knee bend, hips well above the knees)
     if (curClip !== clips.crouch) { play('crouch', { fade: 0.3 }); clips.stand.reset().play(); }
     // rising out of the pop-up's deep squat over half a second (not snapping up: that jerks your eyes up 16 cm in a frame)
     const up_ = Math.min(1, visT() / 0.6), rise = up_ * up_ * (3 - 2 * up_);
     clips.crouch.weight = (0.8 + (deep - 0.8) * rise) * (1 - 0.45 * noseV); clips.stand.weight = 1 - clips.crouch.weight;   // (on the nose you stand tall)
     setStance();
-    surfer.position.set(0, -0.04 * clips.crouch.weight, -0.1);       // hips drop a little as the feet spread
+    surfer.position.set(0, -0.04 * clips.crouch.weight + swLift, -0.1);       // hips drop a little as the feet spread
     if (noseV > 0.001 || rider.stepDir) {   // cross-stepping up the longboard: forward a step at a time, the body rising a little and rocking side to side with each step
       const run = board.position.z + BOARD_LENGTH(boardType) / 2 - 0.2, u = rider.stepU || 0   /* (right out at the tip on a hang ten, toes over the nose: was 0.5 m short, his call 29 Sep 2026) */, lift = Math.sin(Math.PI * u), sideS = (rider.noseStep || 0) % 2 ? 1 : -1;
       surfer.position.z += noseV * run; surfer.position.y += 0.025 * lift; surfer.position.x += 0.015 * lift * sideS;   // (a light bob and sway with each step: more read as a jolt at the lens)
@@ -2523,6 +2541,7 @@ function swingBone(bone, end, sgn, ang) {
   bone.quaternion.copy(_pq.invert().multiply(_q.multiply(_wq)));
   bone.updateMatrixWorld(true);
 }
+let swPress = false, swShown = false, swHopK = 0;   // (the stance switch: a press waiting for the physics, the button shown, the hop's crouch-and-lift now)
 let stanceW = 0, pumpC = 0, pumpA = 0, pumpPh = 0, barrelK = 0, airK = 0, sitting = false, sitTilt = 0;
 const rigQ = new THREE.Quaternion();
 function straddle() { straddleFor(bones, rig, surfer); }
@@ -2735,7 +2754,7 @@ const hudSpdB = ui.speed.querySelector('b'), hudBar = ui.speed.querySelector('.s
 const cBig = ui.tube.querySelector('.cbig'), cWord = ui.tube.querySelector('.cword'), cPts = ui.tube.querySelector('.cpts'), cWhy = ui.tube.querySelector('.cwhy'), cBal = ui.tube.querySelector('.cbal'), cBalDot = cBal.querySelector('i');
 let hudKmh = -2, scShown = -1, callKey = null, callOn = false, callSlamT = 0, whyT = 0;
 // the first time you land a move with a surfer's name, a line under it says what it is (held a little longer to read)
-const MOVE_WHY = { 'HANG FIVE': "One foot's toes over the nose", 'HANG TEN': "Both feet's toes over the nose", 'TAIL SLIDE': 'The fins let go at the lip. Let go of STALL to catch them, or you slide out', SNAP: 'Hold STALL as you snap to throw a tail slide' };   // (shown once each, the first time you land it)
+const MOVE_WHY = { 'HANG FIVE': "One foot's toes over the nose", 'HANG TEN': "Both feet's toes over the nose", 'TAIL SLIDE': 'The fins let go at the lip. Let go of STALL to catch them, or you slide out', SNAP: 'Hold STALL as you snap to throw a tail slide' };   /* (no line for SWITCH, his call 3 Oct 2026: the move pops, that's all) */   // (shown once each, the first time you land it)
 let movesSeen = {}; try { movesSeen = JSON.parse(localStorage.getItem('ssMovesSeen') || '{}') || {}; } catch (e) { movesSeen = {}; }
 function moveWhy(word) {
   const k = Object.keys(MOVE_WHY).find((n) => word.startsWith(n)); if (!k || movesSeen[k]) return '';
@@ -2757,7 +2776,7 @@ function hudScore(v, dt) {
 // ---------- a good wave on the free beach (his call 2 Oct 2026: 7.0 and up only): a small pill under MENU for everyone
 // there, the score coloured by its level (Advanced, Pro Surfer, a perfect 10), the surfer's name and their best move.
 // One at a time (a queue of three at most), 4 s each; never in the middle of the screen where your own moves are called
-const TOAST_MOVE = { 'TAIL SLIDE': 'tail slide', SNAP: 'snap', CUTBACK: 'cutback', ROUNDHOUSE: 'roundhouse', BARREL: 'barrel', AIR: 'air', 'AIR 360': 'air 360', FLOATER: 'floater', 'HANG TEN': 'hang ten', 'HANG FIVE': 'hang five', SLIDE: 'slide' };
+const TOAST_MOVE = { 'TAIL SLIDE': 'tail slide', SNAP: 'snap', CUTBACK: 'cutback', ROUNDHOUSE: 'roundhouse', BARREL: 'barrel', AIR: 'air', 'AIR 360': 'air 360', FLOATER: 'floater', 'HANG TEN': 'hang ten', 'HANG FIVE': 'hang five', SLIDE: 'slide', SWITCH: 'switch' };
 const toastQ = []; let toastOn = false, toastEl = null;
 function scoreToast(name, sc, move) {
   sc = Math.min(10, +sc || 0); if (!(sc >= 7) || !isFree()) return;
@@ -2802,6 +2821,16 @@ function hudCall(st, dt) {
   }
   // up on the longboard's nose: the hang's own clock, like the barrel's (HANG FIVE counting, HANG TEN once you're on
   // the tip), coral while the nose is digging in. Stepping back off it, the scored hang slams in with its points below
+  // a switch in a risky spot (the drop, behind the curl, a hard turn, out on the nose): the board rocks under you; the
+  // balance bar shows which way, steer against it until it settles
+  if (st === 'RIDE' && rider.swT >= 0 && (rider.swRisk || 0) > 0.3 && !((rider.nose || 0) >= 0.74 && rider.hangT > 0)) {
+    hudCallShow('sw', '', 'SWITCH', '', 'gold', true);
+    ui.tube.style.setProperty('--c', (rider.wobK || 0) > 0.55 ? CALL_COL.coral : CALL_COL.gold);
+    if (!callSlamT && !ui.tube.classList.contains('live')) { ui.tube.classList.remove('slam', 'big'); ui.tube.classList.add('live'); }
+    const bk = Math.max(-1, Math.min(1, (rider.wob || 0) / 0.3)) * (MIRROR ? -1 : 1);
+    ui.tube.classList.add('bal'); cBalDot.style.setProperty('--bx', (bk * 60).toFixed(1) + 'px'); cBal.classList.toggle('hot', Math.abs(bk) > 0.55);
+    return;
+  }
   if (st === 'RIDE' && (rider.nose || 0) >= 0.74 && rider.hangT > 0) {
     const ten = rider.hang10T > 0, word = `${ten ? 'HANG TEN' : 'HANG FIVE'} ${(ten ? rider.hang10T : rider.hangT).toFixed(1)}s`;
     hudCallShow(ten ? 'hang10' : 'hang5', '', word, '', 'gold', true);   // (slams again as you reach the tip)
@@ -2832,6 +2861,7 @@ function updateHUD(dt) {
   ui.paddle.style.visibility = st === 'WIPE' || st === 'OUT' ? 'hidden' : 'visible';
   const lbl = rider.standing ? (boardType === 'long' ? 'WALK' : 'PUMP') : 'PADDLE';   // (the longboard walks to the nose instead of pumping)
   if (ui.paddle.dataset.l !== lbl) { ui.paddle.dataset.l = lbl; ui.paddle.innerHTML = DESK ? `${lbl}<small>SPACE</small>` : lbl; }
+  { const can = !spec && boardType === 'long' && rider.standing && st === 'RIDE' && !rider.towed; if (can !== swShown) { swShown = can; document.body.classList.toggle('canSw', can); } }   // (SWITCH: standing on a longboard, mid ride, nowhere else)
   // coaching for the first few waves: read the sea like a surfer would
   let hint = '';
   if (st === 'LIE' && ranchWaiting()) hint = session.waves < 3 ? 'Order a wave: it comes out of the machine, then ride it the way the arrows point' : '';
@@ -2882,7 +2912,7 @@ function updateHUD(dt) {
     const judge = r.score < 2 ? 'Poor' : r.score < 5 ? 'Fair' : r.score < 6.5 ? 'Good' : r.score < 8 ? 'Very good' : r.score < 10 ? 'Excellent' : 'Perfect';   // (the contest judges' own words for the range, 28 Sep 2026)
     ui.msgN.innerHTML = r.t > 0 ? `${r.score.toFixed(1)}<small>${judge.toUpperCase()}${newBest ? '  \u00b7  NEW BEST' : ''}</small>` : '';
     ui.msgS.innerHTML = '';
-    { const J = r.t > 0 ? rider.liveScore(st === 'WIPE', true) : null, NM = { TURN: 'Turn', SNAP: 'Snap', CUTBACK: 'Cutback', FLOATER: 'Floater', AIR: 'Air', 'AIR 360': 'Air 360', 'HANG FIVE': 'Hang five', 'HANG TEN': 'Hang ten', BARREL: 'Barrel' , ROUNDHOUSE: 'Roundhouse', 'LATE DROP': 'Late drop', 'TAIL SLIDE': 'Tail slide', SLIDE: 'Slide' };
+    { const J = r.t > 0 ? rider.liveScore(st === 'WIPE', true) : null, NM = { TURN: 'Turn', SNAP: 'Snap', CUTBACK: 'Cutback', FLOATER: 'Floater', AIR: 'Air', 'AIR 360': 'Air 360', 'HANG FIVE': 'Hang five', 'HANG TEN': 'Hang ten', BARREL: 'Barrel' , ROUNDHOUSE: 'Roundhouse', 'LATE DROP': 'Late drop', 'TAIL SLIDE': 'Tail slide', SLIDE: 'Slide', SWITCH: 'Switch' };
       const top = J ? J.lines.filter((l) => NM[l.name]).slice(0, 3) : [];
       ui.msgJ.innerHTML = top.map((l) => `<div><span><b>${NM[l.name]}${l.name === 'BARREL' || l.name.startsWith('HANG') ? ` ${l.dur.toFixed(1)}<small>s</small>` : ''}</b>${l.notes.length ? `<i>${l.notes.join(', ')}</i>` : ''}</span><em>${l.pts.toFixed(1)}</em></div>`).join('') + (J && J.fell ? '<div><span><i>fell at the end: moves in the last second did not count</i></span></div>' : ''); }
     // the level this wave reached stands out (amber, with the menu's three dots), then how far the next one is
@@ -3370,7 +3400,7 @@ const sandChk = { t: -9, x: 0, z: 0, on: false };   // (the last look at whether
 function tick(dt) {
   T += dt;
   ENV.uTime.value += dt;
-  const inp = readInput(dt);
+  const inp = readInput(dt); inp.sw = swPress; swPress = false;   // (SWITCH: one press, one switch)
   // (in the barrel view the camera looks back at you, so left/right are flipped to match the screen)
   if (rider && rider.standing && input.test == null) {
     // (scripted checks drive a virtual stick: y down = STALL held, y up = PUMP held)
@@ -3592,4 +3622,4 @@ function specApply(dt) {
   rider.wave = waves.find((v) => v.sid === R.waveId) || null;
   input.paddle = !!b.pad;
 }
-window.__g = { scoreToast: (n, s, m) => scoreToast(n, s, m), NOSEVIEW, get noseV() { return noseV; }, armCutNow: () => armCutNow(), hut: () => hutArrive(), hutJump: () => boatGo(false), photoCanvas: () => photo && photo.cv, pwShow: (a, b, k) => pwShow(a, b, k), snapTest: () => { if (rider) snapPhoto(rider); return !!photo; }, photoShow: () => { if (photo) { photo.shown = true; photoThumb(); } }, ripAt: (x, z) => ripAt(x, z), towPoint, towNow: (w) => towNow(w), towStart: () => towStart(), get towDbg() { return { tow, ski, rope, cam: camera }; }, freeStart: (ext, map) => { FREE.forceX = !!ext; freeMap(map); return start('free'); }, freeNet: FREE.net, freeWaveOut, freeWaveApply, freeWaveState, freeWaveSync, freeClearWaves, freeBecomeHost, freeSnap, freePeer, freePeerGone, freeSay, freeShorts, freeFollow, peersTick: (dt) => peersTick(dt), get following() { return FREE.follow || null; }, get followD() { return FREE.followD || 0; }, shortsFor: (id) => shortsFor(id), get peers() { return peers; }, hint: (t) => setText(ui.hint, t), get strand() { return strand; }, groundAt: (x, z) => groundAt(x, z), shoreZ: (x) => shoreZ(x), lockRanch, get ranchDbg() { return { people: !!people, loading: peopleLoading, failed: peopleFailed, crowd: crowd && crowd.length, life: !!life }; }, get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t, d) => useBoard(t, true, d == null ? null : d), useStance: (k) => useStance(k), get board() { return boardType; }, get design() { return boardDesign; }, setDesign: (t, d) => setDesign(t, d), designOf: (t) => designOf(t), get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; for (const z of FREE) z.next = undefined; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };
+window.__g = { sw: () => { swPress = true; }, SWVIEW, get swHopK() { return swHopK; }, scoreToast: (n, s, m) => scoreToast(n, s, m), NOSEVIEW, get noseV() { return noseV; }, armCutNow: () => armCutNow(), hut: () => hutArrive(), hutJump: () => boatGo(false), photoCanvas: () => photo && photo.cv, pwShow: (a, b, k) => pwShow(a, b, k), snapTest: () => { if (rider) snapPhoto(rider); return !!photo; }, photoShow: () => { if (photo) { photo.shown = true; photoThumb(); } }, ripAt: (x, z) => ripAt(x, z), towPoint, towNow: (w) => towNow(w), towStart: () => towStart(), get towDbg() { return { tow, ski, rope, cam: camera }; }, freeStart: (ext, map) => { FREE.forceX = !!ext; freeMap(map); return start('free'); }, freeNet: FREE.net, freeWaveOut, freeWaveApply, freeWaveState, freeWaveSync, freeClearWaves, freeBecomeHost, freeSnap, freePeer, freePeerGone, freeSay, freeShorts, freeFollow, peersTick: (dt) => peersTick(dt), get following() { return FREE.follow || null; }, get followD() { return FREE.followD || 0; }, shortsFor: (id) => shortsFor(id), get peers() { return peers; }, hint: (t) => setText(ui.hint, t), get strand() { return strand; }, groundAt: (x, z) => groundAt(x, z), shoreZ: (x) => shoreZ(x), lockRanch, get ranchDbg() { return { people: !!people, loading: peopleLoading, failed: peopleFailed, crowd: crowd && crowd.length, life: !!life }; }, get hfov() { return hfovHalf; }, get tubeK() { return tubeK; }, get show() { return showW; }, FADE, HIDELEGS, WATERY, ARMCUT, get mirror() { return MIRROR; }, flipProj: (c) => flipProj(c), get walker() { return walker; }, get villaW() { return villaW; }, get drone() { return drone; }, get crew() { return crewW; }, get friends() { return friendsW; }, get room() { return roomMode; }, set room(v) { roomMode = !!v; if (friendsW) { if (roomMode) friendsW.hide(); friendsW.group.visible = !roomMode && mode === 'villa'; } }, set inputLock(v) { inputLock = !!v; }, toMenu: () => toMenu(), get villa() { return villaW; }, get mode() { return mode; }, get wild() { return wildW; }, startVilla: () => startVilla(), useBoard: (t, d) => useBoard(t, true, d == null ? null : d), useStance: (k) => useStance(k), get board() { return boardType; }, get design() { return boardDesign; }, setDesign: (t, d) => setDesign(t, d), designOf: (t) => designOf(t), get stance() { return stance; }, get spotSel() { return spotSel; }, selSpot: (m) => selSpot(m), MUSIC, songOf: (src) => songOf(src), ranchSend: (k) => ranchSend(k), paused: false, cutaway, CUT, armCam, audio, renderer, scene, camera, rig, get surfer() { return surfer; }, get rider() { return rider; }, get waves() { return waves; }, incoming, input, keys, setMode: (m) => { mode = m; setWeather(m); setSpot(m); ui.cond.textContent = modeName(m); for (const w of waves) w.dispose(scene); waves = []; nextBreak = T + 15; for (const z of FREE) z.next = undefined; updateWaves(0); }, step: (sec, dt = 1 / 30, draw = true) => { for (let t = 0; t < sec; t += dt) tick(dt); if (draw) renderer.render(scene, camera); }, spawnRider, splashLens, get T() { return T; }, set T(v) { T = v; }, showStart: (skip) => showStart(skip), showOff: () => showOff(), get showOn() { return !!(showW && showW.on); }, start: (m, quick) => start(m, quick), contestSnap, specStart: (m) => specStart(m), specFeed, get watching() { return !!spec; }, get hold() { return contestHold; }, set hold(v) { contestHold = !!v; }, respawn: () => spawnRider(), timeUp: () => { if (rider && !spec && rider.state === 'LIE') rider.out('Out of time: no wave caught'); }, want: () => _want };

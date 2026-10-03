@@ -312,6 +312,9 @@
   /* riding, like driving: PUMP (gas) on top, STALL (brake) underneath, both the same size */
   body.riding #paddle { width: 88px; height: 88px; left: max(30px, calc(env(safe-area-inset-left) + 8px)); bottom: max(122px, calc(env(safe-area-inset-bottom) + 102px)); }
   body.riding #stall { width: 88px; height: 88px; left: max(30px, calc(env(safe-area-inset-left) + 8px)); bottom: max(20px, env(safe-area-inset-bottom)); }
+  /* the longboard's stance switch (3 Oct 2026): a small pill just above WALK, only while you're standing on a longboard mid ride */
+  #swBtn { position: fixed; left: max(30px, calc(env(safe-area-inset-left) + 8px)); bottom: max(222px, calc(env(safe-area-inset-bottom) + 202px)); width: 88px; height: 34px; border-radius: 17px; display: none; place-items: center; touch-action: none; }
+  body.riding.canSw #swBtn { display: flex; align-items: center; justify-content: center; }
   /* thumb: touch anywhere on the right half and drag left/right; a faint ring where you touched, a dot for the lean */
   #pad { position: fixed; top: 0; right: 0; bottom: 0; width: 50%; touch-action: none; }
   #touch { position: fixed; left: 0; top: 0; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); pointer-events: none; opacity: 0; transition: opacity .15s; }
@@ -458,7 +461,7 @@
   /* the villa: walk (left thumb), look (right thumb), tap a board in the rack */
   body:not(.villa):not(.strand) .vui { display: none !important; }
   body.strand .vui:not(#vMove):not(#vLook):not(#vStick):not(#vUp):not(#vDn):not(#vAlt), body.strand:not(.drone) :is(#vUp, #vDn, #vAlt), body.strand #paddle, body.strand #stall, body.strand #pad { display: none !important; }   /* (the free-surf beach on foot: only the walk and look thumbs) */
-  body.villa #paddle, body.villa #stall, body.villa #pad, body.villa #touch { display: none !important; }
+  body.villa #paddle, body.villa #stall, body.villa #swBtn, body.strand #swBtn, body.villa #pad, body.villa #touch { display: none !important; }
   #vMove { position: fixed; left: 0; top: 56px; bottom: 0; width: 45%; z-index: 7; touch-action: none; }
   #vLook { position: fixed; right: 0; top: 56px; bottom: 0; width: 55%; z-index: 7; touch-action: none; }
   #vStick { position: fixed; width: 90px; height: 90px; margin: -45px 0 0 -45px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); pointer-events: none; opacity: 0; z-index: 8; }
@@ -620,6 +623,9 @@
   #vSong b { font: 700 16px/1.1 var(--disp) !important; } #vSong i { font: 600 11px var(--disp) !important; letter-spacing: .06em !important; text-transform: none !important; color: var(--amber) !important; }
   #vNote { font: 700 15px var(--disp) !important; color: var(--amber) !important; border-color: rgba(255,201,120,.6) !important; }
   #vTip { font: 600 14px var(--disp) !important; letter-spacing: .02em; }
+  #swBtn { font-family: var(--disp); font-weight: 700; font-size: 13px; letter-spacing: .08em; color: var(--sand); border: 2px solid rgba(246,236,220,.55); background: radial-gradient(circle at 50% 35%, rgba(60,42,26,.55), rgba(24,17,11,.62)); box-shadow: inset 0 1px 0 rgba(255,236,200,.15), 0 2px 12px rgba(0,0,0,.2); }
+  #swBtn.down { border-color: var(--amber); color: #2a1a0c; background: radial-gradient(circle at 50% 35%, #ffd694, #f2ad52); }
+  #swBtn small { display: inline; margin-left: 5px; font-size: 10px; opacity: .65; }
   #paddle, #stall { font-family: var(--disp) !important; font-weight: 700 !important; font-size: 16px !important; letter-spacing: .06em !important; color: var(--sand) !important;
     border: 2px solid rgba(246,236,220,.55) !important; background: radial-gradient(circle at 50% 35%, rgba(60,42,26,.55), rgba(24,17,11,.62)) !important; box-shadow: inset 0 1px 0 rgba(255,236,200,.15), 0 2px 12px rgba(0,0,0,.2); }
   #paddle.down, #stall.down { border-color: var(--amber) !important; color: #2a1a0c !important; background: radial-gradient(circle at 50% 35%, #ffd694, #f2ad52) !important; }
@@ -907,6 +913,7 @@
 <div id="fade"></div>
 <div class="ctl" id="paddle">PADDLE</div>
 <div class="ctl" id="stall">STALL</div>
+<div class="ctl" id="swBtn">SWITCH</div>
 <div class="ctl" id="pad"></div>
 <!-- thumb: no slider drawn; where you touch appears as a faint ring, the dot shows how far you're leaning -->
 <div class="ctl" id="touch"><b></b></div>
@@ -1017,13 +1024,23 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261002-2153</small>
+    <small id="build">build 261003-0949</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-03-switch', date: '3 Oct 2026', time: '9:50 am', title: 'New move: switch on the longboard', items: [
+      'On a longboard, tap SWITCH (just above WALK) while you ride to swap which foot is forward. A quick hop and you ride the other way round. On a computer, press X.',
+      'Switch on a clean face and it scores. On the drop, in a hard turn or behind the curl the board rocks under you: steer against it or you fall.',
+    ] },
+    { id: '2026-10-03-switchfriends', wd: true, date: '3 Oct 2026', time: '9:50 am', title: 'Friends see your switch', items: [
+      'In free surf, your friends see you turn round on your board when you switch.',
+    ] },
+    { id: '2026-10-03-noseblack', date: '3 Oct 2026', time: '9:50 am', title: 'Fix: dark shapes on the nose', items: [
+      'Fix: walking up the longboard in regular stance, dark shapes could appear in front of you. They are gone.',
+    ] },
     { id: '2026-10-02-towcam', date: '2 Oct 2026', time: '9:53 pm', title: 'Smooth let go at Ombak Raksasa', items: [
       'Fix: when the jet ski rope dropped, the camera jumped. Now you carry straight on down the face.',
     ] },
@@ -1559,6 +1576,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1211"></script>
+<script type="module" src="js/game.js?v=1214"></script>
 </body>
 </html>

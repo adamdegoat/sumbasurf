@@ -1,7 +1,7 @@
 // Tail slide vet (2 Oct 2026): rides driven by a bot, with the tail slide on (as shipped) or off (RIDE.tail = 0, the old
 // physics), so a wipeout count says whether the tail slide trips up players who were never trying one.
 //   const V = await import('./test/tsvet.js?v=' + Date.now()); await V.ride({ mode: 'medium', board: 'short', stall: 'habit' })
-import { RIDE } from '../js/surf.js?v=209';
+import { RIDE } from '../js/surf.js?v=210';
 const G = () => window.__g;
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 let FM = null;
