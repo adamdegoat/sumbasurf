@@ -140,3 +140,19 @@ export async function armswitch({ mode = 'medium', seed = 5, stance = 'regular',
   }
   t.done(); return { stance, fadingWhileOnScreen: bad, rows: rows.join(' ') };
 }
+// the hop in your view: eye height above the board (cm) every 1/60 s through a switch, its biggest step a frame, the
+// biggest turn of the view a frame, and the same two numbers over the second before the press (normal riding)
+export async function hoptrace({ mode = 'easy', seed = 4, stance = 'regular', at = 4, nose = false, local = false } = {}) {
+  const FM = await import('./film.js?v=' + Date.now()), g = G(), nm = 'ht' + Math.random(), n = 60 * 20;
+  g.useStance(stance); FM.addPro(nm, mode, seed, n, 'long', 'carve', nose ? { walk: [2, 99] } : undefined, undefined, { sub: true }); const t = FM.takes[nm]; t.init();
+  const r = g.rider, c = g.camera, q0 = c.quaternion.clone(); let pressed = false, t0 = 0, prevY = null; const ys = [], pre = { dy: 0, da: 0 }, hop = { dy: 0, da: 0 }; const hist = [];
+  for (let i = 0; i < n; i++) {
+    if (!pressed && r.state === 'RIDE' && r.stateT >= at && (!nose || (r.nose || 0) >= 0.95)) { g.sw(); pressed = true; t0 = r.stateT; }
+    t.frame(i); if (r.state === 'WIPE' || r.state === 'OUT') break; if (r.state !== 'RIDE') { prevY = null; continue; }
+    const y = (local ? g.rig.worldToLocal(c.position.clone()).y : c.position.y - g.rig.position.y) * 100, da = q0.angleTo(c.quaternion) * 57.3; q0.copy(c.quaternion);
+    const dy = prevY === null ? 0 : Math.abs(y - prevY); prevY = y;
+    if (!pressed) { hist.push([dy, da]); if (hist.length > 60) hist.shift(); }
+    else { if (!ys.length) for (const [a, b] of hist) { pre.dy = Math.max(pre.dy, a); pre.da = Math.max(pre.da, b); } ys.push(+y.toFixed(1)); hop.dy = Math.max(hop.dy, dy); hop.da = Math.max(hop.da, da); if (r.stateT - t0 > 1.0) break; }
+  }
+  t.done(); const base = ys[0]; return { stance, lowCm: +(Math.min(...ys) - base).toFixed(1), highCm: +(Math.max(...ys) - base).toFixed(1), hopStepCm: +hop.dy.toFixed(2), hopTurnDeg: +hop.da.toFixed(2), normalStepCm: +pre.dy.toFixed(2), normalTurnDeg: +pre.da.toFixed(2), path: ys.filter((_, i) => i % 3 === 0).map((v) => +(v - base).toFixed(1)).join(' ') };
+}

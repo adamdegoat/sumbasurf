@@ -1604,7 +1604,7 @@ const _wT = new THREE.Vector3(), _lT = new THREE.Vector3();
 // fades near the lens, the hand doesn't), and on the nose they're out to your sides anyway
 const NOSEVIEW = { down: 0.14, lens: 1, back: 0.5, cut: 0.25, arm: 0.3 };
 const noseTip = () => noseV;
-const SWVIEW = { turn: 0.3 };
+const SWVIEW = { turn: 0.3, dip: 0.055, up: 0.12, land: 0.03 };   /* (the switch hop in your view, metres: knees bend, spring, landing) */
 const ARMPOSE = { nf: -0.1, nd: 0.5, nx: 1.0, spread: 0.3, hideAt: 0.32, swHide: [0.1, SW_T + 0.12] };   /* (the balance pose on the nose and through a switch: hands out wide, out past the edges of the picture, metres from your eyes; spread: how far up the walk they're out; hideAt / swHide: when the view leaves them out, only once they're out of the picture) */
 const swEye = new THREE.Vector3(), _swv = new THREE.Vector3(), _swq = new THREE.Quaternion(); let swEyeOn = false;   // (how far the head turns with the shoulders in the switch hop)   // (0 at your stance, 1 right up at the tip, eased with the walk)
 const POVCAM = { fwd: 0.1, up: 0.14, pitch: -0.5, drop: 0.08 };   // eye point ahead of/above the head bone, head pitch riding, extra pitch at the take-off
@@ -1652,7 +1652,7 @@ function povCamera(dt) {
   { const sT = standing && st === 'RIDE' ? rider.swT : -1, hold = sT < 0 ? 0 : sT < SW_T ? 1 : 1 - smooth01((sT - SW_T) / 0.35);
     if (hold > 0) { if (!swEyeOn) { swEyeOn = true; swEye.copy(_eye).applyQuaternion(_swq.copy(rig.quaternion).invert()); }
       const u = Math.min(1, sT / SW_T), bp = (a, b) => u > a && u < b ? Math.sin(Math.PI * (u - a) / (b - a)) : 0;
-      _swv.copy(swEye).applyQuaternion(rig.quaternion); _swv.y += -0.07 * bp(0, 0.42) + 0.035 * bp(0.3, 0.72) - 0.03 * bp(0.68, 1);
+      _swv.copy(swEye).applyQuaternion(rig.quaternion); _swv.y += -SWVIEW.dip * bp(0, 0.36) + SWVIEW.up * bp(0.26, 0.7) - SWVIEW.land * bp(0.66, 1);   /* (his call 3 Oct 2026, 'make it natural': a real little hop you feel, knees bend, spring up as the feet change over, soak up the landing) */
       _eye.lerp(_swv, hold); } else swEyeOn = false; }
   // eyes never lower than this above the board; during the pop it rises with you instead of snapping up in one frame
   const popT = st === 'POP' ? Math.min(1, popClock() / 0.4) : standing ? 1 : 0, eyeFloor = 0.25 + 0.35 * popT * popT * (3 - 2 * popT);
