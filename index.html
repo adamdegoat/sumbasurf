@@ -722,6 +722,8 @@
   #start .fsPanel .fsRoom i { font-style: normal; font: 600 13px/1 var(--disp); color: rgba(246,236,220,.7); white-space: nowrap; }
   #start .fsPanel .fsRoom em { font-style: normal; font: 700 11px/1 var(--disp); letter-spacing: .08em; padding: 3px 7px 2px; border-radius: 999px; border: 1px solid rgba(255,201,120,.5); color: var(--amber); }
   #start .fsPanel .fsRoom em.x { border-color: rgba(255,90,74,.65); color: #ff8a7a; }
+  #start .fsPanel .fsRoom { cursor: pointer; -webkit-tap-highlight-color: transparent; } #start .fsPanel .fsRoom:active { background: rgba(255,201,120,.14); }   /* (the whole row joins, his report 4 Oct 2026) */
+  #start .fsPanel .fsRoom.joining button { background: rgba(255,201,120,.45); }
   #start .fsPanel .fsRoom button { font: 800 13px/1 var(--disp); letter-spacing: .05em; color: #2a1a0c; background: var(--amber); padding: 7px 12px 6px; border-radius: 8px; border: 0; cursor: pointer; }
   #start .fsPanel .fsEmpty { font: 500 13px/1.35 var(--body); color: rgba(246,236,220,.7); padding: 4px 2px; }
   #start .fsPanel .fsCode { display: flex; gap: 8px; align-items: center; flex: none; }
@@ -1165,7 +1167,7 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261004-0019</small>
+    <small id="build">build 261004-0029</small>
   </div>
 </div>
 <div id="guide" role="dialog" aria-modal="true" aria-label="Surf guide" hidden>
@@ -1180,6 +1182,9 @@
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-04-join', date: '4 Oct 2026', time: '12:29 am', title: 'Joining a free surf beach, one tap', items: [
+      'Tap anywhere on a beach in the list to join. It says Joining straight away.',
+    ] },
     { id: '2026-10-04-joins', date: '4 Oct 2026', time: '12:19 am', title: 'Cleaner free surf chat', items: [
       'Who joined or left the beach now shows as a small line under the surfer list and fades away, so the chat is only messages.',
     ] },
