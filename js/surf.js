@@ -61,7 +61,7 @@ export const SW_T = 0.5;
 // STALL in the air (pressed or held, as the shortboard grabs) rolls you right over with the board (ROLL_T s: el rollo); land before it's round and you go in.
 // Rolling and spinning together is the air roll spin (ARS), the signature move, scored highest
 export const SPIN_T = 1.2, ROLL_T = 0.55, SPIN_HOLD = 0.15;
-export const SPIN_SKILL = { v: 0.6, again: 2.0, againV: 0.15, lo: 0.22, hi: 0.8, together: 0.3, first: 0.2, carving: 0.6, hard: 0.6 };   // (first: a keyboard arrow takes ~0.1 s to count as steering, so STALL a hair before it still counts as together)   // (carving: turning faster than this, rad/s, as the two come on, it's a turn, not a spinner: at 1.0 a barrel set-up, STALL pressed in a moderate turn (0.9), spun by accident)   // (the spinner's skill: speed going in as a share of the wave's; another within 2 s needs 0.15 more; the clean band of the face, as a share of its height)   // (SPIN_T: his call 3 Oct 2026, at 0.75 s with a fast middle it whipped round 'unnaturally fast'; 1.2 s with an even pace, as a real spinner goes)
+export const SPIN_SKILL = { firstKb: 0.07, v: 0.6, again: 2.0, againV: 0.15, lo: 0.22, hi: 0.8, together: 0.3, first: 0.2, carving: 0.6, hard: 0.6 };   // (firstKb: on a keyboard, 4 Oct 2026: two keys 'together' land up to ~0.2 s apart, so STALL first gets 0.27 s there)   // (first: a keyboard arrow takes ~0.1 s to count as steering, so STALL a hair before it still counts as together)   // (carving: turning faster than this, rad/s, as the two come on, it's a turn, not a spinner: at 1.0 a barrel set-up, STALL pressed in a moderate turn (0.9), spun by accident)   // (the spinner's skill: speed going in as a share of the wave's; another within 2 s needs 0.15 more; the clean band of the face, as a share of its height)   // (SPIN_T: his call 3 Oct 2026, at 0.75 s with a fast middle it whipped round 'unnaturally fast'; 1.2 s with an even pace, as a real spinner goes)
 const SW_AFTER = 0.6, SW_INST = 5.5, SW_KICK = 1.5;
 const NOSE_STEP = 0.38, NOSE_BACK = 0.24, PEARL_T = 0.8, WOB_MAX = 0.3, WOB_STEER = 3.2;   // (the rock at the nose: how far it can tip before you fall, rad; how hard your thumb pushes it back)   // (one cross-step up or down the longboard, s; how long the nose can be out of the pocket before it digs in)   // seconds a board can sit below planing speed in a stall before the tail sinks and you fall
 export const BOARDS = {
@@ -480,7 +480,7 @@ export class Rider {
       // (not in the tube, not in the flats or up in the lip), with speed and settled into the ride. (3 Oct 2026, his call: it was a
       // tap of STALL, and nothing else in the game is a tap; now it's hold and steer like everything else. Once round, let go of
       // either before the next one, or holding on spun you again and again)
-      if (P.prone) { const K = SPIN_SKILL, stIn = (inp.stall || 0) > 0.5, sgIn = Math.abs(inp.steer) > 0.2, hard = Math.abs(inp.steer) > K.hard, both = stIn && hard;
+      if (P.prone) { const K = SPIN_SKILL, stIn = (inp.stall || 0) > 0.5, sgIn = Math.abs(inp.steer) > 0.2 || !!inp.kb,   /* (kb: an arrow key is down, counted from the press: see readInput) */ hard = Math.abs(inp.steer) > K.hard, both = stIn && hard;
         // (3 Oct 2026, his report 'now cannot even spin': the keys build a turn up over half a second, so 'hard over' came 0.5 s
         //  after the press and the old checks, timed from there, always said 'not together' and 'already carving'. Now both
         //  are timed from when you START to steer (past a fifth), whichever of STALL and the thumb came first)
@@ -490,7 +490,7 @@ export class Rider {
         // only as one move: STALL and the thumb coming on together (K.together s), from riding along the face, not out of a
         // carve already swinging round (K.carving rad/s) and not after braking a while with STALL (a stall turn, never a spinner)
         if (!stIn || !sgIn) this.spRel = true;
-        else if (!this.spin && !(this.spHold > 0) && (this.stHeld - this.sgHeld > K.first || this.sgHeld - this.stHeld > K.together || (this.comboTurn || 0) > K.carving)) this.spRel = false;   // (the thumb first and STALL after within K.together s, or both at once (K.first of slack); STALL first then steering is a stall turn: a barrel set-up, holding STALL and steering to hold the line, spun by accident)
+        else if (!this.spin && !(this.spHold > 0) && (this.stHeld - this.sgHeld > K.first + (inp.kb ? K.firstKb : 0) || this.sgHeld - this.stHeld > K.together || (this.comboTurn || 0) > K.carving)) this.spRel = false;   // (the thumb first and STALL after within K.together s, or both at once (K.first of slack); STALL first then steering is a stall turn: a barrel set-up, holding STALL and steering to hold the line, spun by accident)
         this.spHold = both && this.spRel && !this.spin ? (this.spHold || 0) + h : 0;
         // (3 Oct 2026, his call: 'it needs skill, not a free move'. It starts almost anywhere on the face you're moving on, but it
         //  only comes round with good speed going in (SPIN_SKILL.v of the wave's speed; more for a second one straight after,

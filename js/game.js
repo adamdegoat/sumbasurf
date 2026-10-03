@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, WeatherFX, ENV, bioMat } from './wave.js?v=220';
-import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD, SW_T } from './surf.js?v=235';
+import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD, SW_T } from './surf.js?v=237';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER, DESIGNS, SEASON, bakeDesigns, boardSurface } from './board.js?v=25';
 import { gripHand, gripTarget } from './grip.js?v=14';
 import { GUIDE, guideText } from './guide.js?v=1';
@@ -15,8 +15,8 @@ import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=30';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
 import { WATER_PEOPLE, waterPerson, straddle as straddleP } from './surfers.js?v=3';
-import { crew } from './crew.js?v=102';
-import { wildlife } from './wildlife.js?v=106';
+import { crew } from './crew.js?v=104';
+import { wildlife } from './wildlife.js?v=108';
 import { droneShow } from './show.js?v=17';
 import { makeBoat, DECK_Y, DECK, LADDER, HALF, BLOCKS } from './boat.js?v=5';
 
@@ -1348,7 +1348,11 @@ function readInput(dt) {
     lastPadTouch = padTouch;
   }
   const kt = `translate(${Math.round(padX * PAD_R)}px,0px)`; if (kt !== lastKnob) { ui.knob.style.transform = kt; lastKnob = kt; }
-  return { paddle: input.paddle, pump: input.paddle, steer: input.steer, up: input.up };    // same button: paddle lying down, pump once standing; steer + = turn right
+  /* (kb: an arrow is down. 4 Oct 2026, his report: on a computer, Shift then an arrow a moment later didn't spin the
+     bodyboard, because the keys ease the turn in and the game only saw you steering ~0.1 s after the press. The spinner's
+     'together' timing now starts at the press itself, so Shift first gets the same 0.2 s as STALL first on a phone) */
+  const kb = input.test == null && !input.stick && !inputLock && kraw !== 0;
+  return { paddle: input.paddle, pump: input.paddle, steer: input.steer, up: input.up, kb };    // same button: paddle lying down, pump once standing; steer + = turn right
 }
 
 // Riding, "steer and pedals" (his pick), seamless like a simulator: no modes, no hidden steering.
