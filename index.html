@@ -1024,13 +1024,25 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261003-1535</small>
+    <small id="build">build 261003-1548</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-03-rooms', wd: true, date: '3 Oct 2026', time: '3:50 pm', title: 'Free surf beaches you can trust', items: [
+      'The beach list and the player list only show surfers who are really there. Someone whose phone went to sleep drops off, and comes back as soon as they return.',
+      'Beaches where nobody is surfing are no longer listed, so you never join an empty sea.',
+      'A friend coming back from another app now shows up again within a few seconds.',
+      'When a friend rides a wave, you see the same wave they do.',
+      'Fix: joining a beach could get stuck until you reloaded the game.',
+    ] },
+    { id: '2026-10-03-smooth', date: '3 Oct 2026', time: '3:50 pm', title: 'Smooth and easy on your phone', items: [
+      'A new, light way of drawing the sea: the same look, built to keep the game smooth and your phone cool.',
+      'Friends far away use a light body. You will not see it, your phone will feel it.',
+      'Fix: Party Point froze for a moment when you jumped off the cliff and hit the water.',
+    ] },
     { id: '2026-10-03-airs', date: '3 Oct 2026', time: '2:04 pm', title: 'New in the air: grab and air reverse', items: [
       'Grab: hold STALL in the air. You tuck and take the rail, and GRAB counts up while you hold it. A held grab scores more.',
       'Air reverse: spin about half way and land tail first, then steer the way you spun to swing the board back round. Get it wrong and you spin out.',
@@ -1595,6 +1607,6 @@
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/" } }
 </script>
-<script type="module" src="js/game.js?v=1240"></script>
+<script type="module" src="js/game.js?v=1242"></script>
 </body>
 </html>
