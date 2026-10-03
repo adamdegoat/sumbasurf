@@ -17,6 +17,7 @@ import { makeBoard, BOARD_LENGTH, BOARD_WIDTH } from './board.js?v=23';
 
 const UP = new THREE.Vector3(0, 1, 0), INTO_WAVE = new THREE.Vector3(0, 0, -1);
 const V = () => new THREE.Vector3(), Q = () => new THREE.Quaternion();
+const _p1 = V(), _p2 = V(), _p3 = V(), _p4 = V(), _p5 = V();   // (plantFeet's own scratch: 3 Oct 2026, heat check, it made a dozen new vectors a friend a pose)
 const _k2 = new THREE.Matrix4(), _a = V(), _b = V(), _c = V(), _d = V(), _e = V(), _f = V(), _g = V(), _h = V(), _k = V(), _q1 = Q(), _q2 = Q(), _q3 = Q(), _m = new THREE.Matrix4();
 const ease = (cur, want, dt, rate) => cur + (want - cur) * (1 - Math.exp(-rate * dt));
 
@@ -57,9 +58,10 @@ function reachArm(ua, la, hd, T, pole, w) {
 const BOARDS = new Map(), MATS = new Map();
 // far away, a lighter body (1 Oct 2026, his call): the same skeleton, skin and clothes, but drawn with about a quarter of
 // the triangles (surfer_far.json: a second list of triangles over the very same points, made once with meshoptimizer
-// from surfer.glb). Only bodies more than ~25 m off use it, a figure a few dozen pixels tall. Each list is matched to
+// from surfer.glb). Only bodies more than ~14 m off use it (LOD), a figure a few dozen pixels tall. Each list is matched to
 // its mesh by the mesh's own counts and checked point by point; anything that doesn't match, or a file that doesn't
 // load, simply leaves the full body in place
+export const LOD = { far: 14, near: 12 };   // (metres: the lighter body from LOD.far out, back to the full one inside LOD.near. 3 Oct 2026, heat check: was 27/23; side by side, frozen, 3x up, the two bodies can't be told apart from 12 m out, where a friend is ~40 px tall)
 let FAR = null, farLoading = false; const FARGEO = new Map();
 function farLoad() { if (FAR || farLoading) return; farLoading = true; fetch(new URL('../surfer_far.json?v=1', import.meta.url)).then((r) => r.json()).then((j) => { FAR = (j && j.v === 1 && j.m) || {}; }).catch(() => { FAR = {}; }); }
 function farGeo(g) {
@@ -149,7 +151,7 @@ export class OtherSurfer {
     const riding = S.state === 'RIDE' || S.state === 'POP';
     if (riding !== this.ridingMat) { this.ridingMat = riding; for (const m of this.boardMats) m.polygonOffset = !riding; }
     this.ghost.visible = d < 30 && !riding;
-    const far = this.far ? d > 23 : d > 27;   // (a little apart, so someone paddling at 25 m doesn't flick between the two)
+    const far = this.far ? d > LOD.near : d > LOD.far;   // (a little apart, so someone paddling right at the line doesn't flick between the two)
     if (far !== this.far) { let ok = !far; for (const [m, full] of this.lodM) { const lg = far ? farGeo(full) : null; if (lg) ok = true; m.geometry = lg || full; } this.far = far && ok; }
     const every = d < 15 ? 1 : d < 40 ? 2 : d < 80 ? 3 : 5;   // (measured 30 Sep 2026: posing costs ~0.24 ms a surfer a frame on his Mac, ~1 ms on a slow phone)
     if (this.hair) this.hair.visible = d < 70;   // (8k of the body's 39k triangles, a speck that far out)
@@ -246,18 +248,18 @@ export class OtherSurfer {
       const front = (s === 'l') === (zl > zr), th = B['thigh_' + s], ca = B['calf_' + s], ft = B['foot_' + s], ba = B['ball_' + s];
       const z = Math.max(this.board.position.z - lim, Math.min(this.board.position.z + lim, pz + (front ? 0.32 + 0.05 * (this._bt || 0) : -0.3 - 0.04 * (this._bt || 0))));
       const T = _f.set(0, this.deckAt(z) + 0.085, z).applyMatrix4(g.matrixWorld);
-      const pole = V().copy(toes).addScaledVector(nose, front ? 0.25 : 0.45).addScaledVector(up, 0.1).normalize();
+      const pole = _p1.copy(toes).addScaledVector(nose, front ? 0.25 : 0.45).addScaledVector(up, 0.1).normalize();
       th.getWorldPosition(_a); ca.getWorldPosition(_b); ft.getWorldPosition(_c);
       const a = _a.distanceTo(_b), b = _b.distanceTo(_c), toT = _d.subVectors(T, _a); let d = toT.length();
       d = Math.min(Math.max(d, Math.abs(a - b) + 0.02), (a + b) * 0.985); toT.normalize();
       const cA = (a * a + d * d - b * b) / (2 * a * d), sA = Math.sqrt(Math.max(0, 1 - cA * cA));
       const pp = pole.addScaledVector(toT, -pole.dot(toT)).normalize();
       const knee = _e.copy(_a).addScaledVector(toT, a * cA).addScaledVector(pp, a * sA);
-      aimBone(th, ca, V().subVectors(knee, _a).normalize(), 1);
-      ca.getWorldPosition(_a); aimBone(ca, ft, V().subVectors(T, _a).normalize(), 1);
-      const tdir = V().copy(toes).addScaledVector(nose, front ? 0.35 : 0.12).normalize();
-      ft.getWorldPosition(_a); const bT = V().copy(_a).addScaledVector(tdir, 0.12); const zb = bT.clone().applyMatrix4(inv); bT.addScaledVector(up, this.deckAt(zb.z) + 0.03 - zb.y);
-      aimBone(ft, ba, V().subVectors(bT, _a).normalize(), 1);
+      aimBone(th, ca, _p2.subVectors(knee, _a).normalize(), 1);
+      ca.getWorldPosition(_a); aimBone(ca, ft, _p2.subVectors(T, _a).normalize(), 1);
+      const tdir = _p3.copy(toes).addScaledVector(nose, front ? 0.35 : 0.12).normalize();
+      ft.getWorldPosition(_a); const bT = _p4.copy(_a).addScaledVector(tdir, 0.12); const zb = _p5.copy(bT).applyMatrix4(inv); bT.addScaledVector(up, this.deckAt(zb.z) + 0.03 - zb.y);
+      aimBone(ft, ba, _p2.subVectors(bT, _a).normalize(), 1);
       ba.quaternion.slerp(_q1.identity(), 0.8); ba.updateMatrixWorld(true);
     }
   }

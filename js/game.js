@@ -598,7 +598,7 @@ function freePeer(id, a, name, sent) {   // (sent: the sender's own clock when i
   if (P.buf.length) { const L = P.buf[P.buf.length - 1].a; if (Math.hypot(a[1] - L[1], a[3] - L[3]) > 25) P.buf = []; }   // (Paddle out: they're simply there, not sliding across the bay; his note 30 Sep 2026)
   if (name) P.name = name;
   P.buf.push({ t, a }); if (P.buf.length > 12) P.buf.shift(); P.last = now;
-  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=26').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }
+  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=27').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }
 }
 function freeSay(id, text) { const P = peers.get(id); if (P) P.say = { text: String(text).slice(0, 90), until: performance.now() + 5000 }; }
 // every player's own shorts colour (his call 30 Sep 2026: automatic, different for each), picked from their player id,
@@ -695,7 +695,7 @@ function ripAt(x, z) {   // how much of the current is here (0..1), and how far 
   return [Math.max(0, Math.min(1, 1 - (off - RIP.w) / RIP.fade)), t];
 }
 function pointTick(dt) {
-  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=26').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }   // (the photographer draws you as friends see you)
+  if (!OSmod && !osLoading && surferGltf) { osLoading = true; import('./others.js?v=27').then((m) => { OSmod = m; }).catch(() => { osLoading = false; }); }   // (the photographer draws you as friends see you)
   // PARTY WAVE: who else is standing on the wave you're riding (their latest message says which wave: index 19)
   const r = rider;
   if (r && r.standing && r.wave && r.wave.sid && !spec) {
@@ -1562,9 +1562,11 @@ async function start(m, quick = false) {
 // build the shader for everything that could show up in a session (the boat, the locals, spray, what's still hidden), now at the tap,
 // not in a stall mid-paddle the first time each thing comes into view
 function warmShaders() {
-  if (warmShaders.done) return; warmShaders.done = true;
+  // (3 Oct 2026, heat check: once only, a new place with its own lights re-did the shaders as things first showed: 150 ms on
+  //  arriving at Party Point and 90 ms more on the first jump in, your body. Now on every new place, behind the arrival)
+  const key = spotOf(mode) + '|' + scene.children.length; if (warmShaders.key === key) return; warmShaders.key = key;
   const shown = []; scene.traverse((o) => { if (!o.visible) { o.visible = true; shown.push(o); } });
-  try { renderer.compile(scene, camera); } finally { for (const o of shown) o.visible = false; }
+  try { renderer.compile(scene, camera); armCam.position.copy(camera.position); armCam.quaternion.copy(camera.quaternion); if (renderer.compileAsync) renderer.compileAsync(scene, armCam).catch(() => {}); else renderer.compile(scene, armCam); } finally { for (const o of shown) o.visible = false; }   // (and through the arms' own lens: your body is drawn in that second pass, with the lights that pass sees)
 }
 if (Q.get('mode')) setTimeout(() => start(Q.get('mode')), 0);   // (a link straight to a spot: once the whole game has loaded, not halfway through)
 
