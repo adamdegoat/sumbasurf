@@ -717,6 +717,7 @@
   #start .fsPanel .fsSeg button.on { border-color: var(--amber); color: var(--amber); background: rgba(255,201,120,.14); }
   #start .fsPanel .fsSeg button.x.on { border-color: #ff5a4a; color: #ff8a7a; background: rgba(255,80,60,.14); }
   #start .fsPanel .fsSeg button.off { opacity: .45; cursor: default; }
+  #start .fsPanel .fsSeg button.soon { border-style: dashed; color: rgba(246,236,220,.42); background: transparent; pointer-events: none; }   /* (two more beaches on the way, his call 3 Oct 2026: not choosable, no data-v so freeroom.js never binds them) */
   #start .fsPanel .fsNote { margin: 0; font: 500 clamp(11px, 1.7vh, 13px)/1.35 var(--body); color: rgba(246,236,220,.75); }
   #start .fsPanel .fsHelp { width: 26px; height: 26px; margin-left: 8px; padding: 0; vertical-align: .25em; border-radius: 50%; border: 1.5px solid rgba(255,201,120,.6); background: rgba(24,17,11,.5); color: var(--amber) !important; font: 800 15px/1 var(--disp) !important; text-align: center; cursor: pointer; }
   /* how free surf works: a card over the menu (see freeroom.js) */
@@ -855,6 +856,72 @@
     #start .mmPicks .boardrow, #start .mmPicks .stancerow { display: block; } #start .mmPicks .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
     #start .mmPicks .boards button { padding: 2px 8px 2px 6px !important; font-size: 13px; gap: 5px; } #start .mmPicks .boards svg { width: 24px; }
   }
+  /* the free surf panel on a phone on its side (3 Oct 2026, his 'every device': Go surf ran out of the panel under About us at
+     568-740 wide, and two Coming soon beaches joined the Beach row): the beaches a size smaller, the boards one row of
+     outlines with the chosen board's name beside them (as the shortest spot panel does), Goofy / Regular small. Up to 640
+     high: a laptop window on Wavedash (980x550) ran 49 px out the same way; 760 high: at 1024x700 it ran under Patch notes */
+  @media (max-height: 760px) {
+    #start .fsPanel .fsNew { gap: 4px; } #start .fsPanel .fsNew .fsH { font-size: 22px; }
+    #start .fsPanel .fsOpt { gap: 8px; } #start .fsPanel .fsOpt > b { width: 64px; font-size: 11px; letter-spacing: .08em; }
+    #start .fsPanel .fsSeg { gap: 4px; } #start .fsPanel .fsSeg button { padding: 4px 9px 3px; font-size: 12.5px; }
+    #start .fsPanel .mmPicks { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 8px; margin-top: 2px; padding-top: 5px; }
+    #start .fsPanel .mmPicks .boardrow, #start .fsPanel .mmPicks .stancerow { display: flex; align-items: center; }
+    #start .fsPanel .mmPicks .blabel { display: none; }
+    #start .fsPanel .mmPicks .boards { display: flex !important; flex-wrap: nowrap; gap: 3px; }
+    #start .fsPanel .mmPicks .boardrow .boards button { padding: 4px 5px 3px !important; gap: 0 !important; }
+    #start .fsPanel .mmPicks .boardrow .boards button :is(span, small, em) { display: none; }
+    #start .fsPanel .mmPicks .boardrow .boards svg { width: 24px !important; }
+    #start .fsPanel .mmPicks #boardName { display: inline !important; order: 2; margin-left: 6px; font: 700 12px/1 var(--disp); letter-spacing: .04em; color: #ffcf8a; white-space: nowrap; }
+    #start .fsPanel .mmPicks .stancerow .boards button { padding: 3px 7px 2px 5px !important; font-size: 11.5px !important; }
+  }
+  @media (max-height: 340px) {   /* (the shortest: no Back word above the title, the title smaller) */
+    #start .fsPanel .fsNew .fsH { font-size: 18px; } #start .fsPanel .fsSeg button { padding: 3px 7px 2px; font-size: 11.5px; } #start .fsPanel .fsGo { min-height: 32px; font-size: 15px; }
+  }
+  @media (min-height: 420px) and (min-width: 761px) {   /* (where there's room, his 'no wasted space': the free surf picks as the spot panel's, six boards three
+                                                          across the full width and Goofy / Regular splitting a row, not a small row with a gap under it) */
+    #start .fsPanel .mmPicks { display: grid !important; grid-template-columns: minmax(0, 1fr); row-gap: 6px !important; }
+    #start .fsPanel .mmPicks .boardrow, #start .fsPanel .mmPicks .stancerow { display: contents !important; }
+    #start .fsPanel .mmPicks #boardName { display: none !important; }
+    #start .fsPanel .mmPicks .boardrow .boards { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 6px !important; }
+    #start .fsPanel .mmPicks .stancerow .boards { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px !important; }
+    #start .fsPanel .mmPicks .boards button { width: 100%; min-width: 0; justify-content: center; padding: 3px 8px 3px 6px !important; gap: 6px !important; font-size: 13px !important; }
+    #start .fsPanel .mmPicks .boardrow .boards button :is(span, em) { display: inline !important; } #start .fsPanel .mmPicks .boardrow .boards svg { width: 26px !important; }
+  }
+  @media (max-width: 760px) {   /* (a narrow phone on its side, 568-760 wide: the open free surf panel ran up to 90 px off the screen's right
+                                    edge before; now it keeps to its column and Goofy / Regular drop under the boards if they must) */
+    body.fsOpen #start .mm { grid-template-columns: 200px minmax(0, 1fr); }
+    #start .fsPanel .mmPicks { flex-wrap: wrap !important; row-gap: 4px !important; }
+    #start .fsPanel .fsSeg { flex-wrap: nowrap; } #start .fsPanel .fsSeg button { white-space: nowrap; }
+    #start .fsPanel .fsSeg button.soon + button.soon { display: none; }   /* (one Coming soon here: two don't fit beside The Bay and Party Point) */
+  }
+  @media (max-width: 620px) {   /* (the narrowest, 568 wide: the boards' outlines smaller and no name beside them, so the picks keep to one line) */
+    #start .fsPanel .mmPicks { flex-wrap: nowrap !important; gap: 6px !important; }
+    #start .fsPanel .mmPicks #boardName { display: none !important; }
+    body.fsOpen #start .mm { grid-template-columns: 168px minmax(0, 1fr); }   /* (the spot list a little narrower while free surf is open: its spots aren't used there) */
+    body.fsOpen #start .mp .tag { display: none; }   /* (no room for MULTIPLAYER in the narrower list: it spilled past its button) */
+    #start .fsPanel .mmPicks .boardrow .boards button { padding: 3px 2px 2px !important; } #start .fsPanel .mmPicks .boardrow .boards svg { width: 18px !important; }
+    #start .fsPanel .mmPicks .stancerow .boards button { padding: 3px 4px 2px 3px !important; font-size: 10.5px !important; }
+  }
+  /* the spot panel's picks across the panel (his call 3 Oct 2026, a phone on Wavedash: 'wasted empty space, then all squeezed
+     into one side', and the Your best line hidden under START SURFING): the spot's text on top is never squeezed, the six
+     boards sit three across the full width and Goofy / Regular split a row, and START SURFING goes last, at the bottom.
+     From 341 high: the very short windows keep their one-line picks (above) */
+  @media (min-height: 341px) {
+    #start .mmPanel:not(.fsPanel) .mmTop { flex: 1 0 auto; }
+    #start .mmPanel:not(.fsPanel) .mmPicks { order: 2; display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; column-gap: 12px; row-gap: clamp(7px, 1.3vh, 12px); margin-top: clamp(8px, 1.6vh, 16px); padding-top: clamp(8px, 1.5vh, 14px); }
+    #start .mmPanel:not(.fsPanel) .mmPicks .boardrow, #start .mmPanel:not(.fsPanel) .mmPicks .stancerow { display: contents; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .blabel { margin: 0; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px 6px; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .stancerow .boards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .boards button { min-width: 0; width: 100%; justify-content: center; }
+    #start .mmPanel:not(.fsPanel) .mmActs { order: 3; }
+  }
+  @media (min-height: 341px) and (max-height: 460px) {   /* (no Board / Stance words on a phone on its side: the picks take the whole width) */
+    #start .mmPanel:not(.fsPanel) .mmPicks { grid-template-columns: minmax(0, 1fr); row-gap: 5px; margin-top: 6px; padding-top: 6px; }
+    #start .mmPanel:not(.fsPanel) .mmPicks .boardrow .boards { gap: 7px 6px; }   /* (7: the BEST tag sits 7 px above its chip) */
+    #start .mmPanel:not(.fsPanel) .mmPicks .boards button { padding-top: 3px !important; padding-bottom: 3px !important; }
+    #start .mmPanel:not(.fsPanel) .mmActs { padding-top: 7px; } #start .mmPanel:not(.fsPanel) .mmActs #goSurf { min-height: 40px; }   /* (on Wavedash at 932x430, his phone, START SURFING ran 17 px out of the panel) */
+  }
   /* two columns of five spots (his call 1 Oct 2026): Free surf, Surf contest, Sumba Ranch and Your villa stay full width;
      the spots fill the first column top to bottom, then the second, and the empty places say Coming soon (room for new
      spots). A half pill shows the wave icon, the name and your best; the spot's line of text is in the panel already */
@@ -964,7 +1031,7 @@
         <p class="fsMsg" id="fsMsg"></p>
         <div class="fsActs"><button type="button" class="fsGo" id="fsOpenBtn"><span>Open a beach</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h11M11 5.5 15.5 10 11 14.5"/></svg></button></div></div>
       <div class="fsNew"><button type="button" class="fsBack" id="fsBack">Back</button><h2 class="fsH">Open a beach</h2>
-        <div class="fsOpt"><b>Beach</b><div class="fsSeg" data-k="map"><button type="button" data-v="bay" class="on">The Bay</button><button type="button" data-v="point">Party Point</button></div></div>
+        <div class="fsOpt"><b>Beach</b><div class="fsSeg" data-k="map"><button type="button" data-v="bay" class="on">The Bay</button><button type="button" data-v="point">Party Point</button><button type="button" class="soon" tabindex="-1" aria-disabled="true">Coming soon</button><button type="button" class="soon" tabindex="-1" aria-disabled="true">Coming soon</button></div></div>
         <div class="fsOpt"><b>Who joins</b><div class="fsSeg" data-k="vis"><button type="button" data-v="open" class="on">Open</button><button type="button" data-v="private">Private</button></div></div>
         <div class="fsOpt"><b>Waves</b><div class="fsSeg" data-k="cond"><button type="button" data-v="normal" class="on">Normal</button><button type="button" data-v="extreme" class="x">Extreme</button></div></div>
         <p class="fsNote">Open: anyone can find your beach and jump in. Private: only friends with your code.</p>
@@ -1024,13 +1091,18 @@
     <div class="pnHead"><b>Patch notes</b><button id="pnClose" type="button" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l10 10M13 3L3 13"/></svg></button></div>
     <div class="pnTabs"><button type="button" data-look="0" class="on">Gameplay</button><button type="button" data-look="1">Looks and sound</button></div>
     <div id="pnList"></div>
-    <small id="build">build 261003-2046</small>
+    <small id="build">build 261003-2115</small>
   </div>
 </div>
 <script>
 // the patch notes: newest first, each with the date and time it went live (Singapore time); the dot shows until the player has opened the latest one (remembered on this device only)
 (() => {
   const PATCH = [
+    { id: '2026-10-03-menu', date: '3 Oct 2026', time: '9:15 pm', title: 'A cleaner menu on every screen', items: [
+      'The spot panel fits every phone now: your best score always shows, the boards spread across the panel and START SURFING sits at the bottom.',
+      'Free surf fits small phones too, with Go surf always in view.',
+      'Two more free surf beaches are on the way. Watch this space.',
+    ] },
     { id: '2026-10-03-airrev-score', date: '3 Oct 2026', time: '8:46 pm', title: 'Fairer scoring for the air reverse', items: [
       'The air reverse now scores a little less than a full air 360, as judges score it. How you land it is unchanged.',
     ] },
