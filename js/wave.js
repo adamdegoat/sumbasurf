@@ -522,11 +522,23 @@ export function setWeather(name) {
   ENV.uCloud.value = w.cloud; ENV.uChop.value = w.chop; ENV.uFogFar.value = w.fogFar; ENV.uSunVis.value = w.sunVis;
 }
 setWeather('medium');
+// (3 Oct 2026, phone heat: the ripples, sparkle and foam were value noise worked out from scratch, four sin() hashes a
+// lookup, 40-60 lookups a pixel of water: a third of the whole picture's cost on a phone-sized screen. fbm (the layered
+// ripple, sparkle and foam texture, nearly all of those lookups) now reads its random corner values from a 256 x 256
+// table made once (NOISE_TEX), the graphics chip blending the four corners in one read: same smooth value noise, a table
+// that repeats only every 256 cells (and each layer steps 2.03x, so no repeat lines up); cells wrapped before the read so
+// far-off water keeps its precision. The single vnoise() calls stay worked out exactly as before: they lay out the big
+// things (the sandy shallows and reef, the channel's edges, the calm slicks), and a new table moved them about)
+const NOISE_TEX = (() => { const N = 256, d = new Uint8Array(N * N); let s = 20261003; for (let i = 0; i < d.length; i++) { s = (Math.imul(s, 1103515245) + 12345) >>> 0; d[i] = s >>> 24; }
+  const t = new THREE.DataTexture(d, N, N, THREE.RedFormat, THREE.UnsignedByteType); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; t.needsUpdate = true; return t; })();
+ENV.uNoiseTex = { value: NOISE_TEX };
 const NOISE = /* glsl */`
+  uniform sampler2D uNoiseTex;
   float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
   float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
     return mix(mix(hash(i),hash(i+vec2(1,0)),f.x), mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x), f.y); }
-  float fbm(vec2 p){ float a=.5, s=0.; for(int i=0;i<4;i++){ s+=a*vnoise(p); p*=2.03; a*=.5; } return s; }
+  float tnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f); return texture2D(uNoiseTex, (mod(i, 256.) + f + .5) / 256.).r; }
+  float fbm(vec2 p){ float a=.5, s=0.; for(int i=0;i<4;i++){ s+=a*tnoise(p); p*=2.03; a*=.5; } return s; }
 `;
 
 // golden hour: a burning orange band low around the sun, turning rose and then lilac away from it, a deeper blue
