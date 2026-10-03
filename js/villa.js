@@ -10,7 +10,8 @@ import { makeBoard } from './board.js?v=25';
 import { landMaterial, waterMaterial } from './wave.js?v=220';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-export const VILLA = { x0: -100, x1: -86, z0: 30, z1: 44, Y: 26 };   // the house and its floor height (in the point's own frame, below)
+export const VILLA = { x0: -100, x1: -86, z0: 30, z1: 44, Y: 26 };
+const GUIDE_AT = { x: -96.2, z: 43.0 };   // (the Surf Guide board on the board room's end wall, and where you stand to read it)   // the house and its floor height (in the point's own frame, below)
 // where the point is: the whole house and point are drawn around (-93, 37) and moved by this much, which puts the
 // balcony about 75 m from the takeoff and 50-100 m from the rides, as close as it can be without the broken wave's
 // whitewater (up to ~60 m behind the peak) ever reaching the rock
@@ -319,6 +320,18 @@ export function villa(scene) {
     b.userData.type = type; b.traverse((o) => { o.userData.type = type; }); holder.add(b); rack.push(b);
   });
   block(V.x0, V.x0 + 1.15, 31.7, 42.3);
+  // the Surf Guide (3 Oct 2026, his call): a framed board on the board room's end wall, beside the rack; walk up to it and
+  // READ THE GUIDE opens the guide (game.js openGuide; its words: guide.js)
+  { const cv = document.createElement('canvas'); cv.width = 512; cv.height = 640; const c = cv.getContext('2d');
+    c.fillStyle = '#5a3a1e'; c.fillRect(0, 0, 512, 640); c.fillStyle = 'rgba(0,0,0,.2)'; for (let k = 0; k < 60; k++) c.fillRect(0, k * 10.7, 512, 2);   // (a teak frame)
+    c.fillStyle = '#f1e2c2'; c.fillRect(30, 30, 452, 580); c.strokeStyle = '#a5763d'; c.lineWidth = 4; c.strokeRect(46, 46, 420, 548);
+    c.fillStyle = '#3a2810'; c.textAlign = 'center'; c.font = 'bold 74px Georgia, serif'; c.fillText('SURF', 256, 150); c.fillText('GUIDE', 256, 226);
+    c.strokeStyle = '#2f6f8a'; c.lineWidth = 9; c.lineCap = 'round'; c.beginPath(); c.moveTo(110, 360); c.bezierCurveTo(180, 250, 300, 250, 330, 330); c.bezierCurveTo(300, 300, 262, 315, 262, 345); c.stroke();   // (a curling wave)
+    c.beginPath(); c.moveTo(96, 392); c.lineTo(416, 392); c.stroke();
+    c.fillStyle = '#5e4118'; c.font = '30px Georgia, serif'; ['Catch it', 'Carve it', 'Land the tricks'].forEach((t, i) => c.fillText(t, 256, 458 + i * 44));
+    const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.96, 1.2), new THREE.MeshStandardMaterial({ map: tx, roughness: 0.6 }));
+    m.position.set(GUIDE_AT.x, Y + 1.62, V.z1 - 0.07); m.rotation.y = Math.PI; m.scale.x = -1; g.add(m); }   // (flipped back: the house is mirrored)
   // a brass name plate on the stand under each board, a carved sign over them, and a spotlight on each from a beam
   { const cv = document.createElement('canvas'); cv.width = 2560; cv.height = 384; const c = cv.getContext('2d');   // (five plates along the top, 512 x 128 each, the sign under them)
     const NAMES = { short: ['SHORTBOARD', '6\'2"'], fish: ['FISH', '5\'8"'], long: ['LONGBOARD', '9\'2"'], gun: ['GUN', '9\'6"'], alaia: ['ALAIA', '7\'2"'], body: ['BODYBOARD', '42"'] }, names = RACK.map((t) => NAMES[t]), PW = 2560 / NR, fk = PW / 512;
@@ -915,6 +928,7 @@ export function villa(scene) {
     ...[0.5, 2.2].map((an) => [fire.x + Math.cos(an) * 2.1, fire.z + Math.sin(an) * 2.1, GY + 1.0, an + Math.PI, -0.25, 'SIT BY THE FIRE'])];
   const seats = seatL.map(([x, z, eye, a, pitch, name]) => ({ x: OX - x, z: z + OZ, eye, yaw: Math.PI - a, pitch, name }));
   for (const [x, z, y] of speakersL) seats.push({ x: OX - x, z: z + OZ, eye: y + 1.1, radio: true, name: 'MUSIC' });
+  seats.push({ x: OX - GUIDE_AT.x, z: GUIDE_AT.z + OZ, eye: Y + 1.1, guide: true, name: 'READ THE GUIDE' });   // (the Surf Guide on the board room wall: walk up to it, as to a seat)
   const sounds = { speakers: speakersL.map(([x, z, y]) => [OX - x, z + OZ, y + 0.3]), fire: [OX - fire.x, fire.z + OZ, GY], chime: [OX + 85, 28.8 + OZ, Y + 2.2], tub: [OX - tub.x, tub.z + OZ, Y] };
   { const ch = new THREE.Group(); ch.position.set(-85, Y + 2.62, 28.8); g.add(ch);   // bamboo wind chimes under the eave, swaying
     const bm = new THREE.MeshStandardMaterial({ color: 0xb89a62, roughness: 0.6 }); const top = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.03, 12), bm); ch.add(top);

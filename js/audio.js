@@ -198,10 +198,10 @@ export class SurfAudio {
     this.order.unshift(this.now); this.now = this.hist.pop(); this.mel.src = this.now; if (this.mWant > 0) this.mel.play().catch(() => {}); if (this.onTrack) this.onTrack(this.now);
   }
   // how loud the music should be now, and how far off it sounds (lowpass Hz); silent for a while and it pauses (saves battery)
-  musicLevel(v, lp = 20000) {
-    if (!this.mel) return; this.mWant = v;
+  musicLevel(v, lp = 20000, keep = false) {   // (keep: silent but still playing, never paused: see game.js musicTick, the reef)
+    if (!this.mel) return; this.mWant = keep ? Math.max(v, 0.0011) : v;
     this.set(this.mGain.gain, v, 0.7); this.set(this.mLP.frequency, lp, 0.4);
-    if (v > 0.001) { clearTimeout(this.mStop); this.mStop = 0; if (this.mel.paused && this.ctx.state === 'running') this.mel.play().catch(() => {}); }
+    if (v > 0.001 || keep) { clearTimeout(this.mStop); this.mStop = 0; if (this.mel.paused && this.ctx.state === 'running') this.mel.play().catch(() => {}); }
     else if (!this.mel.paused && !this.mStop) this.mStop = setTimeout(() => { this.mStop = 0; if (!(this.mWant > 0.001)) this.mel.pause(); }, 3000);
   }
   musicKick() { if (this.mel && this.mel.paused) this.mel.play().catch(() => {}); }   // (called inside a tap: on an iPhone the first play has to be)

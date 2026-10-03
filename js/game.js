@@ -6,10 +6,11 @@ import { Wave, CONDITIONS, RANCH_CONDITIONS, skyDome, ocean, setWeather, Weather
 import { Rider, Profile, waterAt, heightAt, RIDE, setBoard, PUMP_STROKE, PUMP_PERIOD, SW_T } from './surf.js?v=234';
 import { makeBoard, BOARD_LENGTH, BOARD_WIDTH, BOARD_WATER, DESIGNS, SEASON, bakeDesigns, boardSurface } from './board.js?v=25';
 import { gripHand, gripTarget } from './grip.js?v=14';
-import { SurfAudio } from './audio.js?v=30';
+import { GUIDE, guideText } from './guide.js?v=1';
+import { SurfAudio } from './audio.js?v=31';
 import { ranch, POOL } from './ranch.js?v=9';
 import { SPOTS, spotGroup, builtSpots } from './spots.js?v=163';
-import { villa, VILLA } from './villa.js?v=198';
+import { villa, VILLA } from './villa.js?v=200';
 import { makeBirds } from './birds.js?v=1';
 import { friends } from './friends.js?v=30';
 import { lifeLib, idle as lifeIdle } from './life.js?v=1';
@@ -3146,13 +3147,13 @@ let radioOn = true;   // (the villa's speakers, all together)
 let musPaused = false;   // (paused from the Now playing box: the song holds its place, the box stays up to start it again)
 let earOn = false; try { earOn = localStorage.getItem('sumbasurf.ear') === '1'; } catch (e) {}   // an earpiece while you surf: your call, remembered
 { const eb = document.getElementById('ear'), show = () => { eb.classList.toggle('on', earOn); document.body.classList.toggle('earon', earOn); eb.querySelector('span').textContent = earOn ? 'EARPIECE ON' : 'EARPIECE'; };
-  show(); const t = (e) => { e.preventDefault(); e.stopPropagation(); earOn = !earOn; try { localStorage.setItem('sumbasurf.ear', earOn ? '1' : '0'); } catch (err) {} show(); audio.musicKick(); };
-  eb.addEventListener('touchstart', t, { passive: false }); eb.addEventListener('click', t); }
+  let lastT = 0; show(); const t = (e) => { e.preventDefault(); e.stopPropagation(); const now = performance.now(); if (now - lastT < 450) return; lastT = now; audio.wake(); earOn = !earOn;   /* (one switch per tap: a phone that sends the touch and a click as well switched it on and straight off again) */ try { localStorage.setItem('sumbasurf.ear', earOn ? '1' : '0'); } catch (err) {} show(); audio.musicKick(); };
+  eb.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); }, { passive: false }); eb.addEventListener('touchend', t, { passive: false }); eb.addEventListener('click', t); }   // (switched on the finger lifting, his report 3 Oct 2026 'needs a few taps': an iPhone or iPad only lets sound start at the END of a tap, so turned on at the touch, the music that had gone to sleep stayed silent and the next tap turned it off again)
 // back / next song while surfing with the earpiece in (his ask 30 Sep 2026); the song's name shows beside them for a moment
 { const nm = document.getElementById('earSong'); let hide = 0;
   for (const [id, f] of [['earPrev', () => audio.musicPrev()], ['earNext', () => audio.musicNext()]]) {
     const go = (e) => { e.preventDefault(); e.stopPropagation(); f(); audio.musicKick(); nm.textContent = songOf(audio.now)[0]; nm.classList.add('show'); clearTimeout(hide); hide = setTimeout(() => nm.classList.remove('show'), 2500); };
-    const b = document.getElementById(id); b.addEventListener('touchstart', go, { passive: false }); b.addEventListener('click', go); } }
+    const b = document.getElementById(id); b.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); }, { passive: false }); b.addEventListener('touchend', go, { passive: false }); b.addEventListener('click', go); } }   // (on the finger lifting too: see the earpiece above)
 function musicTick() {
   if (!audio.mel) return;
   const playing = document.body.classList.contains('playing');
@@ -3165,7 +3166,7 @@ function musicTick() {
     return audio.musicLevel(0.09 + 0.75 * k15, 1800 + 12000 * k15); }
   if (isRanch()) return audio.musicLevel(0.38, 14000);
   if (earOn) { audio.musicLevel(0.34, 20000); audio.gameLevel(0.3); }   // earpiece in: the music in your ears, the sea turned down behind it
-  else { audio.musicLevel(0); audio.gameLevel(1); }   // (otherwise on the reef, only the sea: the sound of the wave is how you surf)
+  else { audio.musicLevel(0, 20000, true); audio.gameLevel(1); }   // (otherwise on the reef, only the sea: the sound of the wave is how you surf)   // (keep: the music plays on silently, never paused, his report 3 Oct 2026: paused, an iPhone or iPad often wouldn't start it again from the earpiece button (a few taps), and in a free surf room the owner's paused song never ended, so the room's song never changed for anyone)
 }
 // sound can only start from a tap (a phone plays nothing before one, and an iPhone only counts the END of a tap, not
 // the finger going down). Every tap tries until the sound and the music are really running, then it stops listening
@@ -3175,7 +3176,29 @@ function musicTick() {
   for (const ev of ['touchend', 'click', 'keydown']) addEventListener(ev, unlock, true); }
 function vSit() { const W_ = walker; if (!W_ || !W_.near) return;
   if (W_.near.radio) { radioOn = !radioOn; vSitB.textContent = radioOn ? 'MUSIC OFF' : 'MUSIC ON'; return; }   // (the radio: a switch, not a seat)
+  if (W_.near.guide) { openGuide(); return; }   // (the Surf Guide board: opens the guide, not a seat)
   W_.sit = W_.near; W_.stand = [W_.x, W_.z, W_.y]; W_.sitT = 1.2; W_.mx = W_.mz = 0; vSitB.textContent = 'STAND UP'; }
+// the Surf Guide (3 Oct 2026, his call): every move, how to do it, in the words for your device. Opened from the villa's
+// GUIDE button or the board on the board room wall. The words are in guide.js: add a move or a board there
+let guideTab = 0;
+function openGuide(tab) {
+  const el = document.getElementById('guide'), tabs = document.getElementById('guideTabs'), body = document.getElementById('guideBody'), desk = document.body.classList.contains('desk');
+  if (tab != null) guideTab = tab;
+  const esc = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  tabs.innerHTML = GUIDE.map((S, i) => `<button type="button" data-i="${i}"${i === guideTab ? ' class="on"' : ''}>${esc(S.title)}</button>`).join('');
+  const S = GUIDE[guideTab];
+  body.innerHTML = `<div class="gTag">${esc(S.tag)}</div>` + S.items.map(([n, how]) => `<div class="gItem"><b>${esc(n)}</b><span>${esc(guideText(how, desk))}</span></div>`).join('');
+  body.scrollTop = 0;
+  tabs.querySelectorAll('button').forEach((b) => { const go = (e) => { e.preventDefault(); e.stopPropagation(); openGuide(+b.dataset.i); }; b.addEventListener('click', go); });
+  const on = tabs.querySelector('.on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  if (el.hidden) { el.hidden = false; inputLock = true; }
+}
+function closeGuide() { const el = document.getElementById('guide'); if (el.hidden) return; el.hidden = true; inputLock = false; }
+{ const vb = document.getElementById('vGuide'), cb = document.getElementById('guideClose'), el = document.getElementById('guide');
+  vb.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openGuide(); });
+  cb.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); closeGuide(); });
+  el.addEventListener('click', (e) => { if (e.target === el) closeGuide(); });   // (a tap outside the card closes it)
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && !el.hidden) { e.preventDefault(); closeGuide(); } }); }
 function vStand() { const W_ = walker; if (!W_ || !W_.sit) return; [W_.x, W_.z, W_.y] = W_.stand;   // (feet back where they were: standing up on the tree deck, you're still on the deck)
   W_.sit = null; W_.near = null; W_.seatT = 0.5; vSitB.classList.remove('on'); }
 { const t = (e) => { e.preventDefault(); e.stopPropagation(); if (walker && walker.sit) vStand(); else vSit(); }; vSitB.addEventListener('click', t); vSitB.addEventListener('touchstart', t, { passive: false }); }
